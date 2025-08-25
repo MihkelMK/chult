@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { TileCoords } from '$lib/types';
 	import { onMount } from 'svelte';
 
 	interface Hex {
@@ -23,7 +24,7 @@
 		xOffset?: number; // Horizontal offset in pixels from left edge to where grid starts
 		yOffset?: number; // Vertical offset in pixels from top edge to where grid starts
 		showControls?: boolean;
-		initiallyRevealed?: boolean;
+		initiallyRevealed?: TileCoords[];
 		onHexRevealed?: (event: HexRevealedEvent) => void;
 		onAllHexesReset?: () => void;
 		onAllHexesRevealed?: () => void;
@@ -36,13 +37,12 @@
 		xOffset = 70,
 		yOffset = 58,
 		showControls = true,
-		initiallyRevealed = false,
+		initiallyRevealed = [],
 		onHexRevealed = () => {},
 		onAllHexesReset = () => {},
 		onAllHexesRevealed = () => {}
 	}: Props = $props();
 
-	let mapContainer: HTMLDivElement | undefined = $state();
 	let mapImage: HTMLImageElement | undefined = $state();
 	let hexGrid: Hex[] = $state([]);
 	let imageNaturalDimensions = $state({ width: 0, height: 0 });
@@ -95,7 +95,7 @@
 		for (let row = 0; row < rows; row++) {
 			for (let col = 0; col < cols; col++) {
 				// Perfect tessellation for flat-top hexagons: odd columns offset vertically
-				const offsetY = (col % 2) * (verticalSpacing * 0.5);
+				const offsetY = (col % 2) * (verticalSpacing * -0.5);
 				// Apply the xOffset and yOffset to position the grid correctly
 				const centerX = col * horizontalSpacing + hexRadius + xOffset;
 				const centerY = row * verticalSpacing + offsetY + hexHeight / 2 + yOffset;
@@ -110,7 +110,9 @@
 					centerX,
 					centerY,
 					points,
-					revealed: initiallyRevealed
+					revealed: initiallyRevealed.some(
+						(tileIndex) => tileIndex.x === col + 1 && tileIndex.y === row
+					)
 				});
 			}
 		}
@@ -134,9 +136,8 @@
 
 	function revealHex(hexIndex: number): void {
 		const hex = hexGrid[hexIndex];
-		if (hex) {
+		if (hex && !hex.revealed) {
 			hex.revealed = true;
-			hexGrid = [...hexGrid]; // Trigger reactivity
 
 			onHexRevealed({
 				hex,
@@ -191,11 +192,7 @@
 {/if}
 
 <div class="relative inline-block rounded-lg bg-white shadow-xl">
-	<div
-		class="relative"
-		style="width: {containerWidth}px; height: {containerHeight}px;"
-		bind:this={mapContainer}
-	>
+	<div class="relative" style="width: {containerWidth}px; height: {containerHeight}px;">
 		<img
 			bind:this={mapImage}
 			src={mapSrc}
@@ -207,46 +204,110 @@
 
 		{#if containerWidth > 0}
 			<svg
-				class="pointer-events-none absolute inset-0 h-full w-full"
+				class="pointer-events-none absolute inset-0 h-full w-full mask-radial-from-85%"
 				viewBox="0 0 {containerWidth} {containerHeight}"
 			>
-				{#each hexGrid as hex, index (hex.id)}
-					<g class="group">
-						<polygon
-							points={hex.points}
-							fill="rgba(253, 250, 240, 0.1)"
-							stroke="rgba(0, 0, 0, 0.2)"
-							stroke-width="1"
-							class="pointer-events-auto {hex.revealed
-								? '[fill-opacity:0] group-hover:[fill-opacity:0.5]'
-								: 'cursor-pointer [fill-opacity:1]'}"
-							style="transition: fill-opacity 300ms;"
-							onclick={() => revealHex(index)}
-							role="button"
-							tabindex="0"
-							aria-label="Hex {hex.row}, {hex.col}"
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									revealHex(index);
-								}
-							}}
+				<defs>
+					<mask id="fade-mask">
+						<linearGradient id="fade-x" x1="0%" y1="0%" x2="100%" y2="0%">
+							<stop offset="0%" style="stop-color:black;stop-opacity:0" />
+							<stop
+								offset="{((xOffset - hexRadius) / containerWidth) * 100}%"
+								style="stop-color:black;stop-opacity:0"
+							/>
+							<stop
+								offset="{((xOffset + hexRadius) / containerWidth) * 100}%"
+								style="stop-color:white;stop-opacity:1"
+							/>
+							<stop
+								offset="{((containerWidth - xOffset + hexRadius / 2) / containerWidth) * 100}%"
+								style="stop-color:white;stop-opacity:1"
+							/>
+							<stop
+								offset="{((containerWidth - xOffset + hexRadius) / containerWidth) * 100}%"
+								style="stop-color:black;stop-opacity:0"
+							/>
+							<stop offset="100%" style="stop-color:black;stop-opacity:0" />
+						</linearGradient>
+						<linearGradient id="fade-y" x1="0%" y1="0%" x2="0%" y2="100%">
+							<stop offset="0%" style="stop-color:black;stop-opacity:0" />
+							<stop
+								offset="{((yOffset - 20) / containerHeight) * 100}%"
+								style="stop-color:black;stop-opacity:0"
+							/>
+							<stop
+								offset="{((yOffset + 20) / containerHeight) * 100}%"
+								style="stop-color:white;stop-opacity:1"
+							/>
+							<stop
+								offset="{((containerHeight - yOffset - 20) / containerHeight) * 100}%"
+								style="stop-color:white;stop-opacity:1"
+							/>
+							<stop
+								offset="{((containerHeight - yOffset + 20) / containerHeight) * 100}%"
+								style="stop-color:black;stop-opacity:0"
+							/>
+							<stop offset="100%" style="stop-color:black;stop-opacity:0" />
+						</linearGradient>
+						<rect x="0" y="0" width={containerWidth} height={containerHeight} fill="url(#fade-x)" />
+						<rect
+							x="0"
+							y="0"
+							width={containerWidth}
+							height={containerHeight}
+							fill="url(#fade-y)"
+							style="mix-blend-mode: multiply"
 						/>
-						<text
-							x={hex.centerX}
-							y={hex.centerY + 2}
-							text-anchor="middle"
-							font-size="6"
-							fill="black"
-							style="transition: fill-opacity 300ms;"
-							class={hex.revealed
-								? '[fill-opacity:0.5] group-hover:[fill-opacity:1]'
-								: '[fill-opacity:1]'}
-							pointer-events="none"
-						>
-							{hex.row}, {hex.col}
-						</text>
-					</g>
-				{/each}
+					</mask>
+				</defs>
+				<g mask="url(#fade-mask)">
+					{#each hexGrid as hex, index (hex.id)}
+						{#if hex.row >= 0}
+							<g class="group">
+								<polygon
+									points={hex.points}
+									fill="rgb(253, 250, 240)"
+									stroke="black"
+									stroke-width="1"
+									class="!outline-0 [stroke-opacity:0.15] {hex.row > 0
+										? 'pointer-events-auto'
+										: 'pointer-events-none mask-t-from-0 mask-t-to-75%'} {hex.revealed
+										? '[fill-opacity:0] group-hover:[fill-opacity:0.6] group-hover:[stroke-opacity:0.3]'
+										: 'cursor-pointer [fill-opacity:1]'} group-hover:[stroke-opacity:0.4]"
+									style="transition: fill-opacity 300ms, stroke-opacity 300ms;"
+									onclick={() => revealHex(index)}
+									role="button"
+									tabindex="0"
+									aria-label="Hex {hex.row}, {hex.col}"
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											revealHex(index);
+										}
+									}}
+								/>
+								{#if hex.row > 0}
+									<text
+										x={hex.centerX + (hex.col === cols - 1 ? 2 : 0)}
+										y={hex.centerY + 2}
+										text-anchor={hex.col === cols - 1 ? 'end' : 'middle'}
+										font-size="6"
+										fill="black"
+										stroke="rgb(253, 250, 240)"
+										stroke-width="1"
+										paint-order="stroke fill"
+										style="transition: fill-opacity 300ms, stroke-opacity 300ms;"
+										class="select-none {hex.revealed
+											? '[fill-opacity:0.5] [stroke-opacity:0] group-hover:[fill-opacity:1] group-hover:[stroke-opacity:1]'
+											: '[fill-opacity:1]'}"
+										pointer-events="none"
+									>
+										{(hex.col + 1).toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}
+									</text>
+								{/if}
+							</g>
+						{/if}
+					{/each}</g
+				>
 			</svg>
 		{/if}
 	</div>
