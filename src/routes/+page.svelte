@@ -1,8 +1,10 @@
 <script lang="ts">
+	let { data }: { data: PageData } = $props();
+
 	import Map from '$lib/components/Map.svelte';
 
-	// Import your map image
 	import chultMap from '$lib/assets/map.jpg';
+	import type { PageData } from './$types';
 
 	function handleHexRevealed(event) {
 		console.log('Hex revealed:', event.hex);
@@ -24,7 +26,7 @@
 	<Map
 		mapSrc={chultMap}
 		showControls={false}
-		initiallyRevealed={false}
+		initiallyRevealed={data.tiles}
 		onHexRevealed={handleHexRevealed}
 		onAllHexesReset={handleAllHexesReset}
 		onAllHexesRevealed={handleAllHexesRevealed}
