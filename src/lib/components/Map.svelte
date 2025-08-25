@@ -218,21 +218,21 @@
 {/snippet}
 
 {#if showControls}
-	<div class="my-5 flex flex-wrap justify-center gap-3">
+	<div class="flex flex-wrap gap-3 justify-center my-5">
 		<button
-			class="rounded-lg bg-blue-500 px-5 py-2 font-medium text-white transition-colors duration-300 hover:bg-blue-600"
+			class="py-2 px-5 font-medium text-white bg-blue-500 rounded-lg transition-colors duration-300 hover:bg-blue-600"
 			onclick={resetAllHexes}
 		>
 			Reset All Hexes
 		</button>
 		<button
-			class="rounded-lg bg-gray-500 px-5 py-2 font-medium text-white transition-colors duration-300 hover:bg-gray-600"
+			class="py-2 px-5 font-medium text-white bg-gray-500 rounded-lg transition-colors duration-300 hover:bg-gray-600"
 			onclick={revealAllHexes}
 		>
 			Reveal All Hexes
 		</button>
 		<button
-			class="rounded-lg bg-gray-500 px-5 py-2 font-medium text-white transition-colors duration-300 hover:bg-gray-600"
+			class="py-2 px-5 font-medium text-white bg-gray-500 rounded-lg transition-colors duration-300 hover:bg-gray-600"
 			onclick={toggleHexVisibility}
 		>
 			Toggle Hex Visibility
@@ -240,13 +240,13 @@
 	</div>
 {/if}
 
-<div class="relative inline-block rounded-lg bg-white shadow-xl">
+<div class="inline-block relative bg-white rounded-lg shadow-xl">
 	<div class="relative" style="width: {containerWidth}px; height: {containerHeight}px;">
 		<img
 			bind:this={mapImage}
 			src={mapSrc}
 			alt="D&D Map"
-			class="absolute inset-0 h-full w-full select-none"
+			class="absolute inset-0 w-full h-full select-none"
 			draggable="false"
 			onload={handleImageLoad}
 		/>
