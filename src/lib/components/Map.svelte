@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { TileCoords } from '$lib/types';
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Hex {
 		id: string;
@@ -8,6 +9,9 @@
 		col: number;
 		centerX: number;
 		centerY: number;
+	}
+
+	interface HexInteractable extends Hex {
 		points: string;
 		revealed: boolean;
 	}
@@ -25,6 +29,9 @@
 		yOffset?: number; // Vertical offset in pixels from top edge to where grid starts
 		showControls?: boolean;
 		initiallyRevealed?: TileCoords[];
+		showInitallyRevealedCoords?: 'never' | 'always';
+		showCoords?: 'never' | 'always' | 'hover';
+		showAnimations?: boolean;
 		onHexRevealed?: (event: HexRevealedEvent) => void;
 		onAllHexesReset?: () => void;
 		onAllHexesRevealed?: () => void;
@@ -38,13 +45,17 @@
 		yOffset = 58,
 		showControls = true,
 		initiallyRevealed = [],
+		showCoords = 'hover',
+		showInitallyRevealedCoords = 'never',
+		showAnimations = true,
 		onHexRevealed = () => {},
 		onAllHexesReset = () => {},
 		onAllHexesRevealed = () => {}
 	}: Props = $props();
 
 	let mapImage: HTMLImageElement | undefined = $state();
-	let hexGrid: Hex[] = $state([]);
+	let hexGrid: HexInteractable[] = $state([]);
+	let hexGridStatic: Hex[] = $state([]);
 	let imageNaturalDimensions = $state({ width: 0, height: 0 });
 	let mounted: boolean = $state(false);
 
@@ -90,7 +101,13 @@
 	}
 
 	function generateHexGrid(): void {
-		const newHexGrid: Hex[] = [];
+		const newHexGrid: HexInteractable[] = [];
+		const newStaticHexGrid: Hex[] = [];
+
+		const initiallyRevealedSet = new SvelteSet<string>();
+		initiallyRevealed.forEach((tile) => {
+			initiallyRevealedSet.add(`${tile.x - 1}-${tile.y}`);
+		});
 
 		for (let row = 0; row < rows; row++) {
 			for (let col = 0; col < cols; col++) {
@@ -100,23 +117,31 @@
 				const centerX = col * horizontalSpacing + hexRadius + xOffset;
 				const centerY = row * verticalSpacing + offsetY + hexHeight / 2 + yOffset;
 
-				// Generate flat-top hex vertices
-				const points = generateFlatTopHexPoints(centerX, centerY, hexRadius);
-
-				newHexGrid.push({
-					id: `hex-${row}-${col}`,
-					row,
-					col,
-					centerX,
-					centerY,
-					points,
-					revealed: initiallyRevealed.some(
-						(tileIndex) => tileIndex.x === col + 1 && tileIndex.y === row
-					)
-				});
+				if (initiallyRevealedSet.has(`${col}-${row}`)) {
+					newStaticHexGrid.push({
+						id: `hex-${row}-${col}`,
+						row,
+						col,
+						centerX,
+						centerY
+					});
+				} else {
+					// Generate flat-top hex vertices
+					const points = generateFlatTopHexPoints(centerX, centerY, hexRadius);
+					newHexGrid.push({
+						id: `hex-${row}-${col}`,
+						row,
+						col,
+						centerX,
+						centerY,
+						points,
+						revealed: false
+					});
+				}
 			}
 		}
 		hexGrid = newHexGrid;
+		hexGridStatic = newStaticHexGrid;
 	}
 
 	function generateFlatTopHexPoints(centerX: number, centerY: number, radius: number): string {
@@ -167,6 +192,30 @@
 		}
 	}
 </script>
+
+{#snippet label(hex: Hex | HexInteractable, showWhen: 'never' | 'hover' | 'always')}
+	{#if showWhen !== 'never'}
+		<text
+			x={hex.centerX + (hex.col === cols - 1 ? 2 : 0)}
+			y={hex.centerY + 2}
+			text-anchor={hex.col === cols - 1 ? 'end' : 'middle'}
+			font-size="6"
+			fill="rgba(0, 0, 0, 0.75)"
+			stroke="rgba(253, 250, 240)"
+			stroke-width="1"
+			paint-order="stroke fill"
+			class="select-none {showWhen === 'hover'
+				? '[fill-opacity:0] [stroke-opacity:0]'
+				: 'revealed' in hex && hex.revealed
+					? '[fill-opacity:0.5] [stroke-opacity:0.25]'
+					: ''} group-hover:[fill-opacity:1] group-hover:[stroke-opacity:1]"
+			style={showAnimations ? 'transition: stroke-opacity 300ms, fill-opacity 300ms;' : ''}
+			pointer-events="none"
+		>
+			{(hex.col + 1).toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}
+		</text>
+	{/if}
+{/snippet}
 
 {#if showControls}
 	<div class="my-5 flex flex-wrap justify-center gap-3">
@@ -261,6 +310,15 @@
 					</mask>
 				</defs>
 				<g mask="url(#fade-mask)">
+					{#if showInitallyRevealedCoords}
+						{#each hexGridStatic as hex (hex.id)}
+							{#if hex.row > 0}
+								<g class="group">
+									{@render label(hex, showInitallyRevealedCoords)}
+								</g>
+							{/if}
+						{/each}
+					{/if}
 					{#each hexGrid as hex, index (hex.id)}
 						{#if hex.row >= 0}
 							<g class="group">
@@ -269,12 +327,15 @@
 									fill="rgb(253, 250, 240)"
 									stroke="black"
 									stroke-width="1"
-									class="!outline-0 [stroke-opacity:0.15] {hex.row > 0
+									class="!outline-0 [stroke-opacity:0.15] {showAnimations
+										? 'hover:[stroke-opacity:0.4]'
+										: ''} {hex.row > 0
 										? 'pointer-events-auto'
-										: 'pointer-events-none mask-t-from-0 mask-t-to-75%'} {hex.revealed
-										? '[fill-opacity:0] group-hover:[fill-opacity:0.6] group-hover:[stroke-opacity:0.3]'
-										: 'cursor-pointer [fill-opacity:1]'} group-hover:[stroke-opacity:0.4]"
-									style="transition: fill-opacity 300ms, stroke-opacity 300ms;"
+										: 'pointer-events-none mask-t-from-0 mask-t-to-75%'}
+                  {hex.revealed ? '[fill-opacity:0]' : 'cursor-pointer [fill-opacity:1]'}"
+									style={showAnimations
+										? 'transition: stroke-opacity 300ms, fill-opacity 300ms;'
+										: ''}
 									onclick={() => revealHex(index)}
 									role="button"
 									tabindex="0"
@@ -286,28 +347,12 @@
 									}}
 								/>
 								{#if hex.row > 0}
-									<text
-										x={hex.centerX + (hex.col === cols - 1 ? 2 : 0)}
-										y={hex.centerY + 2}
-										text-anchor={hex.col === cols - 1 ? 'end' : 'middle'}
-										font-size="6"
-										fill="black"
-										stroke="rgb(253, 250, 240)"
-										stroke-width="1"
-										paint-order="stroke fill"
-										style="transition: fill-opacity 300ms, stroke-opacity 300ms;"
-										class="select-none {hex.revealed
-											? '[fill-opacity:0.5] [stroke-opacity:0] group-hover:[fill-opacity:1] group-hover:[stroke-opacity:1]'
-											: '[fill-opacity:1]'}"
-										pointer-events="none"
-									>
-										{(hex.col + 1).toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}
-									</text>
+									{@render label(hex, showCoords)}
 								{/if}
 							</g>
 						{/if}
-					{/each}</g
-				>
+					{/each}
+				</g>
 			</svg>
 		{/if}
 	</div>
