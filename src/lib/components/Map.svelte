@@ -2,6 +2,7 @@
 	import type { TileCoords } from '$lib/types';
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import MapImage from './MapImage.svelte';
 
 	interface Hex {
 		id: string;
@@ -22,7 +23,16 @@
 	}
 
 	interface Props {
-		mapSrc?: string;
+		campaignSlug: string;
+		variant?:
+			| 'thumbnail'
+			| 'small'
+			| 'medium'
+			| 'large'
+			| 'hexGrid'
+			| 'overview'
+			| 'detail'
+			| 'responsive';
 		hexesPerRow?: number; // Number of hexagons per row on the actual map
 		hexesPerCol?: number; // Number of hexagons per column on the actual map
 		xOffset?: number; // Horizontal offset in pixels from left edge to where grid starts
@@ -35,10 +45,13 @@
 		onHexRevealed?: (event: HexRevealedEvent) => void;
 		onAllHexesReset?: () => void;
 		onAllHexesRevealed?: () => void;
+		onMapLoad?: (dimensions: { width: number; height: number }) => void;
+		onMapError?: () => void;
 	}
 
 	let {
-		mapSrc = '',
+		campaignSlug,
+		variant = 'hexGrid',
 		hexesPerRow = 72,
 		hexesPerCol = 86,
 		xOffset = 70,
@@ -50,14 +63,16 @@
 		showAnimations = true,
 		onHexRevealed = () => {},
 		onAllHexesReset = () => {},
-		onAllHexesRevealed = () => {}
+		onAllHexesRevealed = () => {},
+		onMapLoad = () => {},
+		onMapError = () => {}
 	}: Props = $props();
 
-	let mapImage: HTMLImageElement | undefined = $state();
 	let hexGrid: HexInteractable[] = $state([]);
 	let hexGridStatic: Hex[] = $state([]);
 	let imageNaturalDimensions = $state({ width: 0, height: 0 });
 	let mounted: boolean = $state(false);
+	let mapLoaded = $state(false);
 
 	// Calculate the usable width (image width minus the offset margins)
 	let usableWidth: number = $derived(imageNaturalDimensions.width - xOffset * 2);
@@ -81,7 +96,7 @@
 
 	// Generate hex grid when dimensions change
 	$effect(() => {
-		if (mounted && imageNaturalDimensions.width > 0) {
+		if (mounted && mapLoaded && imageNaturalDimensions.width > 0) {
 			generateHexGrid();
 		}
 	});
@@ -90,13 +105,22 @@
 		mounted = true;
 	});
 
-	function handleImageLoad(): void {
-		if (mapImage) {
+	function handleMapError() {
+		console.error('Failed to load campaign map');
+		onMapError?.();
+	}
+
+	function handleMapLoad(imageElement: HTMLImageElement) {
+		if (imageElement) {
 			// Get the natural (original) dimensions of the image
-			imageNaturalDimensions = {
-				width: mapImage.naturalWidth,
-				height: mapImage.naturalHeight
+			const dimensions = {
+				width: imageElement.naturalWidth,
+				height: imageElement.naturalHeight
 			};
+
+			imageNaturalDimensions = dimensions;
+			mapLoaded = true;
+			onMapLoad?.(dimensions);
 		}
 	}
 
@@ -242,13 +266,14 @@
 
 <div class="inline-block relative bg-white rounded-lg shadow-xl">
 	<div class="relative" style="width: {containerWidth}px; height: {containerHeight}px;">
-		<img
-			bind:this={mapImage}
-			src={mapSrc}
-			alt="D&D Map"
-			class="absolute inset-0 w-full h-full select-none"
-			draggable="false"
-			onload={handleImageLoad}
+		<MapImage
+			{campaignSlug}
+			{variant}
+			alt="D&D Campaign Map"
+			class="absolute inset-0 w-full h-full rounded-lg select-none"
+			loading="eager"
+			onLoad={(imageElement) => handleMapLoad(imageElement)}
+			onError={handleMapError}
 		/>
 
 		{#if containerWidth > 0}
