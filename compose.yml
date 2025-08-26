@@ -55,3 +55,32 @@ services:
     ports:
       - '8080:8080'
     restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - '8081:8080' # Adminer default port is 8080, map to 8081 on host
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres # Connect to the 'postgres' service
+      ADMINER_SERVER: postgres # Hostname of the database service
+      ADMINER_USERNAME: ${POSTGRES_USER}
+      ADMINER_PASSWORD: ${POSTGRES_PASSWORD}
+      ADMINER_DATABASE: ${POSTGRES_DB}
+    depends_on:
+      - postgres # Ensure postgres starts before adminer
+    restart: unless-stopped
+
+volumes:
+  postgres_data: {}
