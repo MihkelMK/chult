@@ -125,7 +125,7 @@ export function requireAuth(event: RequestEvent, requiredRole?: 'dm' | 'player')
 		return null;
 	}
 
-	if (requiredRole && session.role !== requiredRole) {
+	if (requiredRole && requiredRole === 'dm' && session.role !== 'dm') {
 		return null;
 	}
 

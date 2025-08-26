@@ -6,7 +6,7 @@ import type { SessionData } from '$lib/server/session';
 declare global {
 	namespace App {
 		interface Locals {
-			session: SessionData;
+			session: SessionData | null;
 		}
 	} // interface Error {}
 	// interface Locals {}

@@ -8,9 +8,9 @@
 </script>
 
 <div class="min-h-screen bg-gray-50">
-	<header class="bg-white border-b shadow-sm">
-		<div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-			<div class="flex justify-between items-center h-16">
+	<header class="border-b bg-white shadow-sm">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+			<div class="flex h-16 items-center justify-between">
 				<div class="flex items-center">
 					<h1 class="text-xl font-semibold text-gray-900">
 						{data.session.campaignSlug} - DM View
@@ -33,28 +33,31 @@
 		</div>
 	</header>
 
-	<main class="py-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+	<main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 		{@render children()}
 	</main>
 </div>
 
 <!-- Logout confirmation modal -->
 {#if showLogoutConfirm}
-	<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 	<div
-		class="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50"
+		role="presentation"
+		class="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) showLogoutConfirm = false;
 		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') showLogoutConfirm = false;
+		}}
 	>
-		<div class="p-6 mx-4 w-full max-w-sm bg-white rounded-lg">
+		<div class="mx-4 w-full max-w-sm rounded-lg bg-white p-6">
 			<h3 class="mb-4 text-lg font-medium text-gray-900">Confirm Logout</h3>
 			<p class="mb-6 text-sm text-gray-600">Are you sure you want to logout?</p>
 
 			<div class="flex space-x-3">
 				<button
 					onclick={() => (showLogoutConfirm = false)}
-					class="flex-1 py-2 px-4 text-sm text-gray-700 bg-gray-100 rounded-md transition-colors hover:bg-gray-200"
+					class="flex-1 rounded-md bg-gray-100 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-200"
 				>
 					Cancel
 				</button>
@@ -74,7 +77,7 @@
 				>
 					<button
 						type="submit"
-						class="py-2 px-4 w-full text-sm text-white bg-red-600 rounded-md transition-colors hover:bg-red-700"
+						class="w-full rounded-md bg-red-600 px-4 py-2 text-sm text-white transition-colors hover:bg-red-700"
 					>
 						Logout
 					</button>

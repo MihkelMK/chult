@@ -1,7 +1,5 @@
 <script lang="ts">
-	import Map from '$lib/components/Map.svelte';
 	import type { PageData } from './$types';
-	import type { TileCoords } from '$lib/types';
 	import MapUpload from '$lib/components/MapUpload.svelte';
 	import { invalidate } from '$app/navigation';
 
@@ -11,56 +9,6 @@
 
 	let { data }: Props = $props();
 
-	// Convert DB format to component format
-	let revealedTiles = $state<TileCoords[]>(
-		data.revealedTiles.map((tile) => ({ x: tile.x, y: tile.y }))
-	);
-
-	let selectedTiles = $state<TileCoords[]>([]);
-	let isSelecting = $state(false);
-
-	// Map POIs by coordinates for easy lookup
-	let poisByCoord = $derived(() => {
-		const map = new Map();
-		data.pointsOfInterest.forEach((poi) => {
-			const key = `${poi.x},${poi.y}`;
-			if (!map.has(key)) map.set(key, []);
-			mSp.get(key).push(poi);
-		});
-		return map;
-	});
-
-	// Map notes by coordinates
-	let notesByCoord = $derived(() => {
-		const map = new Map();
-		data.tileNotes.forEach((note) => {
-			const key = `${note.x},${note.y}`;
-			if (!map.has(key)) map.set(key, []);
-			map.get(key).push(note);
-		});
-		return map;
-	});
-
-	function handleHexRevealed(event: { hex: any; index: number }) {
-		const coords: TileCoords = { x: event.hex.col, y: event.hex.row };
-
-		if (!revealedTiles.some((tile) => tile.x === coords.x && tile.y === coords.y)) {
-			revealedTiles = [...revealedTiles, coords];
-			saveRevealedTile(coords);
-		}
-	}
-
-	async function saveRevealedTile(coords: TileCoords) {
-		try {
-			await fetch(`/api/campaigns/${data.session.campaignSlug}/tiles/reveal`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(coords)
-			});
-		} catch (error) {
-			console.error('Failed to save revealed tile:', error);
-		}
-	}
 	function handleMapUploaded() {
 		// Refresh the page data to update hasMapImage status
 		invalidate('campaign:data');
@@ -69,17 +17,17 @@
 
 <div class="space-y-8">
 	<!-- Campaign Overview -->
-	<div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+	<div class="rounded-lg border border-gray-200 bg-white shadow-sm">
 		<div class="p-6">
-			<div class="flex justify-between items-start">
+			<div class="flex items-start justify-between">
 				<div>
 					<h1 class="text-3xl font-bold text-gray-900">{data.campaign.name}</h1>
 					<p class="mt-1 text-lg text-gray-600">Campaign: {data.campaign.slug}</p>
 				</div>
 
-				<div class="space-y-1 text-sm text-right text-gray-600">
+				<div class="space-y-1 text-right text-sm text-gray-600">
 					<div class="flex items-center space-x-2">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -96,7 +44,7 @@
 						<span>Revealed: <strong>{data.revealedTiles.length}</strong> tiles</span>
 					</div>
 					<div class="flex items-center space-x-2">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -113,7 +61,7 @@
 						<span>POIs: <strong>{data.pointsOfInterest.length}</strong></span>
 					</div>
 					<div class="flex items-center space-x-2">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -139,11 +87,11 @@
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 		<a
 			href="/dm/{data.campaign.slug}/map"
-			class="p-6 bg-white rounded-lg border border-gray-200 shadow-sm transition-shadow hover:shadow-md group"
+			class="group rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
 		>
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
-					<svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -163,11 +111,11 @@
 
 		<a
 			href="/dm/{data.campaign.slug}/pois"
-			class="p-6 bg-white rounded-lg border border-gray-200 shadow-sm transition-shadow hover:shadow-md group"
+			class="group rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
 		>
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
-					<svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -193,12 +141,12 @@
 
 		<a
 			href="/dm/{data.campaign.slug}/sessions"
-			class="p-6 bg-white rounded-lg border border-gray-200 shadow-sm transition-shadow hover:shadow-md group"
+			class="group rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
 		>
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
 					<svg
-						class="w-8 h-8 text-purple-600"
+						class="h-8 w-8 text-purple-600"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -223,12 +171,12 @@
 		<a
 			href="/{data.campaign.slug}"
 			target="_blank"
-			class="p-6 bg-white rounded-lg border border-gray-200 shadow-sm transition-shadow hover:shadow-md group"
+			class="group rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
 		>
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
 					<svg
-						class="w-8 h-8 text-orange-600"
+						class="h-8 w-8 text-orange-600"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -256,14 +204,14 @@
 	</div>
 
 	<!-- Recent Activity -->
-	{#if data.gameSessions.length > 0}
-		<div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+	{#if data.gameSessions && data.gameSessions.length > 0}
+		<div class="rounded-lg border border-gray-200 bg-white shadow-sm">
 			<div class="p-6">
 				<h2 class="mb-4 text-lg font-medium text-gray-900">Recent Sessions</h2>
 				<div class="space-y-3">
-					{#each data.gameSessions as session (session.id)}
+					{#each data.gameSessions || [] as session (session.id)}
 						<div
-							class="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
+							class="flex items-center justify-between border-b border-gray-100 py-3 last:border-0"
 						>
 							<div>
 								<span class="font-medium text-gray-900">{session.name}</span>

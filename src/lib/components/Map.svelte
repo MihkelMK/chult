@@ -1,25 +1,11 @@
 <script lang="ts">
-	import type { TileCoords } from '$lib/types';
+	import type { TileCoords, Hex, HexRevealedEvent } from '$lib/types';
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import MapImage from './MapImage.svelte';
 
-	interface Hex {
-		id: string;
-		row: number;
-		col: number;
-		centerX: number;
-		centerY: number;
-	}
-
 	interface HexInteractable extends Hex {
 		points: string;
-		revealed: boolean;
-	}
-
-	interface HexRevealedEvent {
-		hex: Hex;
-		index: number;
 	}
 
 	interface Props {
@@ -39,7 +25,7 @@
 		yOffset?: number; // Vertical offset in pixels from top edge to where grid starts
 		showControls?: boolean;
 		initiallyRevealed?: TileCoords[];
-		showInitallyRevealedCoords?: 'never' | 'always';
+		selectedTiles?: TileCoords[]; // Add this line
 		showCoords?: 'never' | 'always' | 'hover';
 		showAnimations?: boolean;
 		onHexRevealed?: (event: HexRevealedEvent) => void;
@@ -58,8 +44,8 @@
 		yOffset = 58,
 		showControls = true,
 		initiallyRevealed = [],
+		selectedTiles = [], // Add this line
 		showCoords = 'hover',
-		showInitallyRevealedCoords = 'never',
 		showAnimations = true,
 		onHexRevealed = () => {},
 		onAllHexesReset = () => {},
@@ -69,10 +55,12 @@
 	}: Props = $props();
 
 	let hexGrid: HexInteractable[] = $state([]);
-	let hexGridStatic: Hex[] = $state([]);
 	let imageNaturalDimensions = $state({ width: 0, height: 0 });
 	let mounted: boolean = $state(false);
 	let mapLoaded = $state(false);
+
+	let revealedSet = $derived(new SvelteSet(initiallyRevealed.map((tile) => `${tile.x}-${tile.y}`)));
+	let selectedSet = $derived(new SvelteSet(selectedTiles.map((tile) => `${tile.x}-${tile.y}`))); // Add this line
 
 	// Calculate the usable width (image width minus the offset margins)
 	let usableWidth: number = $derived(imageNaturalDimensions.width - xOffset * 2);
@@ -126,12 +114,6 @@
 
 	function generateHexGrid(): void {
 		const newHexGrid: HexInteractable[] = [];
-		const newStaticHexGrid: Hex[] = [];
-
-		const initiallyRevealedSet = new SvelteSet<string>();
-		initiallyRevealed.forEach((tile) => {
-			initiallyRevealedSet.add(`${tile.x - 1}-${tile.y}`);
-		});
 
 		for (let row = 0; row < rows; row++) {
 			for (let col = 0; col < cols; col++) {
@@ -141,31 +123,18 @@
 				const centerX = col * horizontalSpacing + hexRadius + xOffset;
 				const centerY = row * verticalSpacing + offsetY + hexHeight / 2 + yOffset;
 
-				if (initiallyRevealedSet.has(`${col}-${row}`)) {
-					newStaticHexGrid.push({
-						id: `hex-${row}-${col}`,
-						row,
-						col,
-						centerX,
-						centerY
-					});
-				} else {
-					// Generate flat-top hex vertices
-					const points = generateFlatTopHexPoints(centerX, centerY, hexRadius);
-					newHexGrid.push({
-						id: `hex-${row}-${col}`,
-						row,
-						col,
-						centerX,
-						centerY,
-						points,
-						revealed: false
-					});
-				}
+				const points = generateFlatTopHexPoints(centerX, centerY, hexRadius);
+				newHexGrid.push({
+					id: `hex-${row}-${col}`,
+					row,
+					col,
+					centerX,
+					centerY,
+					points
+				});
 			}
 		}
 		hexGrid = newHexGrid;
-		hexGridStatic = newStaticHexGrid;
 	}
 
 	function generateFlatTopHexPoints(centerX: number, centerY: number, radius: number): string {
@@ -182,39 +151,6 @@
 		// Keep precise coordinates
 		return points.map((point) => `${point[0]},${point[1]}`).join(' ');
 	}
-
-	function revealHex(hexIndex: number): void {
-		const hex = hexGrid[hexIndex];
-		if (hex && !hex.revealed) {
-			hex.revealed = true;
-
-			onHexRevealed({
-				hex,
-				index: hexIndex
-			});
-		}
-	}
-
-	function resetAllHexes(): void {
-		hexGrid = hexGrid.map((hex) => ({ ...hex, revealed: false }));
-		onAllHexesReset();
-	}
-
-	function revealAllHexes(): void {
-		hexGrid = hexGrid.map((hex) => ({ ...hex, revealed: true }));
-		onAllHexesRevealed();
-	}
-
-	function toggleHexVisibility(): void {
-		const revealedCount = hexGrid.filter((hex) => hex.revealed).length;
-		const hiddenCount = hexGrid.length - revealedCount;
-
-		if (hiddenCount > revealedCount) {
-			revealAllHexes();
-		} else {
-			resetAllHexes();
-		}
-	}
 </script>
 
 {#snippet label(hex: Hex | HexInteractable, showWhen: 'never' | 'hover' | 'always')}
@@ -230,7 +166,7 @@
 			paint-order="stroke fill"
 			class="select-none {showWhen === 'hover'
 				? '[fill-opacity:0] [stroke-opacity:0]'
-				: 'revealed' in hex && hex.revealed
+				: revealedSet.has(`${hex.col}-${hex.row}`)
 					? '[fill-opacity:0.5] [stroke-opacity:0.25]'
 					: ''} group-hover:[fill-opacity:1] group-hover:[stroke-opacity:1]"
 			style={showAnimations ? 'transition: stroke-opacity 300ms, fill-opacity 300ms;' : ''}
@@ -242,35 +178,29 @@
 {/snippet}
 
 {#if showControls}
-	<div class="flex flex-wrap gap-3 justify-center my-5">
+	<div class="my-5 flex flex-wrap justify-center gap-3">
 		<button
-			class="py-2 px-5 font-medium text-white bg-blue-500 rounded-lg transition-colors duration-300 hover:bg-blue-600"
-			onclick={resetAllHexes}
+			class="rounded-lg bg-blue-500 px-5 py-2 font-medium text-white transition-colors duration-300 hover:bg-blue-600"
+			onclick={onAllHexesReset}
 		>
 			Reset All Hexes
 		</button>
 		<button
-			class="py-2 px-5 font-medium text-white bg-gray-500 rounded-lg transition-colors duration-300 hover:bg-gray-600"
-			onclick={revealAllHexes}
+			class="rounded-lg bg-gray-500 px-5 py-2 font-medium text-white transition-colors duration-300 hover:bg-gray-600"
+			onclick={onAllHexesRevealed}
 		>
 			Reveal All Hexes
-		</button>
-		<button
-			class="py-2 px-5 font-medium text-white bg-gray-500 rounded-lg transition-colors duration-300 hover:bg-gray-600"
-			onclick={toggleHexVisibility}
-		>
-			Toggle Hex Visibility
 		</button>
 	</div>
 {/if}
 
-<div class="inline-block relative bg-white rounded-lg shadow-xl">
+<div class="relative inline-block rounded-lg bg-white shadow-xl">
 	<div class="relative" style="width: {containerWidth}px; height: {containerHeight}px;">
 		<MapImage
 			{campaignSlug}
 			{variant}
 			alt="D&D Campaign Map"
-			class="absolute inset-0 w-full h-full rounded-lg select-none"
+			class="absolute inset-0 h-full w-full rounded-lg select-none"
 			loading="eager"
 			onLoad={(imageElement) => handleMapLoad(imageElement)}
 			onError={handleMapError}
@@ -335,15 +265,6 @@
 					</mask>
 				</defs>
 				<g mask="url(#fade-mask)">
-					{#if showInitallyRevealedCoords}
-						{#each hexGridStatic as hex (hex.id)}
-							{#if hex.row > 0}
-								<g class="group">
-									{@render label(hex, showInitallyRevealedCoords)}
-								</g>
-							{/if}
-						{/each}
-					{/if}
 					{#each hexGrid as hex, index (hex.id)}
 						{#if hex.row >= 0}
 							<g class="group">
@@ -357,17 +278,22 @@
 										: ''} {hex.row > 0
 										? 'pointer-events-auto'
 										: 'pointer-events-none mask-t-from-0 mask-t-to-75%'}
-                  {hex.revealed ? '[fill-opacity:0]' : 'cursor-pointer [fill-opacity:1]'}"
+                  {revealedSet.has(`${hex.col}-${hex.row}`)
+										? '[fill-opacity:0.2]'
+										: 'cursor-pointer [fill-opacity:1]'}
+                  {selectedSet.has(`${hex.col}-${hex.row}`)
+										? 'stroke-orange-500 stroke-[3px] [fill-opacity:0.8]'
+										: ''}"
 									style={showAnimations
 										? 'transition: stroke-opacity 300ms, fill-opacity 300ms;'
 										: ''}
-									onclick={() => revealHex(index)}
+									onclick={() => onHexRevealed({ hex, index })}
 									role="button"
 									tabindex="0"
 									aria-label="Hex {hex.row}, {hex.col}"
 									onkeydown={(e) => {
 										if (e.key === 'Enter' || e.key === ' ') {
-											revealHex(index);
+											onHexRevealed({ hex, index });
 										}
 									}}
 								/>

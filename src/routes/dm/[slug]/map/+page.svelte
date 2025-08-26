@@ -2,7 +2,7 @@
 	import Map from '$lib/components/Map.svelte';
 	import DMTileDetails from '$lib/components/DMTileDetails.svelte';
 	import type { PageData } from './$types';
-	import type { TileCoords } from '$lib/types';
+	import type { HexRevealedEvent, TileCoords, PointOfInterestResponse } from '$lib/types';
 	import { invalidate } from '$app/navigation';
 	import { createTileManager, type TileState } from '$lib/stores/tileManager';
 	import { onDestroy } from 'svelte';
@@ -13,7 +13,10 @@
 
 	let { data }: Props = $props();
 
-	const tileManager = createTileManager(data.session.campaignSlug);
+	const tileManager = createTileManager(
+		data.session.campaignSlug,
+		data.revealedTiles.map((tile) => ({ x: tile.x, y: tile.y }))
+	);
 
 	let tileState = $state<TileState>({ revealed: [], pending: [], errors: [] });
 	const unsubscribe = tileManager.subscribe((state) => {
@@ -35,13 +38,15 @@
 	function getTileData(coords: TileCoords | null) {
 		if (!coords) return { pois: [], notes: [] };
 
-		const pois = data.pointsOfInterest.filter((poi) => poi.x === coords.x && poi.y === coords.y);
+		const pois = (data.pointsOfInterest as PointOfInterestResponse[]).filter(
+			(poi) => poi.x === coords.x && poi.y === coords.y
+		);
 		const notes = data.tileNotes.filter((note) => note.x === coords.x && note.y === coords.y);
 
 		return { pois, notes };
 	}
 
-	function handleHexClick(event: { hex: any; index: number }) {
+	function handleHexClick(event: HexRevealedEvent) {
 		const coords: TileCoords = { x: event.hex.col, y: event.hex.row };
 
 		if (isSelecting) {
@@ -59,7 +64,7 @@
 		}
 	}
 
-	function handleHexRevealed(event: { hex: any; index: number }) {
+	function handleHexRevealed(event: HexRevealedEvent) {
 		const coords: TileCoords = { x: event.hex.col, y: event.hex.row };
 
 		tileManager.revealTile(coords);
@@ -93,10 +98,6 @@
 		tileManager.flush();
 	}
 
-	function isPending(coords: TileCoords): boolean {
-		return tileState.pending.some((op) => op.coords.x === coords.x && op.coords.y === coords.y);
-	}
-
 	function selectAllRevealed() {
 		selectedTiles = [...currentRevealedTiles];
 	}
@@ -105,6 +106,8 @@
 		// Refresh the page data
 		invalidate('campaign:data');
 	}
+
+	$inspect(tileManager.getRevealedTiles(tileState));
 </script>
 
 <svelte:head>
@@ -281,6 +284,7 @@
 				campaignSlug={data.session.campaignSlug}
 				variant="hexGrid"
 				initiallyRevealed={currentRevealedTiles}
+				selectedTiles={selectedTiles}
 				showControls={true}
 				showCoords="always"
 				onHexRevealed={isSelecting ? handleHexClick : handleHexRevealed}

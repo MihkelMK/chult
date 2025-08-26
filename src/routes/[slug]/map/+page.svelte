@@ -2,7 +2,9 @@
 	import Map from '$lib/components/Map.svelte';
 	import TileDetails from '$lib/components/TileDetails.svelte';
 	import type { PageData } from './$types';
-	import type { TileCoords } from '$lib/types';
+	import type { HexRevealedEvent, TileCoords } from '$lib/types';
+	import { createPlayerTileManager, type PlayerTileState } from '$lib/stores/playerTileManager';
+	import { onDestroy } from 'svelte';
 
 	interface Props {
 		data: PageData;
@@ -10,20 +12,32 @@
 
 	let { data }: Props = $props();
 
-	// Player state
-	let currentPosition = $state<TileCoords | null>(
+	const playerTileManager = createPlayerTileManager(
+		data.campaign.slug,
+		data.revealedTiles.map((tile) => ({ x: tile.x, y: tile.y })),
 		data.revealedTiles.length > 0
 			? { x: data.revealedTiles[0].x, y: data.revealedTiles[0].y }
 			: null
 	);
 
-	let selectedTile = $state<TileCoords | null>(null);
-	let revealedTiles = $state<TileCoords[]>(
-		data.revealedTiles.map((tile) => ({ x: tile.x, y: tile.y }))
-	);
+	let tileState = $state<PlayerTileState>({
+		revealed: data.revealedTiles.map((tile) => ({ x: tile.x, y: tile.y })),
+		pending: null,
+		error: null,
+		currentPosition: null
+	});
+	const unsubscribe = playerTileManager.subscribe((state) => {
+		tileState = state;
+	});
 
-	let navigationError = $state('');
+	onDestroy(unsubscribe);
+
+	let selectedTile = $state<TileCoords | null>(null);
 	let showTileDetails = $state(false);
+
+	let currentRevealedTiles = $derived(
+		tileState.pending ? [...tileState.revealed, tileState.pending.coords] : tileState.revealed
+	);
 
 	// Get POIs and notes for a specific tile
 	function getTileData(coords: TileCoords | null) {
@@ -35,101 +49,30 @@
 		return { pois, notes };
 	}
 
-	// Check if two tiles are adjacent
-	function isAdjacent(from: TileCoords, to: TileCoords): boolean {
-		const dx = Math.abs(from.x - to.x);
-		const dy = Math.abs(from.y - to.y);
-
-		// Hex grid adjacency rules
-		if (dx === 0 && dy === 1) return true; // Vertical neighbors
-		if (dy === 0 && dx === 1) return true; // Horizontal neighbors
-		if (dx === 1 && dy === 1) {
-			// Diagonal neighbors (hex grid specific)
-			const evenCol = from.x % 2 === 0;
-			if (evenCol) {
-				return to.y === from.y - 1 || to.y === from.y + 1;
-			} else {
-				return to.y === from.y - 1 || to.y === from.y + 1;
-			}
-		}
-
-		return false;
-	}
-
-	// Check if tile is revealed
-	function isTileRevealed(coords: TileCoords): boolean {
-		return revealedTiles.some((tile) => tile.x === coords.x && tile.y === coords.y);
-	}
-
 	// Handle tile click (navigation)
-	function handleTileClick(event: { hex: any; index: number }) {
+	function handleTileClick(event: HexRevealedEvent) {
 		const coords: TileCoords = { x: event.hex.col, y: event.hex.row };
 
-		// Clear previous errors
-		navigationError = '';
-
-		// Can't navigate to already revealed tiles
-		if (isTileRevealed(coords)) {
+		if (tileState.revealed.some((tile) => tile.x === coords.x && tile.y === coords.y)) {
 			selectedTile = coords;
 			showTileDetails = true;
 			return;
 		}
 
-		// Check if player can move to this tile
-		if (!currentPosition) {
-			// First move - allow any adjacent revealed tile
-			const adjacentToRevealed = revealedTiles.some((revealed) => isAdjacent(coords, revealed));
-			if (!adjacentToRevealed) {
-				navigationError = 'You can only explore tiles adjacent to already discovered areas.';
-				return;
-			}
-		} else {
-			// Must be adjacent to current position
-			if (!isAdjacent(currentPosition, coords)) {
-				navigationError = 'You can only move to adjacent tiles.';
-				return;
-			}
-		}
-
-		// Valid move - reveal the tile
-		navigateToTile(coords);
-	}
-
-	async function navigateToTile(coords: TileCoords) {
-		try {
-			const response = await fetch(`/api/campaigns/${data.campaign.slug}/player/navigate`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(coords)
-			});
-
-			if (!response.ok) {
-				const error = await response.json();
-				navigationError = error.message || 'Navigation failed';
-				return;
-			}
-
-			// Success - update state
-			currentPosition = coords;
-			revealedTiles = [...revealedTiles, coords];
-			selectedTile = coords;
-			showTileDetails = true;
-		} catch (error) {
-			navigationError = 'Failed to navigate. Please try again.';
-			console.error('Navigation error:', error);
-		}
+		playerTileManager.navigate(coords);
 	}
 
 	// Clear error after 5 seconds
 	$effect(() => {
-		if (navigationError) {
+		if (tileState.error) {
 			const timer = setTimeout(() => {
-				navigationError = '';
+				playerTileManager.clearError();
 			}, 5000);
 
 			return () => clearTimeout(timer);
 		}
 	});
+	$inspect(currentRevealedTiles);
 </script>
 
 <svelte:head>
@@ -145,9 +88,9 @@
 		</div>
 
 		<div class="flex items-center space-x-4">
-			{#if currentPosition}
+			{#if tileState.currentPosition}
 				<div class="py-1 px-3 text-sm font-medium text-green-800 bg-green-100 rounded-full">
-					Position: {currentPosition.x + 1},{currentPosition.y + 1}
+					Position: {tileState.currentPosition.x + 1},{tileState.currentPosition.y + 1}
 				</div>
 			{/if}
 
@@ -161,7 +104,7 @@
 	</div>
 
 	<!-- Navigation Error -->
-	{#if navigationError}
+	{#if tileState.error}
 		<div class="p-4 text-red-700 bg-red-50 rounded-lg border border-red-200">
 			<div class="flex items-center">
 				<svg
@@ -177,7 +120,7 @@
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					/>
 				</svg>
-				<span>{navigationError}</span>
+				<span>{tileState.error}</span>
 			</div>
 		</div>
 	{/if}
@@ -216,7 +159,7 @@
 			<Map
 				campaignSlug={data.campaign.slug}
 				variant="responsive"
-				initiallyRevealed={revealedTiles}
+				initiallyRevealed={currentRevealedTiles}
 				showControls={false}
 				showCoords="hover"
 				onHexRevealed={handleTileClick}
@@ -245,7 +188,7 @@
 	<!-- Stats -->
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 		<div class="p-4 text-center bg-white rounded-lg border border-gray-200 shadow-sm">
-			<div class="text-2xl font-bold text-green-600">{revealedTiles.length}</div>
+			<div class="text-2xl font-bold text-green-600">{currentRevealedTiles.length}</div>
 			<div class="text-sm text-gray-600">Tiles Explored</div>
 		</div>
 		<div class="p-4 text-center bg-white rounded-lg border border-gray-200 shadow-sm">

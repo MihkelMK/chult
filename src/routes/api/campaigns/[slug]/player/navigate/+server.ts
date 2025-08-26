@@ -6,7 +6,9 @@ import { revealedTiles } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const POST: RequestHandler = async (event) => {
+	console.log(event);
 	const session = requireAuth(event, 'player');
+	console.log(session);
 
 	if (!session) {
 		return error(401, 'Unauthorized');
@@ -24,19 +26,19 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Check if tile is already revealed
-		const existing = await db
-			.select()
-			.from(revealedTiles)
-			.where(
-				eq(revealedTiles.campaignId, session.campaignId) &&
-					eq(revealedTiles.x, x) &&
-					eq(revealedTiles.y, y)
-			)
-			.limit(1);
-
-		if (existing.length > 0) {
-			return error(400, { message: 'Tile already explored' });
-		}
+		// const existing = await db
+		// 	.select()
+		// 	.from(revealedTiles)
+		// 	.where(
+		// 		eq(revealedTiles.campaignId, session.campaignId) &&
+		// 			eq(revealedTiles.x, x) &&
+		// 			eq(revealedTiles.y, y)
+		// 	)
+		// 	.limit(1);
+		//
+		// if (existing.length > 0) {
+		// 	return error(400, { message: 'Tile already explored' });
+		// }
 
 		// Reveal the tile
 		await db.insert(revealedTiles).values({

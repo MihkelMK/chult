@@ -180,22 +180,22 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class="flex fixed inset-0 z-50 justify-center items-center p-4 bg-black bg-opacity-50"
+	class="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4"
 	onclick={(e) => {
 		if (e.target === e.currentTarget) onClose();
 	}}
 >
 	<div
-		class="overflow-hidden w-full max-w-4xl bg-white rounded-xl shadow-xl max-h-[90vh]"
+		class="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl"
 		onkeydown={handleKeydown}
 		tabindex="-1"
 	>
 		<!-- Header -->
-		<div class="flex justify-between items-center p-6 bg-gray-50 border-b border-gray-200">
+		<div class="flex items-center justify-between border-b border-gray-200 bg-gray-50 p-6">
 			<div>
 				<h3 class="flex items-center text-xl font-semibold text-gray-900">
 					<span
-						class="inline-flex items-center py-0.5 px-2.5 mr-3 text-xs font-medium text-blue-800 bg-blue-100 rounded-full"
+						class="mr-3 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800"
 					>
 						DM
 					</span>
@@ -218,9 +218,9 @@
 				<!-- svelte-ignore a11y_consider_explicit_label -->
 				<button
 					onclick={onClose}
-					class="p-2 text-gray-400 rounded-lg hover:text-gray-600 hover:bg-gray-100"
+					class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
 				>
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -234,10 +234,10 @@
 
 		<!-- Status Messages -->
 		{#if error}
-			<div class="p-3 mx-6 mt-4 text-red-700 bg-red-50 rounded-lg border border-red-200">
+			<div class="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">
 				<div class="flex">
 					<svg
-						class="mr-2 w-5 h-5 text-red-400"
+						class="mr-2 h-5 w-5 text-red-400"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -255,10 +255,10 @@
 		{/if}
 
 		{#if success}
-			<div class="p-3 mx-6 mt-4 text-green-700 bg-green-50 rounded-lg border border-green-200">
+			<div class="mx-6 mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-green-700">
 				<div class="flex">
 					<svg
-						class="mr-2 w-5 h-5 text-green-400"
+						class="mr-2 h-5 w-5 text-green-400"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -276,13 +276,13 @@
 		{/if}
 
 		<!-- Content -->
-		<div class="overflow-y-auto p-6 max-h-96">
+		<div class="max-h-96 overflow-y-auto p-6">
 			<!-- Points of Interest -->
 			<div class="mb-8">
-				<div class="flex justify-between items-center mb-4">
+				<div class="mb-4 flex items-center justify-between">
 					<h4 class="flex items-center text-lg font-medium text-gray-900">
 						<svg
-							class="mr-2 w-5 h-5 text-blue-500"
+							class="mr-2 h-5 w-5 text-blue-500"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -298,7 +298,7 @@
 					</h4>
 					<button
 						onclick={() => (showAddPOI = true)}
-						class="py-1 px-3 text-sm font-medium text-blue-600 rounded-md border border-blue-300 transition-colors hover:bg-blue-50"
+						class="rounded-md border border-blue-300 px-3 py-1 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
 					>
 						Add POI
 					</button>
@@ -312,9 +312,9 @@
 									? 'border-blue-200 bg-blue-50'
 									: 'bg-gray-50'}"
 							>
-								<div class="flex justify-between items-start">
+								<div class="flex items-start justify-between">
 									<div class="flex-1">
-										<div class="flex items-center mb-2 space-x-2">
+										<div class="mb-2 flex items-center space-x-2">
 											<h5 class="font-medium text-gray-900">{poi.title}</h5>
 											<span
 												class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {poi.visibleToPlayers
@@ -331,14 +331,14 @@
 											Created: {new Date(poi.createdAt).toLocaleString()}
 										</p>
 									</div>
-									<div class="flex items-center ml-4 space-x-2">
+									<div class="ml-4 flex items-center space-x-2">
 										<!-- svelte-ignore a11y_consider_explicit_label -->
 										<button
 											onclick={() => (editingPOI = { ...poi })}
-											class="p-1 text-gray-400 rounded hover:text-blue-600"
+											class="rounded p-1 text-gray-400 hover:text-blue-600"
 											title="Edit POI"
 										>
-											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path
 													stroke-linecap="round"
 													stroke-linejoin="round"
@@ -351,10 +351,10 @@
 										<button
 											onclick={() => deletePOI(poi.id)}
 											disabled={deletingPOI === poi.id}
-											class="p-1 text-gray-400 rounded hover:text-red-600 disabled:opacity-50"
+											class="rounded p-1 text-gray-400 hover:text-red-600 disabled:opacity-50"
 											title="Delete POI"
 										>
-											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path
 													stroke-linecap="round"
 													stroke-linejoin="round"
@@ -371,7 +371,7 @@
 				{:else}
 					<div class="py-6 text-center text-gray-500">
 						<svg
-							class="mx-auto mb-3 w-12 h-12 text-gray-300"
+							class="mx-auto mb-3 h-12 w-12 text-gray-300"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -390,9 +390,9 @@
 
 			<!-- Player Notes -->
 			<div>
-				<h4 class="flex items-center mb-4 text-lg font-medium text-gray-900">
+				<h4 class="mb-4 flex items-center text-lg font-medium text-gray-900">
 					<svg
-						class="mr-2 w-5 h-5 text-purple-500"
+						class="mr-2 h-5 w-5 text-purple-500"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -410,7 +410,7 @@
 				{#if tileData.notes.length > 0}
 					<div class="space-y-3">
 						{#each tileData.notes as note (note.id)}
-							<div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+							<div class="rounded-lg border border-purple-200 bg-purple-50 p-4">
 								<p class="mb-2 text-gray-900">{note.content}</p>
 								<p class="text-xs text-purple-600">
 									{new Date(note.createdAt).toLocaleString()}
@@ -421,7 +421,7 @@
 				{:else}
 					<div class="py-6 text-center text-gray-500">
 						<svg
-							class="mx-auto mb-3 w-12 h-12 text-gray-300"
+							class="mx-auto mb-3 h-12 w-12 text-gray-300"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -446,35 +446,35 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="flex fixed inset-0 justify-center items-center p-4 bg-black bg-opacity-75 z-60"
+		class="bg-opacity-75 fixed inset-0 z-60 flex items-center justify-center bg-black p-4"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) showAddPOI = false;
 		}}
 	>
-		<div class="p-6 w-full max-w-md bg-white rounded-lg shadow-xl">
+		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
 			<h3 class="mb-4 text-lg font-semibold text-gray-900">Add Point of Interest</h3>
 
 			<div class="space-y-4">
 				<div>
 					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="block mb-2 text-sm font-medium text-gray-700">Title *</label>
+					<label class="mb-2 block text-sm font-medium text-gray-700">Title *</label>
 					<input
 						type="text"
 						bind:value={newPOI.title}
 						placeholder="Ancient Ruins, Hidden Cave, etc."
-						class="py-2 px-3 w-full rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+						class="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 						disabled={addingPOI}
 					/>
 				</div>
 
 				<div>
 					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="block mb-2 text-sm font-medium text-gray-700">Description</label>
+					<label class="mb-2 block text-sm font-medium text-gray-700">Description</label>
 					<textarea
 						bind:value={newPOI.description}
 						placeholder="Describe what players find here..."
 						rows="3"
-						class="py-2 px-3 w-full rounded-md border border-gray-300 resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+						class="w-full resize-none rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 						disabled={addingPOI}
 					></textarea>
 				</div>
@@ -484,7 +484,7 @@
 						<input
 							type="checkbox"
 							bind:checked={newPOI.visibleToPlayers}
-							class="text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+							class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 							disabled={addingPOI}
 						/>
 						<span class="ml-2 text-sm text-gray-700">Visible to players</span>
@@ -492,10 +492,10 @@
 				</div>
 			</div>
 
-			<div class="flex justify-end mt-6 space-x-3">
+			<div class="mt-6 flex justify-end space-x-3">
 				<button
 					onclick={() => (showAddPOI = false)}
-					class="py-2 px-4 text-sm font-medium text-gray-700 bg-gray-100 rounded-md transition-colors hover:bg-gray-200"
+					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
 					disabled={addingPOI}
 				>
 					Cancel
@@ -503,7 +503,7 @@
 				<button
 					onclick={addPOI}
 					disabled={addingPOI || !newPOI.title.trim()}
-					class="py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{addingPOI ? 'Adding...' : 'Add POI'}
 				</button>
@@ -517,33 +517,33 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="flex fixed inset-0 justify-center items-center p-4 bg-black bg-opacity-75 z-60"
+		class="bg-opacity-75 fixed inset-0 z-60 flex items-center justify-center bg-black p-4"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) editingPOI = null;
 		}}
 	>
-		<div class="p-6 w-full max-w-md bg-white rounded-lg shadow-xl">
+		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
 			<h3 class="mb-4 text-lg font-semibold text-gray-900">Edit Point of Interest</h3>
 
 			<div class="space-y-4">
 				<div>
 					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="block mb-2 text-sm font-medium text-gray-700">Title *</label>
+					<label class="mb-2 block text-sm font-medium text-gray-700">Title *</label>
 					<input
 						type="text"
 						bind:value={editingPOI.title}
-						class="py-2 px-3 w-full rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+						class="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 						disabled={updatingPOI}
 					/>
 				</div>
 
 				<div>
 					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="block mb-2 text-sm font-medium text-gray-700">Description</label>
+					<label class="mb-2 block text-sm font-medium text-gray-700">Description</label>
 					<textarea
 						bind:value={editingPOI.description}
 						rows="3"
-						class="py-2 px-3 w-full rounded-md border border-gray-300 resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+						class="w-full resize-none rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 						disabled={updatingPOI}
 					></textarea>
 				</div>
@@ -553,7 +553,7 @@
 						<input
 							type="checkbox"
 							bind:checked={editingPOI.visibleToPlayers}
-							class="text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+							class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 							disabled={updatingPOI}
 						/>
 						<span class="ml-2 text-sm text-gray-700">Visible to players</span>
@@ -561,10 +561,10 @@
 				</div>
 			</div>
 
-			<div class="flex justify-end mt-6 space-x-3">
+			<div class="mt-6 flex justify-end space-x-3">
 				<button
 					onclick={() => (editingPOI = null)}
-					class="py-2 px-4 text-sm font-medium text-gray-700 bg-gray-100 rounded-md transition-colors hover:bg-gray-200"
+					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
 					disabled={updatingPOI}
 				>
 					Cancel
@@ -572,7 +572,7 @@
 				<button
 					onclick={updatePOI}
 					disabled={updatingPOI || !editingPOI.title.trim()}
-					class="py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{updatingPOI ? 'Updating...' : 'Update POI'}
 				</button>

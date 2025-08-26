@@ -17,3 +17,16 @@ export interface TileCoordsRange {
 	xStart: number;
 	xEnd: number;
 }
+
+export interface Hex {
+	id: string;
+	row: number;
+	col: number;
+	centerX: number;
+	centerY: number;
+}
+
+export interface HexRevealedEvent {
+	hex: Hex;
+	index: number;
+}

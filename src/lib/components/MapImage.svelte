@@ -86,8 +86,8 @@
 
 {#if urlsLoading}
 	<div class="animate-pulse rounded-lg bg-gray-200 {className}" style="aspect-ratio: 1;">
-		<div class="flex justify-center items-center h-full">
-			<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<div class="flex h-full items-center justify-center">
+			<svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
@@ -99,9 +99,9 @@
 	</div>
 {:else if imageError || !mapUrls}
 	<div class="rounded-lg border-2 border-dashed border-gray-300 bg-gray-100 {className}">
-		<div class="flex flex-col justify-center items-center p-8 h-full">
+		<div class="flex h-full flex-col items-center justify-center p-8">
 			<svg
-				class="mb-4 w-12 h-12 text-gray-400"
+				class="mb-4 h-12 w-12 text-gray-400"
 				fill="none"
 				stroke="currentColor"
 				viewBox="0 0 24 24"
@@ -123,9 +123,9 @@
 		<!-- Loading overlay -->
 		{#if imageLoading}
 			<div
-				class="flex absolute inset-0 z-10 justify-center items-center bg-gray-200 rounded-lg animate-pulse"
+				class="absolute inset-0 z-10 flex animate-pulse items-center justify-center rounded-lg bg-gray-200"
 			>
-				<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -145,7 +145,7 @@
 			{alt}
 			{loading}
 			decoding="async"
-			class="w-full h-auto rounded-lg"
+			class="h-auto w-full rounded-lg"
 			onload={handleImageLoad}
 			onerror={handleImageError}
 		/>

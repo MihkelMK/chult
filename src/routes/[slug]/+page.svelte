@@ -46,12 +46,12 @@
 
 	<!-- Quick Stats -->
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-		<div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
-					<div class="flex justify-center items-center w-12 h-12 bg-green-100 rounded-lg">
+					<div class="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
 						<svg
-							class="w-6 h-6 text-green-600"
+							class="h-6 w-6 text-green-600"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -71,9 +71,9 @@
 						<p class="text-2xl font-semibold text-gray-900">{data.revealedTiles.length}</p>
 						<p class="ml-2 text-sm text-gray-500">tiles explored</p>
 					</div>
-					<div class="mt-2 w-full h-2 bg-gray-200 rounded-full">
+					<div class="mt-2 h-2 w-full rounded-full bg-gray-200">
 						<div
-							class="h-2 bg-green-600 rounded-full transition-all duration-500"
+							class="h-2 rounded-full bg-green-600 transition-all duration-500"
 							style="width: {Math.min(exploredPercentage, 100)}%"
 						></div>
 					</div>
@@ -81,12 +81,12 @@
 			</div>
 		</div>
 
-		<div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
-					<div class="flex justify-center items-center w-12 h-12 bg-blue-100 rounded-lg">
+					<div class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
 						<svg
-							class="w-6 h-6 text-blue-600"
+							class="h-6 w-6 text-blue-600"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -111,12 +111,12 @@
 			</div>
 		</div>
 
-		<div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
-					<div class="flex justify-center items-center w-12 h-12 bg-purple-100 rounded-lg">
+					<div class="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
 						<svg
-							class="w-6 h-6 text-purple-600"
+							class="h-6 w-6 text-purple-600"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -143,7 +143,7 @@
 	</div>
 
 	<!-- Main Actions -->
-	<div class="p-8 bg-white rounded-xl border border-gray-200 shadow-sm">
+	<div class="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
 		<div class="mb-8 text-center">
 			<h2 class="mb-2 text-2xl font-semibold text-gray-900">Ready to Explore?</h2>
 			<p class="text-gray-600">Open the interactive map to continue your journey</p>
@@ -153,9 +153,9 @@
 			<div class="flex justify-center">
 				<button
 					onclick={() => goto(`/${data.campaign.slug}/map`)}
-					class="inline-flex items-center py-4 px-8 text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg transition-all transform hover:from-blue-700 hover:to-purple-700 hover:scale-105"
+					class="inline-flex transform items-center rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-white shadow-lg transition-all hover:scale-105 hover:from-blue-700 hover:to-purple-700"
 				>
-					<svg class="mr-3 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -169,9 +169,9 @@
 		{:else}
 			<div class="text-center">
 				<div
-					class="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-gray-100 rounded-full"
+					class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100"
 				>
-					<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -189,10 +189,10 @@
 	<!-- Recent Activity -->
 	<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 		<!-- Recent Points of Interest -->
-		<div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
-			<div class="flex justify-between items-center mb-6">
+		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+			<div class="mb-6 flex items-center justify-between">
 				<h3 class="text-lg font-semibold text-gray-900">Recent Discoveries</h3>
-				<svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -205,9 +205,9 @@
 			{#if recentPOIs.length > 0}
 				<div class="space-y-4">
 					{#each recentPOIs as poi (poi.id)}
-						<div class="flex items-start p-3 space-x-3 bg-blue-50 rounded-lg">
-							<div class="mt-2 w-2 h-2 bg-blue-500 rounded-full"></div>
-							<div class="flex-1 min-w-0">
+						<div class="flex items-start space-x-3 rounded-lg bg-blue-50 p-3">
+							<div class="mt-2 h-2 w-2 rounded-full bg-blue-500"></div>
+							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-gray-900">{poi.title}</p>
 								{#if poi.description}
 									<p class="mt-1 text-sm text-gray-600">{poi.description}</p>
@@ -222,10 +222,10 @@
 			{:else}
 				<div class="py-8 text-center">
 					<div
-						class="flex justify-center items-center mx-auto mb-4 w-12 h-12 bg-gray-100 rounded-full"
+						class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100"
 					>
 						<svg
-							class="w-6 h-6 text-gray-400"
+							class="h-6 w-6 text-gray-400"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -246,10 +246,10 @@
 		</div>
 
 		<!-- Recent Notes -->
-		<div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
-			<div class="flex justify-between items-center mb-6">
+		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+			<div class="mb-6 flex items-center justify-between">
 				<h3 class="text-lg font-semibold text-gray-900">Recent Journal Entries</h3>
-				<svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="h-5 w-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -262,7 +262,7 @@
 			{#if recentNotes.length > 0}
 				<div class="space-y-4">
 					{#each recentNotes as note (note.id)}
-						<div class="p-3 bg-purple-50 rounded-lg">
+						<div class="rounded-lg bg-purple-50 p-3">
 							<p class="text-sm text-gray-900">{note.content}</p>
 							<p class="mt-2 text-xs text-gray-500">
 								Tile {note.x + 1},{note.y + 1} • {new Date(note.createdAt).toLocaleDateString()}
@@ -273,10 +273,10 @@
 			{:else}
 				<div class="py-8 text-center">
 					<div
-						class="flex justify-center items-center mx-auto mb-4 w-12 h-12 bg-gray-100 rounded-full"
+						class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100"
 					>
 						<svg
-							class="w-6 h-6 text-gray-400"
+							class="h-6 w-6 text-gray-400"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"

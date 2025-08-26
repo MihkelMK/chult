@@ -56,9 +56,6 @@ export const POST: RequestHandler = async (event) => {
 				return { revealed: newTiles.length, existing: tiles.length - newTiles.length };
 			} else if (type === 'hide') {
 				// Batch delete revealed tiles
-				const tilesToHide = tiles.map(
-					(tile) => `(${revealedTiles.x} = ${tile.x} AND ${revealedTiles.y} = ${tile.y})`
-				);
 
 				// Build OR condition for multiple tiles
 				const conditions = tiles.map((tile) =>
@@ -73,11 +70,12 @@ export const POST: RequestHandler = async (event) => {
 					const batch = conditions.slice(i, i + BATCH_SIZE);
 
 					for (const condition of batch) {
-						const deleted = await tx
+						const deletedRows = await tx
 							.delete(revealedTiles)
-							.where(and(eq(revealedTiles.campaignId, session.campaignId), condition));
+							.where(and(eq(revealedTiles.campaignId, session.campaignId), condition))
+							.returning({ id: revealedTiles.id });
 
-						deletedCount += deleted.changes || 0;
+						deletedCount += deletedRows.length;
 					}
 				}
 

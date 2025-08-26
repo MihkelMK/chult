@@ -68,18 +68,18 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class="flex fixed inset-0 z-50 justify-center items-center p-4 bg-black bg-opacity-50"
+	class="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4"
 	onclick={(e) => {
 		if (e.target === e.currentTarget) onClose();
 	}}
 >
 	<div
-		class="overflow-hidden w-full max-w-2xl bg-white rounded-xl shadow-xl max-h-[90vh]"
+		class="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-xl"
 		onkeydown={handleKeydown}
 		tabindex="-1"
 	>
 		<!-- Header -->
-		<div class="flex justify-between items-center p-6 border-b border-gray-200">
+		<div class="flex items-center justify-between border-b border-gray-200 p-6">
 			<div>
 				<h3 class="text-xl font-semibold text-gray-900">
 					Tile {selectedTile.x + 1},{selectedTile.y + 1}
@@ -89,9 +89,9 @@
 			<!-- svelte-ignore a11y_consider_explicit_label -->
 			<button
 				onclick={onClose}
-				class="p-2 text-gray-400 rounded-lg hover:text-gray-600 hover:bg-gray-100"
+				class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
 			>
-				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -103,13 +103,13 @@
 		</div>
 
 		<!-- Content -->
-		<div class="overflow-y-auto p-6 max-h-96">
+		<div class="max-h-96 overflow-y-auto p-6">
 			<!-- Points of Interest -->
 			{#if tileData.pois.length > 0}
 				<div class="mb-6">
-					<h4 class="flex items-center mb-4 text-lg font-medium text-gray-900">
+					<h4 class="mb-4 flex items-center text-lg font-medium text-gray-900">
 						<svg
-							class="mr-2 w-5 h-5 text-blue-500"
+							class="mr-2 h-5 w-5 text-blue-500"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -125,7 +125,7 @@
 					</h4>
 					<div class="space-y-4">
 						{#each tileData.pois as poi (poi.id)}
-							<div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+							<div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
 								<h5 class="mb-2 font-medium text-blue-900">{poi.title}</h5>
 								{#if poi.description}
 									<p class="text-sm text-blue-700">{poi.description}</p>
@@ -135,7 +135,7 @@
 										<img
 											src="/api/images/{campaignSlug}/{poi.imagePath}"
 											alt={poi.title}
-											class="max-w-full h-auto rounded-lg"
+											class="h-auto max-w-full rounded-lg"
 										/>
 									</div>
 								{/if}
@@ -148,9 +148,9 @@
 			<!-- Existing Notes -->
 			{#if tileData.notes.length > 0}
 				<div class="mb-6">
-					<h4 class="flex items-center mb-4 text-lg font-medium text-gray-900">
+					<h4 class="mb-4 flex items-center text-lg font-medium text-gray-900">
 						<svg
-							class="mr-2 w-5 h-5 text-purple-500"
+							class="mr-2 h-5 w-5 text-purple-500"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -166,7 +166,7 @@
 					</h4>
 					<div class="space-y-3">
 						{#each tileData.notes as note (note.id)}
-							<div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+							<div class="rounded-lg border border-purple-200 bg-purple-50 p-4">
 								<p class="text-gray-900">{note.content}</p>
 								<p class="mt-2 text-xs text-purple-600">
 									{new Date(note.createdAt).toLocaleString()}
@@ -179,9 +179,9 @@
 
 			<!-- Add New Note -->
 			<div>
-				<h4 class="flex items-center mb-4 text-lg font-medium text-gray-900">
+				<h4 class="mb-4 flex items-center text-lg font-medium text-gray-900">
 					<svg
-						class="mr-2 w-5 h-5 text-green-500"
+						class="mr-2 h-5 w-5 text-green-500"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -201,7 +201,7 @@
 						bind:value={newNote}
 						placeholder="Document what you discovered here..."
 						rows="4"
-						class="py-2 px-3 w-full rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+						class="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 						disabled={addingNote}
 					></textarea>
 
@@ -209,19 +209,19 @@
 						<div class="text-sm text-red-600">{addNoteError}</div>
 					{/if}
 
-					<div class="flex justify-between items-center">
+					<div class="flex items-center justify-between">
 						<p class="text-xs text-gray-500">Press Cmd/Ctrl + Enter to save quickly</p>
 						<div class="flex space-x-3">
 							<button
 								onclick={onClose}
-								class="py-2 px-4 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg transition-colors hover:bg-gray-200"
+								class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
 							>
 								Close
 							</button>
 							<button
 								onclick={addNote}
 								disabled={addingNote || !newNote.trim()}
-								class="py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								{addingNote ? 'Adding...' : 'Add Note'}
 							</button>

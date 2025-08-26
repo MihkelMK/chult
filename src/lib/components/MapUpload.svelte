@@ -145,7 +145,7 @@
 
 <div class="space-y-6">
 	<!-- Header -->
-	<div class="flex justify-between items-start">
+	<div class="flex items-start justify-between">
 		<div>
 			<h2 class="text-xl font-semibold text-gray-900">Campaign Map</h2>
 			<p class="mt-1 text-sm text-gray-600">
@@ -159,21 +159,21 @@
 			<div class="flex space-x-3">
 				<button
 					onclick={() => (showUploadInterface = !showUploadInterface)}
-					class="py-2 px-4 text-sm font-medium text-gray-700 bg-gray-100 rounded-md transition-colors hover:bg-gray-200"
+					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
 				>
 					{showUploadInterface ? 'Cancel' : 'Replace Map'}
 				</button>
 
 				<button
 					onclick={() => (showMapViewer = !showMapViewer)}
-					class="py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md transition-colors hover:bg-blue-700"
+					class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
 				>
 					{showMapViewer ? 'Hide Map' : 'View Map'}
 				</button>
 
 				<button
 					onclick={deleteExistingMap}
-					class="py-2 px-4 text-sm font-medium text-white bg-red-600 rounded-md transition-colors hover:bg-red-700"
+					class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
 				>
 					Delete
 				</button>
@@ -183,10 +183,10 @@
 
 	<!-- Status Messages -->
 	{#if uploadError}
-		<div class="p-4 text-red-700 bg-red-50 rounded-lg border border-red-200">
+		<div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
 			<div class="flex">
 				<svg
-					class="mt-0.5 mr-2 w-5 h-5 text-red-400"
+					class="mt-0.5 mr-2 h-5 w-5 text-red-400"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -204,10 +204,10 @@
 	{/if}
 
 	{#if uploadSuccess}
-		<div class="p-4 text-green-700 bg-green-50 rounded-lg border border-green-200">
+		<div class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
 			<div class="flex">
 				<svg
-					class="mt-0.5 mr-2 w-5 h-5 text-green-400"
+					class="mt-0.5 mr-2 h-5 w-5 text-green-400"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -229,7 +229,7 @@
 
 	<!-- Upload Interface -->
 	{#if showUploadInterface}
-		<div class="bg-white rounded-lg border border-gray-300">
+		<div class="rounded-lg border border-gray-300 bg-white">
 			<div class="p-6">
 				<h3 class="mb-4 text-lg font-medium text-gray-900">
 					{mapExists ? 'Replace Map' : 'Upload Map'}
@@ -248,7 +248,7 @@
 					{#if uploading}
 						<div class="py-8">
 							<svg
-								class="mx-auto mb-4 w-8 h-8 text-blue-600 animate-spin"
+								class="mx-auto mb-4 h-8 w-8 animate-spin text-blue-600"
 								fill="none"
 								viewBox="0 0 24 24"
 							>
@@ -281,7 +281,7 @@
 					{:else}
 						<div class="space-y-6">
 							<svg
-								class="mx-auto w-16 h-16 text-gray-400"
+								class="mx-auto h-16 w-16 text-gray-400"
 								stroke="currentColor"
 								fill="none"
 								viewBox="0 0 48 48"
@@ -299,7 +299,7 @@
 								<p class="mb-6 text-sm text-gray-500">or click to browse files</p>
 								<button
 									onclick={() => fileInput.click()}
-									class="py-3 px-6 font-medium text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
+									class="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-700"
 								>
 									Choose Map File
 								</button>
@@ -320,9 +320,9 @@
 
 	<!-- Map Viewer -->
 	{#if showMapViewer && mapExists}
-		<div class="bg-white rounded-lg border border-gray-300">
+		<div class="rounded-lg border border-gray-300 bg-white">
 			<div class="p-6">
-				<div class="flex justify-between items-center mb-4">
+				<div class="mb-4 flex items-center justify-between">
 					<h3 class="text-lg font-medium text-gray-900">Map Preview</h3>
 
 					<!-- View controls -->
@@ -358,7 +358,7 @@
 				<div class="relative">
 					<MapImage
 						{campaignSlug}
-						class="object-contain w-full max-h-96"
+						class="max-h-96 w-full object-contain"
 						onLoad={() => {
 							// Map loaded successfully
 						}}
@@ -369,14 +369,14 @@
 
 					<!-- Overlay info -->
 					<div
-						class="absolute bottom-4 left-4 py-2 px-3 text-sm text-white bg-black bg-opacity-60 rounded-lg"
+						class="bg-opacity-60 absolute bottom-4 left-4 rounded-lg bg-black px-3 py-2 text-sm text-white"
 					>
 						<p>{currentView} view • Optimized by imgproxy</p>
 						<p class="text-xs opacity-90">Click quality buttons to upgrade resolution</p>
 					</div>
 				</div>
 
-				<div class="flex justify-between items-center mt-4 text-sm text-gray-600">
+				<div class="mt-4 flex items-center justify-between text-sm text-gray-600">
 					<!-- <div class="flex items-center space-x-4"> -->
 					<!-- 	<span>Revealed: {data.revealedTiles.length} tiles</span> -->
 					<!-- 	<span>POIs: {data.pointsOfInterest.length}</span> -->
@@ -384,7 +384,7 @@
 
 					<a
 						href="/dm/{campaignSlug}/map/interactive"
-						class="py-2 px-4 text-sm font-medium text-white bg-green-600 rounded-md transition-colors hover:bg-green-700"
+						class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
 					>
 						Open Interactive Map →
 					</a>
