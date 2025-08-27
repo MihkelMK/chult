@@ -26,20 +26,59 @@ export class DMCampaignState extends CampaignState {
 
 	// Optimistic UI methods
 
-	async revealTiles(tiles: { x: number; y: number }[]) {
+	async revealTiles(tiles: { x: number; y: number }[], alwaysRevealed: boolean = false) {
 		const originalRevealedTiles = [...(this.campaign as CampaignDataResponse).revealedTiles];
 
 		// Optimistic update
 		(this.campaign as CampaignDataResponse).revealedTiles.push(
-			...tiles.map((t) => ({ ...t, revealedAt: new SvelteDate() }))
+			...tiles.map((t) => ({ ...t, alwaysRevealed, revealedAt: new SvelteDate() }))
 		);
 
 		try {
-			await this.makeApiRequest('tiles/batch', 'POST', { type: 'reveal', tiles });
+			await this.makeApiRequest('tiles/batch', 'POST', { type: 'reveal', tiles, alwaysRevealed });
 		} catch (error) {
 			// Rollback
 			(this.campaign as CampaignDataResponse).revealedTiles = originalRevealedTiles;
 			console.error('Failed to reveal tiles:', error);
+		}
+	}
+
+	async toggleAlwaysRevealed(tiles: { x: number; y: number }[], alwaysRevealed: boolean) {
+		const originalRevealedTiles = [...(this.campaign as CampaignDataResponse).revealedTiles];
+
+		// Optimistic update - update existing tiles and add new ones if needed
+		const existingTileMap = new Map(
+			(this.campaign as CampaignDataResponse).revealedTiles.map(
+				(t) => [`${t.x},${t.y}`, t]
+			)
+		);
+
+		tiles.forEach((tile) => {
+			const key = `${tile.x},${tile.y}`;
+			const existing = existingTileMap.get(key);
+			
+			if (existing) {
+				existing.alwaysRevealed = alwaysRevealed;
+			} else if (alwaysRevealed) {
+				// Create new always-revealed tile
+				(this.campaign as CampaignDataResponse).revealedTiles.push({
+					...tile,
+					alwaysRevealed: true,
+					revealedAt: new SvelteDate()
+				});
+			}
+		});
+
+		try {
+			await this.makeApiRequest('tiles/batch', 'POST', { 
+				type: 'toggle-always-revealed', 
+				tiles, 
+				alwaysRevealed 
+			});
+		} catch (error) {
+			// Rollback
+			(this.campaign as CampaignDataResponse).revealedTiles = originalRevealedTiles;
+			console.error('Failed to toggle always-revealed tiles:', error);
 		}
 	}
 

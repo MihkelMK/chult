@@ -27,7 +27,7 @@ export type NewUploadedImage = InferInsertModel<typeof uploadedImages>;
 // Response types that match your actual queries
 export type CampaignSummary = Pick<Campaign, 'id' | 'name' | 'slug' | 'createdAt'>;
 
-export type RevealedTileResponse = Pick<RevealedTile, 'x' | 'y' | 'revealedAt'>;
+export type RevealedTileResponse = Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed' | 'revealedAt'>;
 
 export type MapMarkerResponse = Pick<
 	MapMarker,
@@ -72,7 +72,7 @@ export type CampaignDataResponse = {
 export interface PlayerCampaignDataResponse {
 	campaign: Pick<Campaign, 'id' | 'name' | 'slug'>;
 	hasMapImage: boolean;
-	revealedTiles: Pick<RevealedTile, 'x' | 'y'>[];
+	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
 	mapMarkers: PlayerMapMarkerResponse[];
 	gameSessions: never[]; // Players don't get game sessions
 }

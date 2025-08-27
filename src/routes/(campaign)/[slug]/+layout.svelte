@@ -20,20 +20,20 @@
 	let showLogoutConfirm = $state(false);
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+<div class="min-h-screen bg-gradient-to-br to-blue-50 from-slate-50">
 	{#if data.session.role === 'dm'}
 		<DMViewAsPlayerBanner session={data.session} />
 	{/if}
 	<!-- Header -->
-	<header class="border-b bg-white shadow-sm">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-			<div class="flex h-16 items-center justify-between">
+	<header class="bg-white border-b shadow-sm">
+		<div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+			<div class="flex justify-between items-center h-16">
 				<div class="flex items-center space-x-4">
 					<div class="flex items-center space-x-3">
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600"
+							class="flex justify-center items-center w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"
 						>
-							<svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -53,7 +53,7 @@
 					<div class="hidden items-center space-x-4 text-sm text-gray-600 sm:flex">
 						<div class="flex items-center space-x-2">
 							<svg
-								class="h-4 w-4 text-green-500"
+								class="w-4 h-4 text-green-500"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -69,7 +69,7 @@
 						</div>
 						<div class="flex items-center space-x-2">
 							<svg
-								class="h-4 w-4 text-blue-500"
+								class="w-4 h-4 text-blue-500"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -88,7 +88,7 @@
 						</div>
 						<div class="flex items-center space-x-2">
 							<svg
-								class="h-4 w-4 text-purple-500"
+								class="w-4 h-4 text-purple-500"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -111,7 +111,7 @@
 						onclick={() => (showLogoutConfirm = true)}
 						class="flex items-center space-x-1 text-sm text-gray-600 transition-colors hover:text-gray-800"
 					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -127,7 +127,7 @@
 	</header>
 
 	<!-- Main content -->
-	<main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+	<main class="py-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
 		{@render children()}
 	</main>
 </div>
@@ -137,12 +137,12 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black"
+		class="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) showLogoutConfirm = false;
 		}}
 	>
-		<div class="mx-4 w-full max-w-sm rounded-lg bg-white p-6">
+		<div class="p-6 mx-4 w-full max-w-sm bg-white rounded-lg">
 			<h3 class="mb-4 text-lg font-medium text-gray-900">Leave Campaign?</h3>
 			<p class="mb-6 text-sm text-gray-600">
 				Are you sure you want to logout and return to the main page?
@@ -151,7 +151,7 @@
 			<div class="flex space-x-3">
 				<button
 					onclick={() => (showLogoutConfirm = false)}
-					class="flex-1 rounded-md bg-gray-100 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-200"
+					class="flex-1 py-2 px-4 text-sm text-gray-700 bg-gray-100 rounded-md transition-colors hover:bg-gray-200"
 				>
 					Stay
 				</button>
@@ -171,7 +171,7 @@
 				>
 					<button
 						type="submit"
-						class="w-full rounded-md bg-red-600 px-4 py-2 text-sm text-white transition-colors hover:bg-red-700"
+						class="py-2 px-4 w-full text-sm text-white bg-red-600 rounded-md transition-colors hover:bg-red-700"
 					>
 						Logout
 					</button>

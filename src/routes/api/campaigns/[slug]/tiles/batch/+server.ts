@@ -17,7 +17,7 @@ export const POST: RequestHandler = async (event) => {
 		return error(403, 'Access denied');
 	}
 
-	const { type, tiles } = await event.request.json();
+	const { type, tiles, alwaysRevealed = false } = await event.request.json();
 
 	try {
 		if (!type || !Array.isArray(tiles) || tiles.length === 0) {
@@ -49,7 +49,8 @@ export const POST: RequestHandler = async (event) => {
 						newTiles.map((tile) => ({
 							campaignId: session.campaignId,
 							x: tile.x,
-							y: tile.y
+							y: tile.y,
+							alwaysRevealed: alwaysRevealed
 						}))
 					);
 					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
@@ -71,7 +72,13 @@ export const POST: RequestHandler = async (event) => {
 
 				const deletedTiles = await tx
 					.delete(revealedTiles)
-					.where(and(eq(revealedTiles.campaignId, session.campaignId), or(...coordinateConditions)))
+					.where(
+						and(
+							eq(revealedTiles.campaignId, session.campaignId),
+							eq(revealedTiles.alwaysRevealed, false), // Only delete non-always-revealed tiles
+							or(...coordinateConditions)
+						)
+					)
 					.returning({ x: revealedTiles.x, y: revealedTiles.y });
 
 				if (deletedTiles.length > 0) {
@@ -83,6 +90,47 @@ export const POST: RequestHandler = async (event) => {
 				}
 
 				return { hidden: deletedTiles.length };
+			} else if (type === 'toggle-always-revealed') {
+				// Toggle always-revealed status for existing tiles
+				const tileCoordinates = tiles.map((t) => ({ x: t.x, y: t.y }));
+				const coordinateConditions = tileCoordinates.map((coords) =>
+					and(eq(revealedTiles.x, coords.x), eq(revealedTiles.y, coords.y))
+				);
+
+				// First, find existing tiles to determine current status
+				const existingTiles = await tx
+					.select()
+					.from(revealedTiles)
+					.where(and(eq(revealedTiles.campaignId, session.campaignId), or(...coordinateConditions)));
+
+				const updatedTiles = await tx
+					.update(revealedTiles)
+					.set({ alwaysRevealed: alwaysRevealed })
+					.where(and(eq(revealedTiles.campaignId, session.campaignId), or(...coordinateConditions)))
+					.returning({ x: revealedTiles.x, y: revealedTiles.y, alwaysRevealed: revealedTiles.alwaysRevealed });
+
+				// For tiles that don't exist yet, create them as always-revealed
+				const existingCoords = new Set(existingTiles.map((t) => `${t.x},${t.y}`));
+				const newAlwaysTiles = tiles.filter((tile) => !existingCoords.has(`${tile.x},${tile.y}`));
+
+				if (newAlwaysTiles.length > 0 && alwaysRevealed) {
+					await tx.insert(revealedTiles).values(
+						newAlwaysTiles.map((tile) => ({
+							campaignId: session.campaignId,
+							x: tile.x,
+							y: tile.y,
+							alwaysRevealed: true
+						}))
+					);
+				}
+
+				eventEmitter.emit(`campaign-${session.campaignSlug}`, {
+					event: 'tiles-always-revealed-updated',
+					data: { updated: updatedTiles, created: newAlwaysTiles },
+					role: 'player'
+				});
+
+				return { updated: updatedTiles.length, created: newAlwaysTiles.length };
 			} else {
 				throw new Error('Invalid operation type');
 			}

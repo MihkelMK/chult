@@ -25,11 +25,6 @@ export const actions: Actions = {
 			role: validation.role
 		});
 
-		// Redirect based on role
-		if (validation.role === 'dm') {
-			throw redirect(302, `/dm/${campaignSlug}`);
-		} else {
-			throw redirect(302, `/${campaignSlug}`);
-		}
+		throw redirect(302, `/${campaignSlug}`);
 	}
 };

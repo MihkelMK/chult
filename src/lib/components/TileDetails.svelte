@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { TileCoords, MapMarkerResponse } from '$lib/types';
+	import type { TileCoords, MapMarkerResponse, PlayerMapMarkerResponse } from '$lib/types';
 	import { getCampaignState } from '$lib/contexts/campaignContext';
 	import type { DMCampaignState } from '$lib/stores/dmCampaignState.svelte';
 	import type { PlayerCampaignState } from '$lib/stores/playerCampaignState.svelte';
@@ -18,17 +18,17 @@
 	let markers = $derived(
 		campaignData.mapMarkers.filter(
 			(m) => m.x === selectedTile.x && m.y === selectedTile.y
-		) as MapMarkerResponse[]
+		)
 	);
 	let pois = $derived(markers.filter((m) => m.type === 'poi'));
 	let notes = $derived(markers.filter((m) => m.type === 'note'));
 	let isRevealed = $derived(
-		campaignData.revealedTiles.some((t) => t.x === selectedTile.x && t.y === selectedTile.y)
+		campaignData.revealedTiles.some((t: any) => t.x === selectedTile.x && t.y === selectedTile.y)
 	);
 
 	// Marker Management
 	let showAddForm = $state(false);
-	let editingMarker = $state<MapMarkerResponse | null>(null);
+	let editingMarker = $state<MapMarkerResponse | PlayerMapMarkerResponse | null>(null);
 	let newMarker = $state({
 		type: 'poi' as 'poi' | 'note',
 		title: '',
@@ -38,7 +38,7 @@
 
 	// State
 	let submitting = $state(false);
-	let deleting = $state(false);
+	let deleting = $state<number | null>(null);
 	let error = $state('');
 	let success = $state('');
 
@@ -48,7 +48,7 @@
 		showAddForm = true;
 	}
 
-	function openEditForm(marker: MapMarkerResponse) {
+	function openEditForm(marker: MapMarkerResponse | PlayerMapMarkerResponse) {
 		editingMarker = { ...marker };
 		showAddForm = false;
 	}
@@ -71,7 +71,7 @@
 			type: markerToSubmit.type,
 			title: markerToSubmit.title?.trim() || null,
 			content: markerToSubmit.content?.trim() || null,
-			visibleToPlayers: markerToSubmit.visibleToPlayers
+			visibleToPlayers: 'visibleToPlayers' in markerToSubmit ? markerToSubmit.visibleToPlayers : true
 		};
 
 		try {
@@ -337,7 +337,7 @@
 							disabled={submitting}
 						></textarea>
 					</div>
-					{#if role === 'dm' && marker.type === 'poi'}
+					{#if role === 'dm' && marker.type === 'poi' && 'visibleToPlayers' in marker}
 						<label class="flex items-center">
 							<input
 								type="checkbox"

@@ -1,5 +1,5 @@
 import { setContext, getContext } from 'svelte';
-import type { CampaignState } from '$lib/stores/campaignState';
+import type { CampaignState } from '$lib/stores/campaignState.svelte';
 
 const CAMPAIGN_STATE_KEY = Symbol('campaign_state');
 

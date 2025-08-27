@@ -20,6 +20,7 @@ export const revealedTiles = pgTable('revealed_tiles', {
 		.references(() => campaigns.id, { onDelete: 'cascade' }),
 	x: integer('x').notNull(),
 	y: integer('y').notNull(),
+	alwaysRevealed: boolean('always_revealed').notNull().default(false),
 	revealedAt: timestamp('revealed_at', { withTimezone: false }).notNull().defaultNow()
 });
 

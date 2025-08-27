@@ -6,28 +6,39 @@ interface PendingOperation {
 	type: 'reveal' | 'hide';
 	coords: TileCoords;
 	timestamp: number;
+	alwaysRevealed?: boolean;
+}
+
+interface RevealedTile extends TileCoords {
+	alwaysRevealed: boolean;
+	revealedAt: Date;
 }
 
 interface TileState {
-	revealed: TileCoords[];
+	revealed: RevealedTile[];
 	pending: PendingOperation[];
 	errors: { coords: TileCoords; message: string }[];
 }
 
 function createTileManager(
 	campaignSlug: string,
-	initialRevealed: TileCoords[] = [],
+	initialRevealed: any[] = [], // Accept full revealed tile objects or basic coords
 	campaignState?: DMCampaignState
 ) {
 	const { subscribe, update } = writable<TileState>({
-		revealed: initialRevealed,
+		revealed: initialRevealed.map(tile => ({
+			x: tile.x,
+			y: tile.y,
+			alwaysRevealed: tile.alwaysRevealed ?? false,
+			revealedAt: tile.revealedAt ? new Date(tile.revealedAt) : new Date()
+		})),
 		pending: [],
 		errors: []
 	});
 
 	// Connect to campaign state events if available
 	if (campaignState) {
-		campaignState.addEventListener('tile-revealed', (tile: Pick<TileCoords, 'x' | 'y'>) => {
+		campaignState.addEventListener('tile-revealed', (tile: any) => {
 			update((state) => {
 				// Only add if not already revealed and not from our own optimistic update
 				if (
@@ -38,7 +49,12 @@ function createTileManager(
 				) {
 					return {
 						...state,
-						revealed: [...state.revealed, { x: tile.x, y: tile.y }]
+						revealed: [...state.revealed, {
+							x: tile.x,
+							y: tile.y,
+							alwaysRevealed: tile.alwaysRevealed || false,
+							revealedAt: tile.revealedAt ? new Date(tile.revealedAt) : new Date()
+						}]
 					};
 				}
 				return state;
@@ -86,8 +102,9 @@ function createTileManager(
 		update((state) => {
 			if (state.pending.length === 0) return state;
 
-			// Group operations by type
-			const reveals = state.pending.filter((op) => op.type === 'reveal');
+			// Group operations by type and alwaysRevealed flag
+			const reveals = state.pending.filter((op) => op.type === 'reveal' && !op.alwaysRevealed);
+			const alwaysReveals = state.pending.filter((op) => op.type === 'reveal' && op.alwaysRevealed);
 			const hides = state.pending.filter((op) => op.type === 'hide');
 
 			// Clear pending before processing
@@ -99,7 +116,15 @@ function createTileManager(
 				reveals.length > 0
 					? processBatchOperation(
 							'reveal',
-							reveals.map((op) => op.coords)
+							reveals.map((op) => op.coords),
+							false
+						)
+					: Promise.resolve(),
+				alwaysReveals.length > 0
+					? processBatchOperation(
+							'reveal',
+							alwaysReveals.map((op) => op.coords),
+							true
 						)
 					: Promise.resolve(),
 				hides.length > 0
@@ -128,11 +153,11 @@ function createTileManager(
 		});
 	}
 
-	async function processBatchOperation(type: 'reveal' | 'hide', coords: TileCoords[]) {
+	async function processBatchOperation(type: 'reveal' | 'hide' | 'toggle-always-revealed', coords: TileCoords[], alwaysRevealed?: boolean) {
 		const response = await fetch(`/api/campaigns/${campaignSlug}/tiles/batch`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ type, tiles: coords })
+			body: JSON.stringify({ type, tiles: coords, alwaysRevealed })
 		});
 
 		if (!response.ok) {
@@ -147,7 +172,12 @@ function createTileManager(
 				// Add tiles that aren't already revealed
 				coords.forEach((coord) => {
 					if (!newRevealed.some((tile) => tile.x === coord.x && tile.y === coord.y)) {
-						newRevealed.push(coord);
+						newRevealed.push({
+							x: coord.x,
+							y: coord.y,
+							alwaysRevealed: alwaysRevealed || false,
+							revealedAt: new Date()
+						});
 					}
 				});
 			} else {
@@ -220,7 +250,13 @@ function createTileManager(
 		},
 
 		// Batch operations
-		revealTiles: (tiles: TileCoords[]) => {
+		revealTiles: (tiles: TileCoords[], alwaysRevealed: boolean = false) => {
+			// If always-revealed, delegate to campaign state for optimistic updates
+			if (alwaysRevealed && campaignState && 'revealTiles' in campaignState) {
+				campaignState.revealTiles(tiles, alwaysRevealed);
+				return;
+			}
+
 			update((state) => {
 				const newPending = [...state.pending];
 				const timestamp = Date.now();
@@ -231,7 +267,7 @@ function createTileManager(
 						const filtered = newPending.filter(
 							(op) => !(op.coords.x === coords.x && op.coords.y === coords.y)
 						);
-						filtered.push({ type: 'reveal', coords, timestamp });
+						filtered.push({ type: 'reveal', coords, timestamp, alwaysRevealed });
 						newPending.length = 0;
 						newPending.push(...filtered);
 					}
@@ -274,6 +310,45 @@ function createTileManager(
 			scheduleBatch();
 		},
 
+		// Toggle always-revealed status
+		toggleAlwaysRevealed: (tiles: TileCoords[], alwaysRevealed: boolean) => {
+			// Update local state optimistically
+			update((state) => {
+				const newRevealed = [...state.revealed];
+				
+				tiles.forEach((tileCoords) => {
+					const existingIndex = newRevealed.findIndex(
+						(tile) => tile.x === tileCoords.x && tile.y === tileCoords.y
+					);
+					
+					if (existingIndex !== -1) {
+						// Update existing tile
+						newRevealed[existingIndex] = {
+							...newRevealed[existingIndex],
+							alwaysRevealed
+						};
+					} else if (alwaysRevealed) {
+						// Add new always-revealed tile
+						newRevealed.push({
+							x: tileCoords.x,
+							y: tileCoords.y,
+							alwaysRevealed: true,
+							revealedAt: new Date()
+						});
+					}
+				});
+				
+				return { ...state, revealed: newRevealed };
+			});
+
+			// Delegate to campaign state for server sync
+			if (campaignState && 'toggleAlwaysRevealed' in campaignState) {
+				campaignState.toggleAlwaysRevealed(tiles, alwaysRevealed);
+			} else {
+				console.error('Campaign state not available or does not support always-revealed operations');
+			}
+		},
+
 		// Force immediate batch processing
 		flush: () => {
 			if (batchTimeout) {
@@ -293,7 +368,12 @@ function createTileManager(
 			sortedPending.forEach((op) => {
 				if (op.type === 'reveal') {
 					if (!revealed.some((tile) => tile.x === op.coords.x && tile.y === op.coords.y)) {
-						revealed.push(op.coords);
+						revealed.push({
+							x: op.coords.x,
+							y: op.coords.y,
+							alwaysRevealed: op.alwaysRevealed || false,
+							revealedAt: new Date()
+						});
 					}
 				} else {
 					revealed = revealed.filter((tile) => !(tile.x === op.coords.x && tile.y === op.coords.y));

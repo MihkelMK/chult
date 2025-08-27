@@ -139,6 +139,7 @@ export async function getCampaignData(
 		.select({
 			x: revealedTiles.x,
 			y: revealedTiles.y,
+			alwaysRevealed: revealedTiles.alwaysRevealed,
 			revealedAt: revealedTiles.revealedAt
 		})
 		.from(revealedTiles)

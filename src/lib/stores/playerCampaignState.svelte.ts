@@ -68,7 +68,10 @@ export class PlayerCampaignState extends CampaignState {
 
 	private handleTileRevealed(tile: Pick<RevealedTile, 'x' | 'y'>) {
 		if (this.campaign && 'revealedTiles' in this.campaign) {
-			(this.campaign as PlayerCampaignDataResponse).revealedTiles.push(tile);
+			(this.campaign as PlayerCampaignDataResponse).revealedTiles.push({
+				...tile,
+				alwaysRevealed: false // Default to false for player-received tiles
+			});
 		}
 	}
 

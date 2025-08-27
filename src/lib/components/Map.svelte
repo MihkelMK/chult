@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { TileCoords, Hex, HexRevealedEvent } from '$lib/types';
+	import type { RevealedTileResponse } from '$lib/types/database';
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import MapImage from './MapImage.svelte';
@@ -19,12 +20,16 @@
 			| 'overview'
 			| 'detail'
 			| 'responsive';
+		isDM?: boolean;
+		isSelecting?: boolean;
+		showAlwaysRevealed?: boolean;
+		tileTransparency?: number;
 		hexesPerRow?: number; // Number of hexagons per row on the actual map
 		hexesPerCol?: number; // Number of hexagons per column on the actual map
 		xOffset?: number; // Horizontal offset in pixels from left edge to where grid starts
 		yOffset?: number; // Vertical offset in pixels from top edge to where grid starts
 		showControls?: boolean;
-		initiallyRevealed?: TileCoords[];
+		initiallyRevealed?: RevealedTileResponse[];
 		selectedTiles?: TileCoords[]; // Add this line
 		showCoords?: 'never' | 'always' | 'hover';
 		showAnimations?: boolean;
@@ -41,6 +46,10 @@
 	let {
 		campaignSlug,
 		variant = 'hexGrid',
+		isDM = false,
+		isSelecting = false,
+		showAlwaysRevealed = false,
+		tileTransparency = 0.75,
 		hexesPerRow = 72,
 		hexesPerCol = 86,
 		xOffset = 70,
@@ -66,6 +75,11 @@
 	let mapLoaded = $state(false);
 
 	let revealedSet = $derived(new SvelteSet(initiallyRevealed.map((tile) => `${tile.x}-${tile.y}`)));
+	let alwaysRevealedSet = $derived(
+		new SvelteSet(
+			initiallyRevealed.filter((tile) => tile.alwaysRevealed).map((tile) => `${tile.x}-${tile.y}`)
+		)
+	);
 	let selectedSet = $derived(new SvelteSet(selectedTiles.map((tile) => `${tile.x}-${tile.y}`))); // Add this line
 
 	// Calculate the usable width (image width minus the offset margins)
@@ -190,7 +204,7 @@
 	{@const hasPoIMarker = hasPoI(coords)}
 	{@const hasNotesMarker = hasNotes(coords)}
 	{@const isPlayerHere = isPlayerPosition(coords)}
-	
+
 	<!-- Player position indicator (highest priority) -->
 	{#if isPlayerHere}
 		<circle
@@ -202,15 +216,9 @@
 			stroke-width="1.5"
 			class="drop-shadow-sm"
 		/>
-		<circle
-			cx={centerX}
-			cy={centerY - 8}
-			r="2"
-			fill="white"
-			class="animate-pulse"
-		/>
+		<circle cx={centerX} cy={centerY - 8} r="2" fill="white" class="animate-pulse" />
 	{/if}
-	
+
 	<!-- POI indicator (red pin, top right) -->
 	{#if hasPoIMarker}
 		<g transform="translate({centerX + 8}, {centerY - 8})">
@@ -218,11 +226,20 @@
 			<circle r="1.5" fill="white" />
 		</g>
 	{/if}
-	
+
 	<!-- Notes indicator (blue note, top left) -->
 	{#if hasNotesMarker}
 		<g transform="translate({centerX - 8}, {centerY - 8})">
-			<rect x="-2" y="-2" width="4" height="4" rx="0.5" fill="#3b82f6" stroke="white" stroke-width="1" />
+			<rect
+				x="-2"
+				y="-2"
+				width="4"
+				height="4"
+				rx="0.5"
+				fill="#3b82f6"
+				stroke="white"
+				stroke-width="1"
+			/>
 			<line x1="-1" y1="-1" x2="1" y2="-1" stroke="white" stroke-width="0.5" />
 			<line x1="-1" y1="0" x2="1" y2="0" stroke="white" stroke-width="0.5" />
 			<line x1="-1" y1="1" x2="0" y2="1" stroke="white" stroke-width="0.5" />
@@ -231,15 +248,15 @@
 {/snippet}
 
 {#if showControls}
-	<div class="my-5 flex flex-wrap justify-center gap-3">
+	<div class="flex flex-wrap gap-3 justify-center my-5">
 		<button
-			class="rounded-lg bg-blue-500 px-5 py-2 font-medium text-white transition-colors duration-300 hover:bg-blue-600"
+			class="py-2 px-5 font-medium text-white bg-blue-500 rounded-lg transition-colors duration-300 hover:bg-blue-600"
 			onclick={onAllHexesReset}
 		>
 			Reset All Hexes
 		</button>
 		<button
-			class="rounded-lg bg-gray-500 px-5 py-2 font-medium text-white transition-colors duration-300 hover:bg-gray-600"
+			class="py-2 px-5 font-medium text-white bg-gray-500 rounded-lg transition-colors duration-300 hover:bg-gray-600"
 			onclick={onAllHexesRevealed}
 		>
 			Reveal All Hexes
@@ -247,13 +264,13 @@
 	</div>
 {/if}
 
-<div class="relative inline-block rounded-lg bg-white shadow-xl">
+<div class="inline-block relative bg-white rounded-lg shadow-xl">
 	<div class="relative" style="width: {containerWidth}px; height: {containerHeight}px;">
 		<MapImage
 			{campaignSlug}
 			{variant}
 			alt="D&D Campaign Map"
-			class="absolute inset-0 h-full w-full rounded-lg select-none"
+			class="absolute inset-0 w-full h-full rounded-lg select-none"
 			loading="eager"
 			onLoad={(imageElement) => handleMapLoad(imageElement)}
 			onError={handleMapError}
@@ -320,41 +337,103 @@
 				<g mask="url(#fade-mask)">
 					{#each hexGrid as hex, index (hex.id)}
 						{#if hex.row >= 0}
-							<g class="group">
-								<polygon
-									points={hex.points}
-									fill="rgb(253, 250, 240)"
-									stroke="black"
-									stroke-width="1"
-									class="!outline-0 [stroke-opacity:0.15] {showAnimations
-										? 'hover:[stroke-opacity:0.4]'
-										: ''} {hex.row > 0
-										? 'pointer-events-auto'
-										: 'pointer-events-none mask-t-from-0 mask-t-to-75%'}
-                  {revealedSet.has(`${hex.col}-${hex.row}`)
-										? '[fill-opacity:0.2]'
-										: 'cursor-pointer [fill-opacity:1]'}
-                  {selectedSet.has(`${hex.col}-${hex.row}`)
-										? 'stroke-orange-500 stroke-[3px] [fill-opacity:0.8]'
-										: ''}"
-									style={showAnimations
-										? 'transition: stroke-opacity 300ms, fill-opacity 300ms;'
-										: ''}
-									onclick={() => onHexRevealed({ hex, index })}
-									role="button"
-									tabindex="0"
-									aria-label="Hex {hex.row}, {hex.col}"
-									onkeydown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
-											onHexRevealed({ hex, index });
-										}
-									}}
-								/>
-								{#if hex.row > 0}
-									{@render label(hex, showCoords)}
-									{@render indicators(hex)}
-								{/if}
-							</g>
+							{@const isAlwaysRevealed = alwaysRevealedSet.has(`${hex.col}-${hex.row}`)}
+							{@const shouldRender = !isAlwaysRevealed || (isDM && showAlwaysRevealed)}
+
+							{#if shouldRender}
+								<g class="group">
+									<polygon
+										points={hex.points}
+										fill={(() => {
+											const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
+
+											// Selected tiles get orange fill (highest priority)
+											if (isSelected) {
+												return 'rgba(249, 115, 22, 0.6)'; // Orange with transparency
+											}
+
+											// Always-revealed tiles get blue fill
+											if (isAlwaysRevealed) {
+												return isDM ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.5)';
+											}
+
+											// Regular tiles with dynamic transparency
+											return isDM
+												? `rgba(253, 250, 240, ${tileTransparency})`
+												: 'rgb(253, 250, 240)';
+										})()}
+										stroke={(() => {
+											const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
+
+											// Selected tiles get orange stroke (highest priority)
+											if (isSelected) {
+												return '#f97316'; // Orange
+											}
+
+											// Always-revealed tiles get blue stroke
+											if (isAlwaysRevealed) {
+												return '#3b82f6';
+											}
+
+											// Regular tiles
+											return 'black';
+										})()}
+										stroke-width={(() => {
+											const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
+
+											// Selected tiles get thicker stroke
+											if (isSelected) {
+												return '3';
+											}
+
+											// Always-revealed tiles get medium stroke
+											if (isAlwaysRevealed) {
+												return '2';
+											}
+
+											// Regular tiles
+											return '1';
+										})()}
+										class="!outline-0 {(() => {
+											const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
+
+											// Selected tiles get high stroke opacity
+											if (isSelected) {
+												return '[stroke-opacity:1]';
+											}
+
+											// Always-revealed tiles get medium stroke opacity
+											if (isAlwaysRevealed) {
+												return '[stroke-opacity:0.4]';
+											}
+
+											// Regular tiles
+											return '[stroke-opacity:0.15]';
+										})()} {showAnimations ? 'hover:[stroke-opacity:0.4]' : ''} {hex.row > 0
+											? 'pointer-events-auto'
+											: 'pointer-events-none mask-t-from-0 mask-t-to-75%'}
+						  {revealedSet.has(`${hex.col}-${hex.row}`)
+											? '[fill-opacity:0.2]'
+											: 'cursor-pointer [fill-opacity:1]'}"
+										style={showAnimations
+											? 'transition: stroke-opacity 300ms, fill-opacity 300ms;'
+											: ''}
+										onclick={() => onHexRevealed({ hex, index })}
+										role="button"
+										tabindex="0"
+										aria-label="Hex {hex.row}, {hex.col}"
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												onHexRevealed({ hex, index });
+											}
+										}}
+									/>
+									{#if hex.row > 0}
+										{@render label(hex, showCoords)}
+										{@render indicators(hex)}
+									{/if}
+								</g>
+							{/if}
 						{/if}
 					{/each}
 				</g>
