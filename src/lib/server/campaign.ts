@@ -1,12 +1,11 @@
 import { db } from './db';
 import {
 	campaigns,
-	pointsOfInterest,
 	revealedTiles,
-	sessions,
-	tileNotes
+	mapMarkers,
+	gameSessions as gameSessionsSchema
 } from '$lib/server/db/schema';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type {
 	Campaign,
 	CampaignDataResponse,
@@ -133,10 +132,10 @@ export async function getCampaignData(
 	const campaign = await getCampaignById(campaignId);
 	if (!campaign) return null;
 
-	const mapImageExists = await hasMapImage(campaign.slug);
+	const mapImageExistsPromise = hasMapImage(campaign.slug);
 
 	// Get revealed tiles
-	const revealed = await db
+	const revealedPromise = db
 		.select({
 			x: revealedTiles.x,
 			y: revealedTiles.y,
@@ -146,83 +145,41 @@ export async function getCampaignData(
 		.where(eq(revealedTiles.campaignId, campaignId))
 		.orderBy(revealedTiles.revealedAt);
 
-	// Get POIs - separate queries for DM vs Player
-	let pois;
-	if (isPlayerView) {
-		// Player view: only visible POIs
-		pois = await db
-			.select({
-				id: pointsOfInterest.id,
-				x: pointsOfInterest.x,
-				y: pointsOfInterest.y,
-				title: pointsOfInterest.title,
-				description: pointsOfInterest.description,
-				visibleToPlayers: pointsOfInterest.visibleToPlayers,
-				imagePath: pointsOfInterest.imagePath,
-				createdAt: pointsOfInterest.createdAt
-			})
-			.from(pointsOfInterest)
-			.where(
-				and(
-					eq(pointsOfInterest.campaignId, campaignId),
-					eq(pointsOfInterest.visibleToPlayers, true)
-				)
-			)
-			.orderBy(pointsOfInterest.createdAt);
-	} else {
-		// DM view: all POIs
-		pois = await db
-			.select({
-				id: pointsOfInterest.id,
-				x: pointsOfInterest.x,
-				y: pointsOfInterest.y,
-				title: pointsOfInterest.title,
-				description: pointsOfInterest.description,
-				visibleToPlayers: pointsOfInterest.visibleToPlayers,
-				imagePath: pointsOfInterest.imagePath,
-				createdAt: pointsOfInterest.createdAt
-			})
-			.from(pointsOfInterest)
-			.where(eq(pointsOfInterest.campaignId, campaignId))
-			.orderBy(pointsOfInterest.createdAt);
-	}
-
-	// Get tile notes
-	const notes = await db
-		.select({
-			id: tileNotes.id,
-			x: tileNotes.x,
-			y: tileNotes.y,
-			content: tileNotes.content,
-			imagePath: tileNotes.imagePath,
-			createdAt: tileNotes.createdAt
-		})
-		.from(tileNotes)
-		.where(eq(tileNotes.campaignId, campaignId))
-		.orderBy(tileNotes.createdAt);
+	// Get map markers
+	const markersPromise = isPlayerView
+		? db
+				.select()
+				.from(mapMarkers)
+				.where(and(eq(mapMarkers.campaignId, campaignId), eq(mapMarkers.visibleToPlayers, true)))
+				.orderBy(mapMarkers.createdAt)
+		: db
+				.select()
+				.from(mapMarkers)
+				.where(eq(mapMarkers.campaignId, campaignId))
+				.orderBy(mapMarkers.createdAt);
 
 	// Get recent game sessions (DM only)
-	let gameSessions: {
-		id: number;
-		name: string;
-		startTime: Date;
-		endTime: Date | null;
-		createdAt: Date;
-	}[] = [];
-	if (!isPlayerView) {
-		gameSessions = await db
-			.select({
-				id: sessions.id,
-				name: sessions.name,
-				startTime: sessions.startTime,
-				endTime: sessions.endTime,
-				createdAt: sessions.createdAt
-			})
-			.from(sessions)
-			.where(eq(sessions.campaignId, campaignId))
-			.orderBy(desc(sessions.startTime))
-			.limit(10);
-	}
+	const gameSessionsPromise = isPlayerView
+		? Promise.resolve([])
+		: db
+				.select({
+					id: gameSessionsSchema.id,
+					name: gameSessionsSchema.name,
+					startTime: gameSessionsSchema.startTime,
+					endTime: gameSessionsSchema.endTime,
+					createdAt: gameSessionsSchema.createdAt
+				})
+				.from(gameSessionsSchema)
+				.where(eq(gameSessionsSchema.campaignId, campaignId))
+				.orderBy(desc(gameSessionsSchema.startTime))
+				.limit(10);
+
+	const [mapImageExists, revealed, markers, gameSessions] = await Promise.all([
+		mapImageExistsPromise,
+		revealedPromise,
+		markersPromise,
+		gameSessionsPromise
+	]);
 
 	return {
 		campaign: {
@@ -232,8 +189,7 @@ export async function getCampaignData(
 			createdAt: campaign.createdAt
 		},
 		revealedTiles: revealed,
-		pointsOfInterest: pois,
-		tileNotes: notes,
+		mapMarkers: markers,
 		gameSessions: gameSessions,
 		hasMapImage: mapImageExists
 	};
@@ -242,14 +198,17 @@ export async function getCampaignData(
 export async function getCampaignStats(campaignId: number): Promise<CampaignStatsResponse> {
 	const [stats] = await db
 		.select({
-			revealedCount: db.$count(revealedTiles.id),
-			poisCount: db.$count(pointsOfInterest.id),
-			notesCount: db.$count(tileNotes.id)
+			revealedCount: sql<number>`count(distinct ${revealedTiles.id})`.mapWith(Number),
+			poisCount: sql<number>`count(case when ${mapMarkers.type} = 'poi' then 1 end)`.mapWith(
+				Number
+			),
+			notesCount: sql<number>`count(case when ${mapMarkers.type} = 'note' then 1 end)`.mapWith(
+				Number
+			)
 		})
 		.from(campaigns)
 		.leftJoin(revealedTiles, eq(revealedTiles.campaignId, campaigns.id))
-		.leftJoin(pointsOfInterest, eq(pointsOfInterest.campaignId, campaigns.id))
-		.leftJoin(tileNotes, eq(tileNotes.campaignId, campaigns.id))
+		.leftJoin(mapMarkers, eq(mapMarkers.campaignId, campaigns.id))
 		.where(eq(campaigns.id, campaignId))
 		.groupBy(campaigns.id);
 

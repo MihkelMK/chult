@@ -1,0 +1,693 @@
+<script lang="ts">
+	import Map from './Map.svelte';
+	import TileDetails from './TileDetails.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import {
+		Sheet,
+		SheetContent,
+		SheetHeader,
+		SheetTitle,
+		SheetTrigger
+	} from '$lib/components/ui/sheet';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Separator } from '$lib/components/ui/separator';
+	import * as Tooltip from '$lib/components/ui/tooltip';
+	import type { HexRevealedEvent, TileCoords } from '$lib/types';
+	import type { PageData } from '../../routes/(campaign)/[slug]/map/$types';
+	import {
+		Menu,
+		Plus,
+		Minus,
+		Square,
+		Eye,
+		EyeOff,
+		Trash2,
+		MapPin,
+		User,
+		Users,
+		Hand,
+		MousePointer
+	} from '@lucide/svelte';
+	import { onMount } from 'svelte';
+	import { Tween } from 'svelte/motion';
+
+	interface Props {
+		data: PageData;
+		mode: 'player' | 'dm';
+		tileState: any;
+		tileManager: any;
+		onTileAction?: (coords: TileCoords) => void;
+		onMultiSelect?: (coords: TileCoords) => void;
+		selectedTiles?: TileCoords[];
+	}
+
+	let {
+		data,
+		mode,
+		tileState,
+		tileManager,
+		onTileAction,
+		onMultiSelect,
+		selectedTiles = []
+	}: Props = $props();
+
+	// UI State
+	let sidebarOpen = $state(false);
+	let selectedTile = $state<TileCoords | null>(null);
+	let showTileDetails = $state(false);
+	let cursorMode = $state<'interact' | 'pan' | 'select'>('interact');
+	// Map and viewport dimensions for fit calculation
+	let mapDimensions = $state({ width: 0, height: 0 });
+	let viewportDimensions = $state({ width: 0, height: 0 });
+
+	let relativeZoom = new Tween(1); // Zoom level relative to fit (1x = fit, 2x = double fit, etc.)
+	let fitZoom = $derived(calculateFitZoom()); // Calculated zoom to fit map in viewport
+	let mapZoom = $derived(fitZoom * relativeZoom.current);
+
+	// Pan tool drag functionality
+	let isDragging = $state(false);
+	let dragStartX = $state(0);
+	let dragStartY = $state(0);
+	let scrollContainer: HTMLElement | null = $state(null);
+
+	// Computed values
+	let currentRevealedTiles = $derived(
+		mode === 'player' && tileState.pending
+			? [...tileState.revealed, tileState.pending.coords]
+			: tileManager?.getRevealedTiles
+				? tileManager.getRevealedTiles(tileState)
+				: tileState.revealed
+	);
+
+	let hasPendingOperations = $derived(
+		mode === 'dm' && tileState.pending && tileState.pending.length > 0
+	);
+
+	let hasErrors = $derived(mode === 'dm' && tileState.errors && tileState.errors.length > 0);
+
+	// Helper functions for tile content
+	function getTileMarkers(coords: TileCoords) {
+		return data.mapMarkers?.filter((m) => m.x === coords.x && m.y === coords.y) || [];
+	}
+
+	function hasPoI(coords: TileCoords) {
+		return getTileMarkers(coords).some((m) => m.type === 'poi');
+	}
+
+	function hasNotes(coords: TileCoords) {
+		return getTileMarkers(coords).some((m) => m.type === 'note');
+	}
+
+	function isPlayerPosition(coords: TileCoords) {
+		return (
+			mode === 'player' &&
+			tileState.currentPosition &&
+			tileState.currentPosition.x === coords.x &&
+			tileState.currentPosition.y === coords.y
+		);
+	}
+
+	// Event handlers based on cursor mode
+	function handleTileClick(event: HexRevealedEvent) {
+		const coords: TileCoords = { x: event.hex.col, y: event.hex.row };
+
+		switch (cursorMode) {
+			case 'interact':
+				// Default action: open tile details for adding POI/notes
+				selectedTile = coords;
+				showTileDetails = true;
+				break;
+			case 'select':
+				// Multi-select mode - toggle selection
+				if (mode === 'dm') {
+					onMultiSelect?.(coords);
+				}
+				break;
+			case 'pan':
+				// Pan mode - do nothing on tile click
+				break;
+		}
+	}
+
+	function toggleSidebar() {
+		sidebarOpen = !sidebarOpen;
+	}
+
+	function closeTileDetails() {
+		showTileDetails = false;
+		selectedTile = null;
+	}
+
+	// Handle map load to get dimensions
+	function handleMapLoad(dimensions: { width: number; height: number }) {
+		mapDimensions = dimensions;
+	}
+
+	function zoomIn() {
+		if (relativeZoom.target < 3) {
+			relativeZoom.set(relativeZoom.target + 1);
+		}
+	}
+
+	function zoomOut() {
+		if (relativeZoom.target > 1) {
+			relativeZoom.set(relativeZoom.target - 1);
+		}
+	}
+
+	// Calculate zoom to fit map in full viewport (padding is separate for panning space)
+	function calculateFitZoom() {
+		if (!mapDimensions?.width || !viewportDimensions?.width) return 1;
+
+		const scaleX = viewportDimensions.width / mapDimensions.width;
+		const scaleY = viewportDimensions.height / mapDimensions.height;
+
+		// Use the smaller scale to ensure the map fits in both dimensions
+		const calculatedFit = Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 100%
+
+		return Math.max(0.1, calculatedFit); // Don't go below 10%
+	}
+
+	// Auto-center when zoom is set to 1x (fit zoom)
+	let mapElement: HTMLElement | null = $state(null);
+
+	$effect(() => {
+		if (relativeZoom.target === 1 && mapElement) {
+			// Use scrollIntoView to center the map
+			mapElement.scrollIntoView({
+				behavior: 'smooth',
+				block: 'center',
+				inline: 'center'
+			});
+		}
+	});
+
+	onMount(() => {
+		if (relativeZoom.target === 1 && mapElement) {
+			// Use scrollIntoView to center the map
+			mapElement.scrollIntoView({
+				behavior: 'smooth',
+				block: 'center',
+				inline: 'center'
+			});
+		}
+	});
+
+	function resetZoom() {
+		relativeZoom.set(1); // Reset to 1x relative zoom (fit)
+	}
+
+	// Pan tool drag handlers
+	function handleMouseDown(event: MouseEvent) {
+		if (cursorMode !== 'pan' || !scrollContainer) return;
+
+		isDragging = true;
+		dragStartX = event.clientX;
+		dragStartY = event.clientY;
+		event.preventDefault();
+	}
+
+	function handleMouseMove(event: MouseEvent) {
+		if (!isDragging || !scrollContainer) return;
+
+		const deltaX = dragStartX - event.clientX;
+		const deltaY = dragStartY - event.clientY;
+
+		scrollContainer.scrollLeft += deltaX;
+		scrollContainer.scrollTop += deltaY;
+
+		dragStartX = event.clientX;
+		dragStartY = event.clientY;
+	}
+
+	function handleMouseUp() {
+		isDragging = false;
+	}
+
+	// Keyboard shortcuts for zoom
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.target !== document.body) return; // Only when not in input fields
+
+		switch (event.key) {
+			case '+':
+			case '=':
+				event.preventDefault();
+				zoomIn();
+				break;
+			case '-':
+				event.preventDefault();
+				zoomOut();
+				break;
+			case '0':
+				event.preventDefault();
+				resetZoom();
+				break;
+		}
+	}
+
+	// Track viewport dimensions
+	$effect(() => {
+		if (scrollContainer) {
+			const updateDimensions = () => {
+				viewportDimensions = {
+					width: scrollContainer!.clientWidth,
+					height: scrollContainer!.clientHeight
+				};
+			};
+
+			updateDimensions();
+
+			const resizeObserver = new ResizeObserver(updateDimensions);
+			resizeObserver.observe(scrollContainer);
+
+			return () => resizeObserver.disconnect();
+		}
+	});
+
+	// Add global event listeners
+	$effect(() => {
+		document.addEventListener('keydown', handleKeyDown);
+		document.addEventListener('mousemove', handleMouseMove);
+		document.addEventListener('mouseup', handleMouseUp);
+
+		return () => {
+			document.removeEventListener('keydown', handleKeyDown);
+			document.removeEventListener('mousemove', handleMouseMove);
+			document.removeEventListener('mouseup', handleMouseUp);
+		};
+	});
+
+	// Cursor mode functions
+	function setCursorMode(mode: 'interact' | 'pan' | 'select') {
+		cursorMode = mode;
+		if (mode !== 'select') {
+			selectedTiles = [];
+		}
+	}
+
+	function selectAllRevealed() {
+		if (mode === 'dm') {
+			selectedTiles = [...currentRevealedTiles];
+		}
+	}
+
+	function clearSelection() {
+		selectedTiles = [];
+	}
+
+	function revealSelectedTiles() {
+		if (mode === 'dm' && tileManager?.revealTiles) {
+			tileManager.revealTiles(selectedTiles);
+			selectedTiles = [];
+		}
+	}
+
+	function hideSelectedTiles() {
+		if (mode === 'dm' && tileManager?.hideTiles) {
+			tileManager.hideTiles(selectedTiles);
+			selectedTiles = [];
+		}
+	}
+
+	function flushPendingOperations() {
+		if (mode === 'dm' && tileManager?.flush) {
+			tileManager.flush();
+		}
+	}
+</script>
+
+<!-- Full screen layout -->
+<Tooltip.Provider>
+	<div class="flex fixed inset-0 bg-background">
+		<!-- Collapsible Sidebar -->
+		<Sheet bind:open={sidebarOpen}>
+			<div class="flex relative flex-col flex-1">
+				<!-- Floating Toolbars -->
+				<div class="flex absolute top-4 left-4 z-20 flex-col gap-2">
+					<!-- Main toolbar -->
+					<div
+						class="flex gap-2 items-center p-2 rounded-lg border shadow-lg bg-background/95 backdrop-blur-sm"
+					>
+						<SheetTrigger asChild>
+							{#snippet child({ props })}
+								<Button {...props} variant="ghost" size="sm">
+									<Menu class="w-4 h-4" />
+								</Button>
+							{/snippet}
+						</SheetTrigger>
+
+						<Separator orientation="vertical" class="h-6" />
+
+						<div class="flex gap-2 items-center">
+							<div class="text-sm font-medium">
+								{data.campaign?.name || data.session?.campaignSlug}
+							</div>
+							<Badge variant="secondary" class="text-xs">
+								{mode === 'dm' ? 'DM' : 'Player'}
+							</Badge>
+						</div>
+
+						{#if hasErrors}
+							<Separator orientation="vertical" class="h-6" />
+							<Badge variant="destructive" class="text-xs">Error</Badge>
+						{/if}
+
+						{#if mode === 'player' && tileState.error}
+							<Separator orientation="vertical" class="h-6" />
+							<Badge variant="destructive" class="text-xs">
+								{tileState.error}
+							</Badge>
+						{/if}
+					</div>
+
+					<!-- DM Selection Toolbar (only when in select mode) -->
+					{#if mode === 'dm' && cursorMode === 'select'}
+						<div
+							class="flex gap-2 items-center p-2 rounded-lg border shadow-lg bg-background/95 backdrop-blur-sm"
+						>
+							{#if selectedTiles.length > 0}
+								<Badge variant="secondary" class="text-xs">
+									{selectedTiles.length} selected
+								</Badge>
+
+								<Tooltip.Root>
+									<Tooltip.Trigger asChild>
+										<Button variant="ghost" size="sm" onclick={revealSelectedTiles}>
+											<Eye class="w-4 h-4" />
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content>Reveal Selected</Tooltip.Content>
+								</Tooltip.Root>
+
+								<Tooltip.Root>
+									<Tooltip.Trigger asChild>
+										<Button variant="ghost" size="sm" onclick={hideSelectedTiles}>
+											<EyeOff class="w-4 h-4" />
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content>Hide Selected</Tooltip.Content>
+								</Tooltip.Root>
+
+								<Tooltip.Root>
+									<Tooltip.Trigger asChild>
+										<Button variant="ghost" size="sm" onclick={clearSelection}>
+											<Trash2 class="w-4 h-4" />
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content>Clear Selection</Tooltip.Content>
+								</Tooltip.Root>
+							{:else}
+								<Button variant="ghost" size="sm" onclick={selectAllRevealed}>
+									Select All Revealed
+								</Button>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<!-- Zoom Controls -->
+				<div class="absolute bottom-4 left-4 z-20">
+					<div
+						class="flex flex-col gap-1 p-1 rounded-lg border shadow-lg bg-background/95 backdrop-blur-sm"
+					>
+						<Tooltip.Root>
+							<Tooltip.Trigger asChild>
+								<Button variant="ghost" size="sm" onclick={zoomIn}>
+									<Plus class="w-4 h-4" />
+								</Button>
+							</Tooltip.Trigger>
+							<Tooltip.Content side="right">Zoom In</Tooltip.Content>
+						</Tooltip.Root>
+
+						<Tooltip.Root>
+							<Tooltip.Trigger asChild>
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={resetZoom}
+									class={relativeZoom.current !== 1 ? 'bg-accent' : ''}
+								>
+									<span class="font-mono text-xs">{relativeZoom.target}x</span>
+								</Button>
+							</Tooltip.Trigger>
+							<Tooltip.Content side="right">Reset Zoom • Scroll to pan</Tooltip.Content>
+						</Tooltip.Root>
+
+						<Tooltip.Root>
+							<Tooltip.Trigger asChild>
+								<Button variant="ghost" size="sm" onclick={zoomOut}>
+									<Minus class="w-4 h-4" />
+								</Button>
+							</Tooltip.Trigger>
+							<Tooltip.Content side="right">Zoom Out</Tooltip.Content>
+						</Tooltip.Root>
+					</div>
+				</div>
+
+				<!-- Navigation Links -->
+				<div class="absolute top-4 right-4 z-20">
+					<div
+						class="flex gap-2 items-center p-2 rounded-lg border shadow-lg bg-background/95 backdrop-blur-sm"
+					>
+						{#if mode === 'dm'}
+							<Button variant="outline" size="sm" asChild>
+								<a href="/{data.session?.campaignSlug}/map" target="_blank">
+									<Users class="mr-2 w-4 h-4" />
+									Player View
+								</a>
+							</Button>
+							<Button variant="outline" size="sm" asChild>
+								<a href="/dm/{data.session?.campaignSlug}"> ← Dashboard </a>
+							</Button>
+						{:else}
+							<Button variant="outline" size="sm" asChild>
+								<a href="/{data.campaign?.slug}"> ← Dashboard </a>
+							</Button>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Map Container with native scroll -->
+				<div
+					class="overflow-auto flex-1 bg-muted/20"
+					style="cursor: {cursorMode === 'pan'
+						? isDragging
+							? 'grabbing'
+							: 'grab'
+						: 'default'}; width: 0; min-width: 100%;"
+					bind:this={scrollContainer}
+					onmousedown={handleMouseDown}
+				>
+					{#if data.hasMapImage}
+						<div
+							style="
+							padding: {mapDimensions.width > mapDimensions.height
+								? `${mapDimensions.height * 0.2 * mapZoom}px ${mapDimensions.width * 0.8 * (mapZoom - 1)}px`
+								: `${mapDimensions.height * 0.8 * (mapZoom - 1)}px ${mapDimensions.width * 0.2 * mapZoom}px`}; 
+							width: fit-content; 
+							margin: 0 auto;
+						"
+						>
+							<div
+								class="transition-transform duration-200 ease-out"
+								style="transform: scale({mapZoom}); transform-origin: center center;"
+								bind:this={mapElement}
+							>
+								<Map
+									campaignSlug={mode === 'dm' ? data.session?.campaignSlug : data.campaign?.slug}
+									variant={mode === 'dm' ? 'hexGrid' : 'responsive'}
+									initiallyRevealed={currentRevealedTiles}
+									selectedTiles={mode === 'dm' ? selectedTiles : undefined}
+									showControls={false}
+									showCoords={mode === 'dm' ? 'always' : 'hover'}
+									onHexRevealed={handleTileClick}
+									onMapLoad={handleMapLoad}
+									{hasPoI}
+									{hasNotes}
+									{isPlayerPosition}
+								/>
+							</div>
+						</div>
+					{:else}
+						<div class="flex justify-center items-center h-full">
+							<div class="text-center">
+								<div
+									class="flex justify-center items-center mx-auto mb-4 w-16 h-16 rounded-full bg-muted"
+								>
+									<MapPin class="w-8 h-8 text-muted-foreground" />
+								</div>
+								<h3 class="text-lg font-medium">Map Not Available</h3>
+								<p class="text-muted-foreground">
+									{mode === 'dm'
+										? 'Upload a map image to get started.'
+										: 'The campaign map is being prepared by your DM.'}
+								</p>
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Bottom Toolbar with Cursor Modes -->
+				<div class="absolute right-4 bottom-4 z-20">
+					<div class="flex gap-1 p-1 rounded-lg border shadow-lg bg-background/95 backdrop-blur-sm">
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<Button
+										{...props}
+										variant={cursorMode === 'interact' ? 'default' : 'ghost'}
+										size="sm"
+										onclick={() => setCursorMode('interact')}
+									>
+										<MousePointer class="w-4 h-4" />
+									</Button>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content side="top">Default Cursor - Interact with hexes</Tooltip.Content>
+						</Tooltip.Root>
+
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<Button
+										{...props}
+										variant={cursorMode === 'pan' ? 'default' : 'ghost'}
+										size="sm"
+										onclick={() => setCursorMode('pan')}
+									>
+										<Hand class="w-4 h-4" />
+									</Button>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content side="top">Pan Mode - Drag or scroll to pan</Tooltip.Content>
+						</Tooltip.Root>
+
+						{#if mode === 'dm'}
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									{#snippet child({ props })}
+										<Button
+											{...props}
+											variant={cursorMode === 'select' ? 'default' : 'ghost'}
+											size="sm"
+											onclick={() => setCursorMode('select')}
+										>
+											<Square class="w-4 h-4" />
+										</Button>
+									{/snippet}
+								</Tooltip.Trigger>
+								<Tooltip.Content side="top"
+									>Multi-select - Select hexes for bulk operations</Tooltip.Content
+								>
+							</Tooltip.Root>
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<!-- Sidebar Content -->
+			<SheetContent side="left" class="w-80">
+				<SheetHeader>
+					<SheetTitle>
+						{mode === 'dm' ? 'DM Controls' : 'Map Info'}
+					</SheetTitle>
+				</SheetHeader>
+
+				<div class="mt-6 space-y-6">
+					<!-- Statistics -->
+					<div>
+						<h3 class="mb-3 text-sm font-medium">Statistics</h3>
+						<div class="space-y-2">
+							<div class="flex justify-between text-sm">
+								<span class="text-muted-foreground">Revealed Tiles</span>
+								<span class="font-medium">{currentRevealedTiles.length}</span>
+							</div>
+							<div class="flex justify-between text-sm">
+								<span class="text-muted-foreground">Points of Interest</span>
+								<span class="font-medium">
+									{data.mapMarkers?.filter((m) => m.type === 'poi').length || 0}
+								</span>
+							</div>
+							<div class="flex justify-between text-sm">
+								<span class="text-muted-foreground">Notes</span>
+								<span class="font-medium">
+									{data.mapMarkers?.filter((m) => m.type === 'note').length || 0}
+								</span>
+							</div>
+							{#if hasPendingOperations}
+								<div class="flex justify-between text-sm">
+									<span class="text-orange-600">Pending Changes</span>
+									<Badge variant="secondary">{tileState.pending.length}</Badge>
+								</div>
+							{/if}
+						</div>
+					</div>
+
+					<Separator />
+
+					{#if mode === 'dm'}
+						<!-- DM Controls -->
+						<div>
+							<h3 class="mb-3 text-sm font-medium">Tile Management</h3>
+							<div class="space-y-2">
+								<p class="text-sm text-muted-foreground">
+									Click any tile to add POI or notes. Use multi-select for bulk reveal/hide
+									operations.
+								</p>
+
+								{#if hasPendingOperations}
+									<Button
+										variant="outline"
+										size="sm"
+										class="w-full"
+										onclick={flushPendingOperations}
+									>
+										Save {tileState.pending.length} Changes Now
+									</Button>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<!-- Player Info -->
+						<div>
+							<h3 class="mb-3 text-sm font-medium">How to Explore</h3>
+							<div class="space-y-2 text-sm text-muted-foreground">
+								<p>• Click any tile to view details or add notes</p>
+								<p>• Revealed tiles show explored territory</p>
+								<p>• Look for POI markers on important locations</p>
+								<p>• Travel mode coming soon...</p>
+							</div>
+						</div>
+
+						{#if tileState.currentPosition}
+							<div>
+								<h3 class="mb-3 text-sm font-medium">Current Position</h3>
+								<div
+									class="flex gap-2 items-center p-2 bg-green-50 rounded-md border border-green-200"
+								>
+									<User class="w-4 h-4 text-green-600" />
+									<span class="text-sm">
+										{tileState.currentPosition.x + 1}, {tileState.currentPosition.y + 1}
+									</span>
+								</div>
+							</div>
+						{/if}
+					{/if}
+				</div>
+			</SheetContent>
+		</Sheet>
+	</div>
+</Tooltip.Provider>
+
+<!-- Tile Details Modal -->
+{#if showTileDetails && selectedTile}
+	<TileDetails {selectedTile} role={mode} onClose={closeTileDetails} />
+{/if}
+
+<style>
+	:global(body) {
+		margin: 0;
+		padding: 0;
+		overflow: hidden;
+	}
+</style>

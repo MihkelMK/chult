@@ -3,7 +3,7 @@ import { json, error } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/session';
 import { db } from '$lib/server/db';
 import { revealedTiles } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import eventEmitter from '$lib/server/events';
 
 export const POST: RequestHandler = async (event) => {
 	console.log(event);
@@ -41,10 +41,20 @@ export const POST: RequestHandler = async (event) => {
 		// }
 
 		// Reveal the tile
-		await db.insert(revealedTiles).values({
-			campaignId: session.campaignId,
-			x,
-			y
+		const [newTile] = await db
+			.insert(revealedTiles)
+			.values({
+				campaignId: session.campaignId,
+				x,
+				y
+			})
+			.returning();
+
+		// Emit event to notify everyone (DM should see player exploration)
+		eventEmitter.emit(`campaign-${session.campaignSlug}`, {
+			event: 'tile-revealed',
+			data: [{ x, y }],
+			role: 'all'
 		});
 
 		return json({ success: true, coordinates: { x, y } });

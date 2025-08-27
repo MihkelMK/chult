@@ -8,6 +8,7 @@ export interface SessionData {
 	campaignId: number;
 	campaignSlug: string;
 	role: 'dm' | 'player';
+	viewAs?: 'dm' | 'player';
 	expiresAt: number;
 }
 
@@ -58,9 +59,9 @@ export async function validateCampaignAccess(
 
 export async function createSession(
 	event: RequestEvent,
-	sessionData: Omit<SessionData, 'expiresAt'>
+	sessionData: Omit<SessionData, 'expiresAt'> | SessionData
 ) {
-	const sessionId = generateSessionId();
+	const sessionId = event.cookies.get('session') || generateSessionId();
 	const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
 	const session: SessionData = {
@@ -125,7 +126,9 @@ export function requireAuth(event: RequestEvent, requiredRole?: 'dm' | 'player')
 		return null;
 	}
 
-	if (requiredRole && requiredRole === 'dm' && session.role !== 'dm') {
+	const effectiveRole = session.viewAs || session.role;
+
+	if (requiredRole && requiredRole === 'dm' && effectiveRole !== 'dm') {
 		return null;
 	}
 

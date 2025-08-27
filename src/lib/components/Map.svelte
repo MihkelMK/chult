@@ -33,6 +33,9 @@
 		onAllHexesRevealed?: () => void;
 		onMapLoad?: (dimensions: { width: number; height: number }) => void;
 		onMapError?: () => void;
+		hasPoI?: (coords: TileCoords) => boolean;
+		hasNotes?: (coords: TileCoords) => boolean;
+		isPlayerPosition?: (coords: TileCoords) => boolean;
 	}
 
 	let {
@@ -51,7 +54,10 @@
 		onAllHexesReset = () => {},
 		onAllHexesRevealed = () => {},
 		onMapLoad = () => {},
-		onMapError = () => {}
+		onMapError = () => {},
+		hasPoI = () => false,
+		hasNotes = () => false,
+		isPlayerPosition = () => false
 	}: Props = $props();
 
 	let hexGrid: HexInteractable[] = $state([]);
@@ -177,6 +183,53 @@
 	{/if}
 {/snippet}
 
+{#snippet indicators(hex: Hex | HexInteractable)}
+	{@const coords = { x: hex.col, y: hex.row }}
+	{@const centerX = hex.centerX}
+	{@const centerY = hex.centerY}
+	{@const hasPoIMarker = hasPoI(coords)}
+	{@const hasNotesMarker = hasNotes(coords)}
+	{@const isPlayerHere = isPlayerPosition(coords)}
+	
+	<!-- Player position indicator (highest priority) -->
+	{#if isPlayerHere}
+		<circle
+			cx={centerX}
+			cy={centerY - 8}
+			r="4"
+			fill="#22c55e"
+			stroke="white"
+			stroke-width="1.5"
+			class="drop-shadow-sm"
+		/>
+		<circle
+			cx={centerX}
+			cy={centerY - 8}
+			r="2"
+			fill="white"
+			class="animate-pulse"
+		/>
+	{/if}
+	
+	<!-- POI indicator (red pin, top right) -->
+	{#if hasPoIMarker}
+		<g transform="translate({centerX + 8}, {centerY - 8})">
+			<circle r="3" fill="#ef4444" stroke="white" stroke-width="1" />
+			<circle r="1.5" fill="white" />
+		</g>
+	{/if}
+	
+	<!-- Notes indicator (blue note, top left) -->
+	{#if hasNotesMarker}
+		<g transform="translate({centerX - 8}, {centerY - 8})">
+			<rect x="-2" y="-2" width="4" height="4" rx="0.5" fill="#3b82f6" stroke="white" stroke-width="1" />
+			<line x1="-1" y1="-1" x2="1" y2="-1" stroke="white" stroke-width="0.5" />
+			<line x1="-1" y1="0" x2="1" y2="0" stroke="white" stroke-width="0.5" />
+			<line x1="-1" y1="1" x2="0" y2="1" stroke="white" stroke-width="0.5" />
+		</g>
+	{/if}
+{/snippet}
+
 {#if showControls}
 	<div class="my-5 flex flex-wrap justify-center gap-3">
 		<button
@@ -299,6 +352,7 @@
 								/>
 								{#if hex.row > 0}
 									{@render label(hex, showCoords)}
+									{@render indicators(hex)}
 								{/if}
 							</g>
 						{/if}

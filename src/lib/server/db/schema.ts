@@ -23,8 +23,8 @@ export const revealedTiles = pgTable('revealed_tiles', {
 	revealedAt: timestamp('revealed_at', { withTimezone: false }).notNull().defaultNow()
 });
 
-// Sessions - DM-created sessions for tracking player movement
-export const sessions = pgTable('sessions', {
+// GameSessions - DM-created gameSessions for tracking player movement
+export const gameSessions = pgTable('gameSessions', {
 	id: serial('id').primaryKey(),
 	campaignId: integer('campaign_id')
 		.notNull()
@@ -35,12 +35,12 @@ export const sessions = pgTable('sessions', {
 	createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow()
 });
 
-// Navigation paths - player movement during sessions
+// Navigation paths - player movement during gameSessions
 export const navigationPaths = pgTable('navigation_paths', {
 	id: serial('id').primaryKey(),
-	sessionId: integer('session_id')
+	gameSessionId: integer('gameSession_id')
 		.notNull()
-		.references(() => sessions.id, { onDelete: 'cascade' }),
+		.references(() => gameSessions.id, { onDelete: 'cascade' }),
 	x: integer('x').notNull(),
 	y: integer('y').notNull(),
 	timestamp: timestamp('timestamp', { withTimezone: false }).notNull().defaultNow(),
@@ -48,31 +48,19 @@ export const navigationPaths = pgTable('navigation_paths', {
 });
 
 // Points of Interest - DM-created POIs on tiles
-export const pointsOfInterest = pgTable('points_of_interest', {
+export const mapMarkers = pgTable('map_markers', {
 	id: serial('id').primaryKey(),
 	campaignId: integer('campaign_id')
 		.notNull()
 		.references(() => campaigns.id, { onDelete: 'cascade' }),
 	x: integer('x').notNull(),
 	y: integer('y').notNull(),
-	title: text('title').notNull(),
-	description: text('description'),
+	type: text('type', { enum: ['poi', 'note'] }).notNull(),
+	title: text('title'), // Required for POIs, optional for notes
+	content: text('content'), // Description for POIs, body for notes
+	imagePath: text('image_path'),
+	authorRole: text('author_role', { enum: ['dm', 'player'] }).notNull(),
 	visibleToPlayers: boolean('visible_to_players').notNull().default(false),
-	imagePath: text('image_path'),
-	createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
-	updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
-});
-
-// Tile notes - player-created notes on tiles
-export const tileNotes = pgTable('tile_notes', {
-	id: serial('id').primaryKey(),
-	campaignId: integer('campaign_id')
-		.notNull()
-		.references(() => campaigns.id, { onDelete: 'cascade' }),
-	x: integer('x').notNull(),
-	y: integer('y').notNull(),
-	content: text('content').notNull(),
-	imagePath: text('image_path'),
 	createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 });
@@ -96,9 +84,8 @@ export const uploadedImages = pgTable('uploaded_images', {
 // Relations for easier querying
 export const campaignsRelations = relations(campaigns, ({ many }) => ({
 	revealedTiles: many(revealedTiles),
-	sessions: many(sessions),
-	pointsOfInterest: many(pointsOfInterest),
-	tileNotes: many(tileNotes),
+	gameSessions: many(gameSessions),
+	mapMarkers: many(mapMarkers),
 	uploadedImages: many(uploadedImages)
 }));
 
@@ -109,31 +96,24 @@ export const revealedTilesRelations = relations(revealedTiles, ({ one }) => ({
 	})
 }));
 
-export const sessionsRelations = relations(sessions, ({ one, many }) => ({
+export const gameSessionsRelations = relations(gameSessions, ({ one, many }) => ({
 	campaign: one(campaigns, {
-		fields: [sessions.campaignId],
+		fields: [gameSessions.campaignId],
 		references: [campaigns.id]
 	}),
 	navigationPaths: many(navigationPaths)
 }));
 
 export const navigationPathsRelations = relations(navigationPaths, ({ one }) => ({
-	session: one(sessions, {
-		fields: [navigationPaths.sessionId],
-		references: [sessions.id]
+	gameSession: one(gameSessions, {
+		fields: [navigationPaths.gameSessionId],
+		references: [gameSessions.id]
 	})
 }));
 
-export const pointsOfInterestRelations = relations(pointsOfInterest, ({ one }) => ({
+export const mapMarkersRelations = relations(mapMarkers, ({ one }) => ({
 	campaign: one(campaigns, {
-		fields: [pointsOfInterest.campaignId],
-		references: [campaigns.id]
-	})
-}));
-
-export const tileNotesRelations = relations(tileNotes, ({ one }) => ({
-	campaign: one(campaigns, {
-		fields: [tileNotes.campaignId],
+		fields: [mapMarkers.campaignId],
 		references: [campaigns.id]
 	})
 }));

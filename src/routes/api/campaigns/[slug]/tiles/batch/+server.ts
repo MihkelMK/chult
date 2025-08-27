@@ -2,8 +2,9 @@ import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/session';
 import { db } from '$lib/server/db';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray, or } from 'drizzle-orm';
 import { revealedTiles } from '$lib/server/db/schema';
+import eventEmitter from '$lib/server/events';
 
 export const POST: RequestHandler = async (event) => {
 	const session = requireAuth(event, 'dm');
@@ -51,35 +52,37 @@ export const POST: RequestHandler = async (event) => {
 							y: tile.y
 						}))
 					);
+					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
+						event: 'tile-revealed',
+						data: newTiles,
+						role: 'player'
+					});
 				}
 
 				return { revealed: newTiles.length, existing: tiles.length - newTiles.length };
 			} else if (type === 'hide') {
 				// Batch delete revealed tiles
+				const tileCoordinates = tiles.map((t) => ({ x: t.x, y: t.y }));
 
-				// Build OR condition for multiple tiles
-				const conditions = tiles.map((tile) =>
-					and(eq(revealedTiles.x, tile.x), eq(revealedTiles.y, tile.y))
+				// Create OR conditions for each coordinate pair
+				const coordinateConditions = tileCoordinates.map((coords) =>
+					and(eq(revealedTiles.x, coords.x), eq(revealedTiles.y, coords.y))
 				);
 
-				let deletedCount = 0;
+				const deletedTiles = await tx
+					.delete(revealedTiles)
+					.where(and(eq(revealedTiles.campaignId, session.campaignId), or(...coordinateConditions)))
+					.returning({ x: revealedTiles.x, y: revealedTiles.y });
 
-				// Delete in batches to avoid too complex queries
-				const BATCH_SIZE = 50;
-				for (let i = 0; i < conditions.length; i += BATCH_SIZE) {
-					const batch = conditions.slice(i, i + BATCH_SIZE);
-
-					for (const condition of batch) {
-						const deletedRows = await tx
-							.delete(revealedTiles)
-							.where(and(eq(revealedTiles.campaignId, session.campaignId), condition))
-							.returning({ id: revealedTiles.id });
-
-						deletedCount += deletedRows.length;
-					}
+				if (deletedTiles.length > 0) {
+					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
+						event: 'tile-hidden',
+						data: deletedTiles,
+						role: 'player'
+					});
 				}
 
-				return { hidden: deletedCount };
+				return { hidden: deletedTiles.length };
 			} else {
 				throw new Error('Invalid operation type');
 			}
