@@ -83,7 +83,7 @@ export class DMCampaignState extends CampaignState {
 	}
 
 	async createMarker(marker: Omit<MapMarkerResponse, 'id' | 'createdAt' | 'updatedAt'>) {
-		const tempId = -1; // Temporary ID for the optimistic update
+		const tempId = -Math.floor(Math.random() * 1000000) - 1; // Unique temporary ID for the optimistic update
 		const newMarker: MapMarkerResponse = {
 			...marker,
 			id: tempId,

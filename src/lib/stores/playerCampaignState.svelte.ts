@@ -32,7 +32,7 @@ export class PlayerCampaignState extends CampaignState {
 	// Optimistic UI methods
 
 	async createNote(note: Omit<MapMarkerResponse, 'id' | 'createdAt' | 'updatedAt' | 'type'>) {
-		const tempId = -1;
+		const tempId = -Math.floor(Math.random() * 1000000) - 1;
 		const newNote: PlayerMapMarkerResponse = {
 			...note,
 			id: tempId,

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Map from './Map.svelte';
 	import TileDetails from './TileDetails.svelte';
+	import TileContentPreview from './TileContentPreview.svelte';
+	import TileContentModal from './TileContentModal.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Sheet,
@@ -15,6 +17,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import type { HexRevealedEvent, TileCoords } from '$lib/types';
 	import type { PageData } from '../../routes/(campaign)/[slug]/map/$types';
+	import { getCampaignState } from '$lib/contexts/campaignContext';
 	import {
 		Menu,
 		Plus,
@@ -59,6 +62,8 @@
 	let sidebarOpen = $state(false);
 	let selectedTile = $state<TileCoords | null>(null);
 	let showTileDetails = $state(false);
+	// Use campaign state for hover management
+	const campaignState = getCampaignState();
 	let cursorMode = $state<'interact' | 'pan' | 'select' | 'paint'>('interact');
 	let brushSize = $state<number>(1); // Brush radius (1-5)
 	let paintMode = $state<'add' | 'remove'>('add');
@@ -95,10 +100,7 @@
 
 	let hasErrors = $derived(mode === 'dm' && tileState.errors && tileState.errors.length > 0);
 
-	// Helper functions for tile content
-	function getTileMarkers(coords: TileCoords) {
-		return data.mapMarkers?.filter((m) => m.x === coords.x && m.y === coords.y) || [];
-	}
+	// Helper functions for tile content (using campaign state)
 
 	function getBrushTiles(centerCoords: TileCoords): TileCoords[] {
 		const tiles: TileCoords[] = [];
@@ -117,11 +119,11 @@
 	}
 
 	function hasPoI(coords: TileCoords) {
-		return getTileMarkers(coords).some((m) => m.type === 'poi');
+		return campaignState.getTileMarkers(coords, mode).some((m) => m.type === 'poi');
 	}
 
 	function hasNotes(coords: TileCoords) {
-		return getTileMarkers(coords).some((m) => m.type === 'note');
+		return campaignState.getTileMarkers(coords, mode).some((m) => m.type === 'note');
 	}
 
 	function isPlayerPosition(coords: TileCoords) {
@@ -139,9 +141,8 @@
 
 		switch (cursorMode) {
 			case 'interact':
-				// Default action: open tile details for adding POI/notes
-				selectedTile = coords;
-				showTileDetails = true;
+				// Default action: open new tile content modal
+				campaignState.openTileModal(coords);
 				break;
 			case 'select':
 				// Multi-select mode - toggle selection
@@ -186,6 +187,20 @@
 	function closeTileDetails() {
 		showTileDetails = false;
 		selectedTile = null;
+	}
+
+	function handleHexHover(coords: TileCoords | null) {
+		// Only show hover in interact mode and if tile has content
+		if (cursorMode === 'interact' && coords) {
+			const markers = campaignState.getTileMarkers(coords, mode);
+			if (markers.length > 0) {
+				campaignState.setHoveredTile(coords);
+			} else {
+				campaignState.setHoveredTile(null);
+			}
+		} else {
+			campaignState.setHoveredTile(null);
+		}
 	}
 
 	// Handle map load to get dimensions
@@ -685,12 +700,31 @@
 									showControls={false}
 									showCoords={mode === 'dm' ? 'always' : 'hover'}
 									onHexRevealed={handleTileClick}
+									onHexHover={handleHexHover}
 									onMapLoad={handleMapLoad}
 									{hasPoI}
 									{hasNotes}
 									{isPlayerPosition}
 								/>
 							</div>
+
+							<!-- Hover Preview Overlay -->
+							{#if campaignState.hoveredTile}
+								<TileContentPreview
+									coords={campaignState.hoveredTile}
+									markers={campaignState.getTileMarkers(campaignState.hoveredTile, mode)}
+									campaignSlug={data.campaign?.slug || data.session?.campaignSlug}
+									role={mode}
+								>
+									{#snippet children()}
+										<!-- Invisible trigger element positioned over the hovered hex -->
+										<div
+											class="absolute pointer-events-none"
+											style="left: 0; top: 0; width: 1px; height: 1px;"
+										></div>
+									{/snippet}
+								</TileContentPreview>
+							{/if}
 						</div>
 					{:else}
 						<div class="flex justify-center items-center h-full">
@@ -905,9 +939,23 @@
 	</div>
 </Tooltip.Provider>
 
-<!-- Tile Details Modal -->
+<!-- Tile Details Modal (Old) -->
 {#if showTileDetails && selectedTile}
 	<TileDetails {selectedTile} role={mode} onClose={closeTileDetails} />
+{/if}
+
+<!-- New Tile Content Modal -->
+{#if campaignState.modalTile}
+	<TileContentModal
+		coords={campaignState.modalTile}
+		role={mode}
+		bind:open={campaignState.showTileModal}
+		onOpenChange={(open) => {
+			if (!open) {
+				campaignState.closeTileModal();
+			}
+		}}
+	/>
 {/if}
 
 <style>
@@ -917,3 +965,4 @@
 		overflow: hidden;
 	}
 </style>
+

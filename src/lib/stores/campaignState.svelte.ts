@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import type { CampaignDataResponse, PlayerCampaignDataResponse } from '$lib/types';
+import type { CampaignDataResponse, PlayerCampaignDataResponse, TileCoords } from '$lib/types';
 import EventEmitter from 'eventemitter3';
 
 // Define a type for the event listener to ensure type safety
@@ -9,6 +9,11 @@ export class CampaignState extends EventEmitter {
 	public campaign: CampaignDataResponse | PlayerCampaignDataResponse;
 	private campaignSlug: string;
 	private eventSource: EventSource | null = null;
+	
+	// Hover state management
+	public hoveredTile = $state<TileCoords | null>(null);
+	public showTileModal = $state(false);
+	public modalTile = $state<TileCoords | null>(null);
 
 	constructor(
 		initialData: CampaignDataResponse | PlayerCampaignDataResponse,
@@ -131,5 +136,40 @@ export class CampaignState extends EventEmitter {
 		}
 
 		return response.json() as Promise<T>;
+	}
+
+	// Tile interaction state management
+	setHoveredTile(tile: TileCoords | null) {
+		this.hoveredTile = tile;
+	}
+
+	openTileModal(tile: TileCoords) {
+		this.modalTile = tile;
+		this.showTileModal = true;
+	}
+
+	closeTileModal() {
+		this.showTileModal = false;
+		this.modalTile = null;
+	}
+
+	// Get markers for a specific tile with role-based filtering
+	getTileMarkers(coords: TileCoords, role: 'dm' | 'player') {
+		if (!('mapMarkers' in this.campaign)) return [];
+		
+		const tileMarkers = this.campaign.mapMarkers.filter(
+			(m) => m.x === coords.x && m.y === coords.y
+		);
+
+		// Role-based filtering
+		if (role === 'dm') {
+			return tileMarkers; // DM sees everything
+		} else {
+			// Players only see markers visible to them
+			return tileMarkers.filter((m) => {
+				// Player markers don't have visibleToPlayers field, they're always visible to players
+				return !('visibleToPlayers' in m) || m.visibleToPlayers;
+			});
+		}
 	}
 }

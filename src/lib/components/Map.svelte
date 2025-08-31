@@ -34,6 +34,7 @@
 		showCoords?: 'never' | 'always' | 'hover';
 		showAnimations?: boolean;
 		onHexRevealed?: (event: HexRevealedEvent) => void;
+		onHexHover?: (coords: TileCoords | null) => void;
 		onAllHexesReset?: () => void;
 		onAllHexesRevealed?: () => void;
 		onMapLoad?: (dimensions: { width: number; height: number }) => void;
@@ -60,6 +61,7 @@
 		showCoords = 'hover',
 		showAnimations = true,
 		onHexRevealed = () => {},
+		onHexHover = () => {},
 		onAllHexesReset = () => {},
 		onAllHexesRevealed = () => {},
 		onMapLoad = () => {},
@@ -419,6 +421,8 @@
 											? 'transition: stroke-opacity 300ms, fill-opacity 300ms;'
 											: ''}
 										onclick={() => onHexRevealed({ hex, index })}
+										onmouseenter={() => onHexHover({ x: hex.col, y: hex.row })}
+										onmouseleave={() => onHexHover(null)}
 										role="button"
 										tabindex="0"
 										aria-label="Hex {hex.row}, {hex.col}"
