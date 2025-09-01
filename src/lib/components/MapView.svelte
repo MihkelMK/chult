@@ -129,6 +129,7 @@
 
 	// Event handlers based on cursor mode
 	function handleTileClick(event: HexRevealedEvent) {
+		console.log('tile click');
 		const coords: TileCoords = { x: event.hex.col, y: event.hex.row };
 
 		switch (cursorMode) {
@@ -293,27 +294,27 @@
 
 <!-- Full screen layout -->
 <Tooltip.Provider>
-	<div class="fixed inset-0 flex bg-background">
+	<div class="flex fixed inset-0 bg-background">
 		<!-- Collapsible Sidebar -->
 		<Sheet bind:open={sidebarOpen}>
-			<div class="relative flex flex-1 flex-col">
+			<div class="flex relative flex-col flex-1">
 				<!-- Floating Toolbars -->
-				<div class="absolute top-4 left-4 z-20 flex flex-col gap-2">
+				<div class="flex absolute top-4 left-4 z-20 flex-col gap-2">
 					<!-- Main toolbar -->
 					<div
-						class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+						class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 					>
 						<SheetTrigger>
 							{#snippet child({ props })}
 								<Button {...props} variant="ghost" size="sm">
-									<Menu class="h-4 w-4" />
+									<Menu class="w-4 h-4" />
 								</Button>
 							{/snippet}
 						</SheetTrigger>
 
 						<Separator orientation="vertical" class="h-6" />
 
-						<div class="flex items-center gap-2">
+						<div class="flex gap-2 items-center">
 							<div class="text-sm font-medium">
 								{data.campaign?.name || data.session?.campaignSlug}
 							</div>
@@ -337,7 +338,7 @@
 						<!-- DM Transparency Control -->
 						{#if mode === 'dm'}
 							<Separator orientation="vertical" class="h-6" />
-							<div class="flex items-center gap-2">
+							<div class="flex gap-2 items-center">
 								<span class="text-xs text-muted-foreground">Tile opacity:</span>
 								<div class="w-20">
 									<Slider
@@ -349,7 +350,7 @@
 										class="w-full"
 									/>
 								</div>
-								<span class="w-8 text-center font-mono text-xs"
+								<span class="w-8 font-mono text-xs text-center"
 									>{Math.round(tileTransparency * 100)}%</span
 								>
 							</div>
@@ -359,7 +360,7 @@
 					<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
 					{#if mode === 'dm' && (cursorMode === 'select' || cursorMode === 'paint')}
 						<div
-							class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+							class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 						>
 							<!-- Always-Reveal Toggle -->
 							<Tooltip.Root>
@@ -369,7 +370,7 @@
 										size="sm"
 										onclick={() => (alwaysRevealMode = !alwaysRevealMode)}
 									>
-										<CircleDot class="h-4 w-4" />
+										<CircleDot class="w-4 h-4" />
 									</Button>
 								</Tooltip.Trigger>
 								<Tooltip.Content>
@@ -388,9 +389,9 @@
 										onclick={() => (showAlwaysRevealed = !showAlwaysRevealed)}
 									>
 										{#if showAlwaysRevealed}
-											<Eye class="h-4 w-4" />
+											<Eye class="w-4 h-4" />
 										{:else}
-											<EyeOff class="h-4 w-4" />
+											<EyeOff class="w-4 h-4" />
 										{/if}
 									</Button>
 								</Tooltip.Trigger>
@@ -411,7 +412,7 @@
 											size="sm"
 											onclick={() => (paintMode = 'add')}
 										>
-											<Plus class="h-4 w-4" />
+											<Plus class="w-4 h-4" />
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content>Add Mode - Paint to add tiles</Tooltip.Content>
@@ -424,7 +425,7 @@
 											size="sm"
 											onclick={() => (paintMode = 'remove')}
 										>
-											<Minus class="h-4 w-4" />
+											<Minus class="w-4 h-4" />
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content>Remove Mode - Paint to remove tiles</Tooltip.Content>
@@ -433,7 +434,7 @@
 								<!-- Brush Size Slider -->
 								<Separator orientation="vertical" class="h-6" />
 
-								<div class="flex items-center gap-2 px-2">
+								<div class="flex gap-2 items-center px-2">
 									<span class="text-xs text-muted-foreground">Size:</span>
 									<div class="w-20">
 										<Slider
@@ -445,7 +446,7 @@
 											class="w-full"
 										/>
 									</div>
-									<span class="w-6 text-center font-mono text-xs">{brushSize}</span>
+									<span class="w-6 font-mono text-xs text-center">{brushSize}</span>
 								</div>
 							{/if}
 
@@ -458,7 +459,7 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button variant="ghost" size="sm" onclick={revealSelectedTiles}>
-											<Eye class="h-4 w-4" />
+											<Eye class="w-4 h-4" />
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content>Reveal Selected</Tooltip.Content>
@@ -467,7 +468,7 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button variant="ghost" size="sm" onclick={hideSelectedTiles}>
-											<EyeOff class="h-4 w-4" />
+											<EyeOff class="w-4 h-4" />
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content>Hide Selected</Tooltip.Content>
@@ -476,7 +477,7 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button variant="ghost" size="sm" onclick={clearSelection}>
-											<Trash2 class="h-4 w-4" />
+											<Trash2 class="w-4 h-4" />
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content>Clear Selection</Tooltip.Content>
@@ -493,12 +494,12 @@
 				<!-- Zoom Controls -->
 				<div class="absolute bottom-4 left-4 z-20">
 					<div
-						class="flex flex-col gap-1 rounded-lg border bg-background/95 p-1 shadow-xs backdrop-blur-sm"
+						class="flex flex-col gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 					>
 						<Tooltip.Root>
 							<Tooltip.Trigger>
 								<Button variant="ghost" size="sm" onclick={zoomIn}>
-									<Plus class="h-4 w-4" />
+									<Plus class="w-4 h-4" />
 								</Button>
 							</Tooltip.Trigger>
 							<Tooltip.Content side="right">Zoom In</Tooltip.Content>
@@ -521,7 +522,7 @@
 						<Tooltip.Root>
 							<Tooltip.Trigger>
 								<Button variant="ghost" size="sm" onclick={zoomOut}>
-									<Minus class="h-4 w-4" />
+									<Minus class="w-4 h-4" />
 								</Button>
 							</Tooltip.Trigger>
 							<Tooltip.Content side="right">Zoom Out</Tooltip.Content>
@@ -533,15 +534,15 @@
 				{#if data.session?.role === 'dm'}
 					<div class="absolute top-4 right-4 z-20">
 						<div
-							class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+							class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 						>
 							<form action="?/toggleView" method="POST" class="contents">
 								<Button variant="ghost" size="sm" type="submit">
 									{#if mode === 'dm'}
-										<Users class="mr-2 h-4 w-4" />
+										<Users class="mr-2 w-4 h-4" />
 										Player View
 									{:else}
-										<User class="mr-2 h-4 w-4" />
+										<User class="mr-2 w-4 h-4" />
 										DM View
 									{/if}
 								</Button>
@@ -552,7 +553,7 @@
 
 				<!-- Map Container with native scroll -->
 				<div
-					class="max-w-screen flex-1 overflow-auto bg-muted/20"
+					class="overflow-auto flex-1 max-w-screen bg-muted/20"
 					style="cursor: {cursorMode === 'pan'
 						? isDragging
 							? 'grabbing'
@@ -566,7 +567,7 @@
 					aria-label="Interactive map"
 				>
 					{#if data.hasMapImage}
-						<div class="h-screen max-w-screen min-w-screen p-4">
+						<div class="p-4 h-screen max-w-screen min-w-screen">
 							<Map
 								campaignSlug={mode === 'dm' ? data.session?.campaignSlug : data.campaign?.slug}
 								variant={mode === 'dm' ? 'hexGrid' : 'responsive'}
@@ -596,19 +597,19 @@
 								>
 									<!-- Invisible trigger element positioned over the hovered hex -->
 									<div
-										class="pointer-events-none absolute"
+										class="absolute pointer-events-none"
 										style="left: 0; top: 0; width: 1px; height: 1px;"
 									></div>
 								</TileContentPreview>
 							{/if}
 						</div>
 					{:else}
-						<div class="flex h-full items-center justify-center">
+						<div class="flex justify-center items-center h-full">
 							<div class="text-center">
 								<div
-									class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted"
+									class="flex justify-center items-center mx-auto mb-4 w-16 h-16 rounded-full bg-muted"
 								>
-									<MapPin class="h-8 w-8 text-muted-foreground" />
+									<MapPin class="w-8 h-8 text-muted-foreground" />
 								</div>
 								<h3 class="text-lg font-medium">Map Not Available</h3>
 								<p class="text-muted-foreground">
@@ -623,7 +624,7 @@
 
 				<!-- Bottom Toolbar with Cursor Modes -->
 				<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-					<div class="flex gap-1 rounded-lg border bg-background/95 p-1 shadow-xs backdrop-blur-sm">
+					<div class="flex gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm">
 						<Tooltip.Root>
 							<Tooltip.Trigger>
 								{#snippet child({ props })}
@@ -633,7 +634,7 @@
 										size="sm"
 										onclick={() => setCursorMode('interact')}
 									>
-										<MousePointer class="h-4 w-4" />
+										<MousePointer class="w-4 h-4" />
 									</Button>
 								{/snippet}
 							</Tooltip.Trigger>
@@ -649,7 +650,7 @@
 										size="sm"
 										onclick={() => setCursorMode('pan')}
 									>
-										<Hand class="h-4 w-4" />
+										<Hand class="w-4 h-4" />
 									</Button>
 								{/snippet}
 							</Tooltip.Trigger>
@@ -666,7 +667,7 @@
 											size="sm"
 											onclick={() => setCursorMode('select')}
 										>
-											<Square class="h-4 w-4" />
+											<Square class="w-4 h-4" />
 										</Button>
 									{/snippet}
 								</Tooltip.Trigger>
@@ -685,7 +686,7 @@
 											onclick={() => setCursorMode('paint')}
 											class="relative"
 										>
-											<Paintbrush class="h-4 w-4" />
+											<Paintbrush class="w-4 h-4" />
 											{#if cursorMode === 'paint'}
 												<span
 													class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full text-xs {paintMode ===
@@ -694,9 +695,9 @@
 														: 'bg-red-500'}"
 												>
 													{#if paintMode === 'add'}
-														<Plus class="h-2 w-2 text-white" />
+														<Plus class="w-2 h-2 text-white" />
 													{:else}
-														<Minus class="h-2 w-2 text-white" />
+														<Minus class="w-2 h-2 text-white" />
 													{/if}
 												</span>
 											{/if}
@@ -720,7 +721,7 @@
 					</SheetTitle>
 				</SheetHeader>
 
-				<div class="mt-6 space-y-4 px-6">
+				<div class="px-6 mt-6 space-y-4">
 					<!-- Statistics -->
 					<div>
 						<h3 class="mb-3 text-sm font-medium">Statistics</h3>
@@ -790,9 +791,9 @@
 							<div>
 								<h3 class="mb-3 text-sm font-medium">Current Position</h3>
 								<div
-									class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-2"
+									class="flex gap-2 items-center p-2 bg-green-50 rounded-md border border-green-200"
 								>
-									<User class="h-4 w-4 text-green-600" />
+									<User class="w-4 h-4 text-green-600" />
 									<span class="text-sm">
 										{tileState.currentPosition.x + 1}, {tileState.currentPosition.y + 1}
 									</span>
