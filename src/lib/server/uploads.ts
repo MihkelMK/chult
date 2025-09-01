@@ -14,7 +14,7 @@ export interface UploadResult {
 }
 
 export async function ensureUploadDir(campaignSlug: string): Promise<void> {
-	const campaignDir = path.join(UPLOAD_DIR, 'maps', campaignSlug);
+	const campaignDir = path.join(UPLOAD_DIR, campaignSlug);
 	if (!existsSync(campaignDir)) {
 		await mkdir(campaignDir, { recursive: true });
 	}
@@ -93,7 +93,7 @@ export async function saveMapImage(campaignSlug: string, file: File): Promise<Up
 
 		// Always save as map.jpg for consistency
 		const filename = 'map.jpg';
-		const filepath = path.join(UPLOAD_DIR, 'maps', campaignSlug, filename);
+		const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
 
 		// Save original file - let imgproxy handle all processing
 		const buffer = Buffer.from(await file.arrayBuffer());
@@ -111,7 +111,7 @@ export async function saveMapImage(campaignSlug: string, file: File): Promise<Up
 }
 
 export async function deleteMapImage(campaignSlug: string): Promise<void> {
-	const filepath = path.join(UPLOAD_DIR, 'maps', campaignSlug, 'map.jpg');
+	const filepath = path.join(UPLOAD_DIR, campaignSlug, 'map.jpg');
 	try {
 		await unlink(filepath);
 	} catch {
@@ -120,7 +120,7 @@ export async function deleteMapImage(campaignSlug: string): Promise<void> {
 }
 
 export async function hasMapImage(campaignSlug: string): Promise<boolean> {
-	const filepath = path.join(UPLOAD_DIR, 'maps', campaignSlug, 'map.jpg');
+	const filepath = path.join(UPLOAD_DIR, campaignSlug, 'map.jpg');
 	try {
 		await stat(filepath);
 		return true;

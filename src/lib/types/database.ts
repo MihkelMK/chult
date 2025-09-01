@@ -70,11 +70,19 @@ export type CampaignDataResponse = {
 
 // Player version
 export interface PlayerCampaignDataResponse {
-	campaign: Pick<Campaign, 'id' | 'name' | 'slug'>;
+	campaign: Pick<
+		Campaign,
+		'id' | 'name' | 'slug' | 'hexesPerRow' | 'hexesPerCol' | 'hexOffsetX' | 'hexOffsetY'
+	>;
 	hasMapImage: boolean;
 	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
 	mapMarkers: PlayerMapMarkerResponse[];
 	gameSessions: never[]; // Players don't get game sessions
+}
+
+export interface CampaignTokenResponse {
+	dmToken: string;
+	playerToken: string;
 }
 
 export type CampaignStatsResponse = {

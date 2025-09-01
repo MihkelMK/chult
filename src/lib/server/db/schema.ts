@@ -8,6 +8,11 @@ export const campaigns = pgTable('campaigns', {
 	slug: text('slug').notNull().unique(),
 	dmToken: text('dm_token').notNull().unique(),
 	playerToken: text('player_token').notNull().unique(),
+	// Hex grid configuration
+	hexesPerRow: integer('hexes_per_row').notNull().default(20),
+	hexesPerCol: integer('hexes_per_col').notNull().default(20),
+	hexOffsetX: integer('hex_offset_x').notNull().default(70),
+	hexOffsetY: integer('hex_offset_y').notNull().default(58),
 	createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 });

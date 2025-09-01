@@ -42,9 +42,6 @@ export const actions: Actions = {
 		});
 
 		// Redirect to DM view with success message
-		throw redirect(
-			302,
-			`/dm/${campaign.slug}?created=true&dm_token=${campaign.dmToken}&player_token=${campaign.playerToken}`
-		);
+		throw redirect(302, `/${campaign.slug}/settings?created=true`);
 	}
 };

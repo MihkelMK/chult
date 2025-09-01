@@ -9,6 +9,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import type {
 	Campaign,
 	CampaignDataResponse,
+	CampaignTokenResponse,
 	CampaignStatsResponse,
 	PlayerCampaignDataResponse
 } from '$lib/types';
@@ -187,12 +188,27 @@ export async function getCampaignData(
 			id: campaign.id,
 			name: campaign.name,
 			slug: campaign.slug,
+			hexOffsetX: campaign.hexOffsetX,
+			hexOffsetY: campaign.hexOffsetY,
+			hexesPerCol: campaign.hexesPerCol,
+			hexesPerRow: campaign.hexesPerRow,
 			createdAt: campaign.createdAt
 		},
 		revealedTiles: revealed,
 		mapMarkers: markers,
 		gameSessions: gameSessions,
 		hasMapImage: mapImageExists
+	};
+}
+
+export async function getCampaignTokens(campaignId: number): Promise<CampaignTokenResponse | null> {
+	// Get base campaign info
+	const campaign = await getCampaignById(campaignId);
+	if (!campaign) return null;
+
+	return {
+		dmToken: campaign.dmToken,
+		playerToken: campaign.playerToken
 	};
 }
 
