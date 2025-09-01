@@ -1,4 +1,10 @@
 services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - 9007:3000
+
   imgproxy:
     image: ghcr.io/imgproxy/imgproxy:latest
     environment:
@@ -53,7 +59,7 @@ services:
       - ./uploads:/var/lib/imgproxy:ro # Read-only access to uploads
       - ./imgproxy-cache:/tmp/imgproxy
     ports:
-      - '8080:8080'
+      - '9008:8080'
     restart: unless-stopped
 
   postgres:
