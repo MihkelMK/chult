@@ -14,20 +14,16 @@
 		children?: any;
 	}
 
-	let {
-		coords,
-		markers,
-		campaignSlug,
-		role,
-		children
-	}: Props = $props();
+	let { coords, markers, campaignSlug, role, children }: Props = $props();
 
 	// Separate POIs and notes
 	let pois = $derived(markers.filter((m) => m.type === 'poi'));
 	let notes = $derived(markers.filter((m) => m.type === 'note'));
 
 	// Check if marker has visibility field (only for DM markers)
-	function hasVisibility(marker: MapMarkerResponse | PlayerMapMarkerResponse): marker is MapMarkerResponse {
+	function hasVisibility(
+		marker: MapMarkerResponse | PlayerMapMarkerResponse
+	): marker is MapMarkerResponse {
 		return 'visibleToPlayers' in marker;
 	}
 
@@ -48,24 +44,17 @@
 		<HoverCard.Trigger>
 			{@render children?.()}
 		</HoverCard.Trigger>
-		
-		<HoverCard.Content 
-			class="w-80 p-0" 
-			side="top" 
-			align="center"
-			sideOffset={8}
-		>
+
+		<HoverCard.Content class="w-80 p-0" side="top" align="center" sideOffset={8}>
 			<!-- Header -->
 			<div class="flex items-center justify-between p-3 pb-2">
 				<div class="flex items-center gap-2">
-					<Badge variant="outline" class="text-xs font-mono">
+					<Badge variant="outline" class="font-mono text-xs">
 						Tile {coords.x + 1},{coords.y + 1}
 					</Badge>
 				</div>
 				{#if role === 'dm'}
-					<Badge variant="secondary" class="text-xs">
-						DM View
-					</Badge>
+					<Badge variant="secondary" class="text-xs">DM View</Badge>
 				{/if}
 			</div>
 
@@ -73,55 +62,55 @@
 				<!-- POIs Section -->
 				{#if visiblePois.length > 0}
 					<div class="px-3 pb-3">
-						<div class="flex items-center gap-2 mb-3">
-							<MapPin class="w-4 h-4 text-destructive" />
+						<div class="mb-3 flex items-center gap-2">
+							<MapPin class="h-4 w-4 text-destructive" />
 							<span class="text-sm font-medium">
 								{role === 'dm' ? 'Points of Interest' : 'Locations'}
 							</span>
-							<Badge variant="secondary" class="text-xs ml-auto">
+							<Badge variant="secondary" class="ml-auto text-xs">
 								{visiblePois.length}
 							</Badge>
 						</div>
-						
+
 						<div class="space-y-2">
 							{#each visiblePois as poi (poi.id)}
-								<div class="flex gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
+								<div class="flex gap-3 rounded-md p-2 transition-colors hover:bg-muted/50">
 									<!-- Image preview -->
 									{#if poi.imagePath}
-										<div class="flex-shrink-0 w-10 h-10 rounded-md bg-muted overflow-hidden">
+										<div class="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-muted">
 											<MarkerImage
 												{campaignSlug}
 												markerId={poi.id}
 												variant="thumbnail"
 												alt={poi.title || 'POI image'}
-												class="w-full h-full object-cover"
+												class="h-full w-full object-cover"
 											>
 												{#snippet noImageSlot()}
-													<div class="w-full h-full bg-muted flex items-center justify-center">
-														<MapPin class="w-4 h-4 text-muted-foreground" />
+													<div class="flex h-full w-full items-center justify-center bg-muted">
+														<MapPin class="h-4 w-4 text-muted-foreground" />
 													</div>
 												{/snippet}
 											</MarkerImage>
 										</div>
 									{/if}
-									
-									<div class="flex-1 min-w-0">
+
+									<div class="min-w-0 flex-1">
 										<div class="flex items-start justify-between gap-2">
-											<h4 class="text-sm font-medium leading-tight line-clamp-1">
+											<h4 class="line-clamp-1 text-sm leading-tight font-medium">
 												{poi.title || 'Untitled Location'}
 											</h4>
 											{#if role === 'dm' && hasVisibility(poi)}
 												<div class="flex-shrink-0">
 													{#if poi.visibleToPlayers}
-														<Users class="w-3 h-3 text-green-600" />
+														<Users class="h-3 w-3 text-green-600" />
 													{:else}
-														<Eye class="w-3 h-3 text-orange-600" />
+														<Eye class="h-3 w-3 text-orange-600" />
 													{/if}
 												</div>
 											{/if}
 										</div>
 										{#if poi.content}
-											<p class="text-xs text-muted-foreground line-clamp-2 mt-1">
+											<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">
 												{poi.content}
 											</p>
 										{/if}
@@ -130,7 +119,7 @@
 							{/each}
 						</div>
 					</div>
-					
+
 					{#if visibleNotes.length > 0}
 						<Separator />
 					{/if}
@@ -139,47 +128,47 @@
 				<!-- Notes Section -->
 				{#if visibleNotes.length > 0}
 					<div class="px-3 py-3">
-						<div class="flex items-center gap-2 mb-3">
-							<StickyNote class="w-4 h-4 text-primary" />
+						<div class="mb-3 flex items-center gap-2">
+							<StickyNote class="h-4 w-4 text-primary" />
 							<span class="text-sm font-medium">Notes</span>
-							<Badge variant="secondary" class="text-xs ml-auto">
+							<Badge variant="secondary" class="ml-auto text-xs">
 								{visibleNotes.length}
 							</Badge>
 						</div>
-						
+
 						<div class="space-y-2">
 							{#each visibleNotes as note (note.id)}
-								<div class="flex gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
+								<div class="flex gap-3 rounded-md p-2 transition-colors hover:bg-muted/50">
 									<!-- Image preview -->
 									{#if note.imagePath}
-										<div class="flex-shrink-0 w-10 h-10 rounded-md bg-muted overflow-hidden">
+										<div class="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-muted">
 											<MarkerImage
 												{campaignSlug}
 												markerId={note.id}
 												variant="thumbnail"
 												alt="Note image"
-												class="w-full h-full object-cover"
+												class="h-full w-full object-cover"
 											>
 												{#snippet noImageSlot()}
-													<div class="w-full h-full bg-muted flex items-center justify-center">
-														<StickyNote class="w-4 h-4 text-muted-foreground" />
+													<div class="flex h-full w-full items-center justify-center bg-muted">
+														<StickyNote class="h-4 w-4 text-muted-foreground" />
 													</div>
 												{/snippet}
 											</MarkerImage>
 										</div>
 									{/if}
-									
-									<div class="flex-1 min-w-0">
+
+									<div class="min-w-0 flex-1">
 										<div class="flex items-start justify-between gap-2">
-											<p class="text-xs text-foreground line-clamp-3 leading-relaxed">
+											<p class="line-clamp-3 text-xs leading-relaxed text-foreground">
 												{note.content || 'Empty note'}
 											</p>
 											{#if role === 'dm' && hasVisibility(note)}
 												<div class="flex-shrink-0">
 													{#if note.visibleToPlayers}
-														<Users class="w-3 h-3 text-green-600" />
+														<Users class="h-3 w-3 text-green-600" />
 													{:else}
-														<User class="w-3 h-3 text-primary" />
+														<User class="h-3 w-3 text-primary" />
 													{/if}
 												</div>
 											{/if}
@@ -195,9 +184,7 @@
 			<!-- Footer hint -->
 			<Separator />
 			<div class="px-3 py-2">
-				<p class="text-xs text-muted-foreground text-center">
-					Click tile for full details
-				</p>
+				<p class="text-center text-xs text-muted-foreground">Click tile for full details</p>
 			</div>
 		</HoverCard.Content>
 	</HoverCard.Root>
@@ -214,7 +201,7 @@
 		overflow: hidden;
 		line-clamp: 1;
 	}
-	
+
 	.line-clamp-2 {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
@@ -222,7 +209,7 @@
 		overflow: hidden;
 		line-clamp: 2;
 	}
-	
+
 	.line-clamp-3 {
 		display: -webkit-box;
 		-webkit-line-clamp: 3;

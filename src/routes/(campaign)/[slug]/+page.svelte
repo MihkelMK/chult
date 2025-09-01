@@ -2,7 +2,6 @@
 	import MapView from '$lib/components/MapView.svelte';
 	import type { PageData } from './$types';
 	import type { TileCoords } from '$lib/types';
-	import type { CampaignDataResponse } from '$lib/types/database';
 	import {
 		createPlayerTileManager,
 		type PlayerTileState
@@ -117,8 +116,7 @@
 	mode={isDM ? 'dm' : 'player'}
 	tileState={isDM ? dmTileState : playerTileState}
 	tileManager={isDM ? dmTileManager : playerTileManager}
-	{selectedTiles}
+	bind:selectedTiles
 	{onTileAction}
 	{onMultiSelect}
 />
-

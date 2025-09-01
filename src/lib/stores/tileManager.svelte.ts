@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import type { TileCoords } from '$lib/types';
 import type { DMCampaignState } from './dmCampaignState.svelte';
+import { SvelteDate } from 'svelte/reactivity';
 
 interface PendingOperation {
 	type: 'reveal' | 'hide';
@@ -9,7 +10,7 @@ interface PendingOperation {
 	alwaysRevealed?: boolean;
 }
 
-interface RevealedTile extends TileCoords {
+export interface RevealedTile extends TileCoords {
 	alwaysRevealed: boolean;
 	revealedAt: Date;
 }
@@ -22,15 +23,15 @@ interface TileState {
 
 function createTileManager(
 	campaignSlug: string,
-	initialRevealed: any[] = [], // Accept full revealed tile objects or basic coords
+	initialRevealed: TileCoords[] = [], // Accept full revealed tile objects or basic coords
 	campaignState?: DMCampaignState
 ) {
 	const { subscribe, update } = writable<TileState>({
-		revealed: initialRevealed.map(tile => ({
+		revealed: initialRevealed.map((tile) => ({
 			x: tile.x,
 			y: tile.y,
 			alwaysRevealed: tile.alwaysRevealed ?? false,
-			revealedAt: tile.revealedAt ? new Date(tile.revealedAt) : new Date()
+			revealedAt: tile.revealedAt ? new SvelteDate(tile.revealedAt) : new SvelteDate()
 		})),
 		pending: [],
 		errors: []
@@ -38,7 +39,7 @@ function createTileManager(
 
 	// Connect to campaign state events if available
 	if (campaignState) {
-		campaignState.addEventListener('tile-revealed', (tile: any) => {
+		campaignState.addEventListener('tile-revealed', (tile: TileCoords) => {
 			update((state) => {
 				// Only add if not already revealed and not from our own optimistic update
 				if (
@@ -49,12 +50,15 @@ function createTileManager(
 				) {
 					return {
 						...state,
-						revealed: [...state.revealed, {
-							x: tile.x,
-							y: tile.y,
-							alwaysRevealed: tile.alwaysRevealed || false,
-							revealedAt: tile.revealedAt ? new Date(tile.revealedAt) : new Date()
-						}]
+						revealed: [
+							...state.revealed,
+							{
+								x: tile.x,
+								y: tile.y,
+								alwaysRevealed: tile.alwaysRevealed || false,
+								revealedAt: tile.revealedAt ? new SvelteDate(tile.revealedAt) : new SvelteDate()
+							}
+						]
 					};
 				}
 				return state;
@@ -153,7 +157,11 @@ function createTileManager(
 		});
 	}
 
-	async function processBatchOperation(type: 'reveal' | 'hide' | 'toggle-always-revealed', coords: TileCoords[], alwaysRevealed?: boolean) {
+	async function processBatchOperation(
+		type: 'reveal' | 'hide' | 'toggle-always-revealed',
+		coords: TileCoords[],
+		alwaysRevealed?: boolean
+	) {
 		const response = await fetch(`/api/campaigns/${campaignSlug}/tiles/batch`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -176,7 +184,7 @@ function createTileManager(
 							x: coord.x,
 							y: coord.y,
 							alwaysRevealed: alwaysRevealed || false,
-							revealedAt: new Date()
+							revealedAt: new SvelteDate()
 						});
 					}
 				});
@@ -315,12 +323,12 @@ function createTileManager(
 			// Update local state optimistically
 			update((state) => {
 				const newRevealed = [...state.revealed];
-				
+
 				tiles.forEach((tileCoords) => {
 					const existingIndex = newRevealed.findIndex(
 						(tile) => tile.x === tileCoords.x && tile.y === tileCoords.y
 					);
-					
+
 					if (existingIndex !== -1) {
 						// Update existing tile
 						newRevealed[existingIndex] = {
@@ -333,11 +341,11 @@ function createTileManager(
 							x: tileCoords.x,
 							y: tileCoords.y,
 							alwaysRevealed: true,
-							revealedAt: new Date()
+							revealedAt: new SvelteDate()
 						});
 					}
 				});
-				
+
 				return { ...state, revealed: newRevealed };
 			});
 
@@ -345,7 +353,9 @@ function createTileManager(
 			if (campaignState && 'toggleAlwaysRevealed' in campaignState) {
 				campaignState.toggleAlwaysRevealed(tiles, alwaysRevealed);
 			} else {
-				console.error('Campaign state not available or does not support always-revealed operations');
+				console.error(
+					'Campaign state not available or does not support always-revealed operations'
+				);
 			}
 		},
 
@@ -372,7 +382,7 @@ function createTileManager(
 							x: op.coords.x,
 							y: op.coords.y,
 							alwaysRevealed: op.alwaysRevealed || false,
-							revealedAt: new Date()
+							revealedAt: new SvelteDate()
 						});
 					}
 				} else {

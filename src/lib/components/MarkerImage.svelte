@@ -74,14 +74,14 @@
 	});
 
 	// Get the URL for the current variant
-	let imageUrl = $derived(
-		markerImageUrls?.variants?.[variant] || markerImageUrls?.src || null
-	);
+	let imageUrl = $derived(markerImageUrls?.variants?.[variant] || markerImageUrls?.src || null);
 </script>
 
 {#if urlsLoading}
 	<div class="flex h-full w-full items-center justify-center bg-gray-100 {className}">
-		<div class="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+		<div
+			class="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"
+		></div>
 	</div>
 {:else if !markerImageUrls || !imageUrl}
 	<!-- No image available - show placeholder or nothing -->
@@ -99,7 +99,9 @@
 
 	{#if imageLoading}
 		<div class="absolute inset-0 flex items-center justify-center bg-gray-100">
-			<div class="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+			<div
+				class="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"
+			></div>
 		</div>
 	{/if}
 

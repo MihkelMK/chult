@@ -60,6 +60,7 @@
 		"@oslojs/encoding": "^1.1.0",
 		"drizzle-orm": "^0.40.1",
 		"eventemitter3": "^5.0.1",
+		"panzoom": "^9.4.3",
 		"postgres": "^3.4.7"
 	}
 }

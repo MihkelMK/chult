@@ -4,7 +4,7 @@
 	import { DMCampaignState } from '$lib/stores/dmCampaignState.svelte';
 	import { PlayerCampaignState } from '$lib/stores/playerCampaignState.svelte';
 	import MarkerImage from './MarkerImage.svelte';
-	
+
 	import { MapPin, StickyNote, Eye, User, Users, Plus, Edit, Trash2, X } from '@lucide/svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Tabs from '$lib/components/ui/tabs';
@@ -20,25 +20,20 @@
 		onOpenChange: (open: boolean) => void;
 	}
 
-	let {
-		coords,
-		role,
-		open = $bindable(),
-		onOpenChange
-	}: Props = $props();
+	let { coords, role, open = $bindable(), onOpenChange }: Props = $props();
 
 	const campaignState = getCampaignState();
 	const { campaign: campaignData } = campaignState;
 
 	// Get markers for this tile
 	let markers = $derived(
-		campaignData.mapMarkers.filter(
-			(m) => m.x === coords.x && m.y === coords.y
-		)
+		campaignData.mapMarkers.filter((m) => m.x === coords.x && m.y === coords.y)
 	);
 
 	// Separate POIs and notes with role-based filtering
-	function hasVisibility(marker: MapMarkerResponse | PlayerMapMarkerResponse): marker is MapMarkerResponse {
+	function hasVisibility(
+		marker: MapMarkerResponse | PlayerMapMarkerResponse
+	): marker is MapMarkerResponse {
 		return 'visibleToPlayers' in marker;
 	}
 
@@ -49,15 +44,11 @@
 	}
 
 	let visiblePois = $derived(
-		markers
-			.filter((m) => m.type === 'poi')
-			.filter(isVisibleToCurrentRole)
+		markers.filter((m) => m.type === 'poi').filter(isVisibleToCurrentRole)
 	);
-	
+
 	let visibleNotes = $derived(
-		markers
-			.filter((m) => m.type === 'note')
-			.filter(isVisibleToCurrentRole)
+		markers.filter((m) => m.type === 'note').filter(isVisibleToCurrentRole)
 	);
 
 	// Check if tile is revealed
@@ -175,7 +166,7 @@
 
 	async function deleteMarker(markerId: number) {
 		if (!confirm('Are you sure you want to delete this item?')) return;
-		
+
 		deleting = markerId;
 		try {
 			await campaignState.makeApiRequest(`map-markers/${markerId}`, 'DELETE');
@@ -209,10 +200,13 @@
 				const uploadFormData = new FormData();
 				uploadFormData.append('image', file);
 
-				const response = await fetch(`/api/campaigns/${campaignData.campaign.slug}/markers/${editingMarker.id}/image`, {
-					method: 'POST',
-					body: uploadFormData
-				});
+				const response = await fetch(
+					`/api/campaigns/${campaignData.campaign.slug}/markers/${editingMarker.id}/image`,
+					{
+						method: 'POST',
+						body: uploadFormData
+					}
+				);
 
 				const result = await response.json();
 
@@ -222,7 +216,7 @@
 
 				formData.imagePath = result.imagePath;
 			} else {
-				// For new markers, we'll need to save the file temporarily or 
+				// For new markers, we'll need to save the file temporarily or
 				// create the marker first. For now, show an error.
 				uploadError = 'Please save the marker first, then add an image';
 			}
@@ -243,9 +237,12 @@
 		uploadError = '';
 
 		try {
-			const response = await fetch(`/api/campaigns/${campaignData.campaign.slug}/markers/${editingMarker.id}/image`, {
-				method: 'DELETE'
-			});
+			const response = await fetch(
+				`/api/campaigns/${campaignData.campaign.slug}/markers/${editingMarker.id}/image`,
+				{
+					method: 'DELETE'
+				}
+			);
 
 			const result = await response.json();
 
@@ -267,14 +264,20 @@
 
 	// Determine default tab based on role and content
 	let defaultTab = $derived(
-		role === 'dm' 
-			? (visiblePois.length > 0 ? 'pois' : 'notes')
-			: (visiblePois.length > 0 && visibleNotes.length > 0 ? 'pois' : visiblePois.length > 0 ? 'pois' : 'notes')
+		role === 'dm'
+			? visiblePois.length > 0
+				? 'pois'
+				: 'notes'
+			: visiblePois.length > 0 && visibleNotes.length > 0
+				? 'pois'
+				: visiblePois.length > 0
+					? 'pois'
+					: 'notes'
 	);
 </script>
 
 <Dialog.Root bind:open {onOpenChange}>
-	<Dialog.Content class="max-w-4xl max-h-[90vh] p-0 gap-0">
+	<Dialog.Content class="max-h-[90vh] max-w-4xl gap-0 p-0">
 		<Dialog.Header class="p-6 pb-2">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-3">
@@ -283,7 +286,7 @@
 					</Dialog.Title>
 					{#if role === 'dm'}
 						<Badge variant="secondary">DM View</Badge>
-						<Badge variant={isRevealed ? "default" : "outline"} class="text-xs">
+						<Badge variant={isRevealed ? 'default' : 'outline'} class="text-xs">
 							{isRevealed ? 'Visible to players' : 'Hidden from players'}
 						</Badge>
 					{/if}
@@ -294,27 +297,28 @@
 		<div class="flex-1 overflow-hidden">
 			{#if editingMarker || creatingType}
 				<!-- Create/Edit Form -->
-				<div class="p-6 space-y-4">
+				<div class="space-y-4 p-6">
 					<div class="flex items-center justify-between">
 						<h3 class="text-lg font-medium">
-							{editingMarker ? 'Edit' : 'Create'} {formData.type === 'poi' ? 'Point of Interest' : 'Note'}
+							{editingMarker ? 'Edit' : 'Create'}
+							{formData.type === 'poi' ? 'Point of Interest' : 'Note'}
 						</h3>
 						<Button variant="ghost" size="sm" onclick={cancelEdit}>
-							<X class="w-4 h-4" />
+							<X class="h-4 w-4" />
 						</Button>
 					</div>
 
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 						<!-- Form fields -->
 						<div class="space-y-4">
 							{#if formData.type === 'poi'}
 								<div>
-									<label for="title" class="block text-sm font-medium mb-2">Title *</label>
+									<label for="title" class="mb-2 block text-sm font-medium">Title *</label>
 									<input
 										id="title"
 										type="text"
 										bind:value={formData.title}
-										class="w-full px-3 py-2 border border-input rounded-md"
+										class="w-full rounded-md border border-input px-3 py-2"
 										placeholder="Enter location name..."
 										disabled={submitting}
 									/>
@@ -322,15 +326,17 @@
 							{/if}
 
 							<div>
-								<label for="content" class="block text-sm font-medium mb-2">
+								<label for="content" class="mb-2 block text-sm font-medium">
 									{formData.type === 'poi' ? 'Description' : 'Content *'}
 								</label>
 								<textarea
 									id="content"
 									bind:value={formData.content}
 									rows="4"
-									class="w-full px-3 py-2 border border-input rounded-md resize-none"
-									placeholder={formData.type === 'poi' ? 'Describe this location...' : 'Write your note...'}
+									class="w-full resize-none rounded-md border border-input px-3 py-2"
+									placeholder={formData.type === 'poi'
+										? 'Describe this location...'
+										: 'Write your note...'}
 									disabled={submitting}
 								></textarea>
 							</div>
@@ -352,30 +358,30 @@
 						<!-- Image upload area -->
 						<div class="space-y-4">
 							<span class="block text-sm font-medium">Image</span>
-							<div class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+							<div class="rounded-lg border-2 border-dashed border-muted-foreground/25 p-6">
 								{#if formData.imagePath}
 									<div class="space-y-4">
-										<div class="w-full h-48 rounded-lg overflow-hidden bg-muted">
+										<div class="h-48 w-full overflow-hidden rounded-lg bg-muted">
 											<MarkerImage
 												campaignSlug={campaignData.campaign.slug}
 												markerId={editingMarker?.id || 0}
 												variant="modal"
 												alt="Preview"
-												class="w-full h-full object-cover"
+												class="h-full w-full object-cover"
 											/>
 										</div>
 										<div class="flex space-x-2">
-											<Button 
-												variant="outline" 
-												size="sm" 
+											<Button
+												variant="outline"
+												size="sm"
 												class="flex-1"
 												onclick={triggerFileInput}
 												disabled={uploadingImage}
 											>
 												{uploadingImage ? 'Uploading...' : 'Replace Image'}
 											</Button>
-											<Button 
-												variant="outline" 
+											<Button
+												variant="outline"
 												size="sm"
 												onclick={removeImage}
 												disabled={uploadingImage}
@@ -386,17 +392,18 @@
 									</div>
 								{:else}
 									<div class="text-center">
-										<div class="w-12 h-12 mx-auto mb-3 rounded-lg bg-muted flex items-center justify-center">
-											<Plus class="w-6 h-6 text-muted-foreground" />
+										<div
+											class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-muted"
+										>
+											<Plus class="h-6 w-6 text-muted-foreground" />
 										</div>
-										<p class="text-sm text-muted-foreground mb-3">
-											{editingMarker 
+										<p class="mb-3 text-sm text-muted-foreground">
+											{editingMarker
 												? `Add an image to enhance this ${formData.type}`
-												: `Images can be added after saving the ${formData.type}`
-											}
+												: `Images can be added after saving the ${formData.type}`}
 										</p>
-										<Button 
-											variant="outline" 
+										<Button
+											variant="outline"
 											size="sm"
 											onclick={triggerFileInput}
 											disabled={!editingMarker || uploadingImage}
@@ -406,11 +413,11 @@
 									</div>
 								{/if}
 							</div>
-							
+
 							{#if uploadError}
 								<p class="text-sm text-destructive">{uploadError}</p>
 							{/if}
-							
+
 							<!-- Hidden file input -->
 							<input
 								bind:this={fileInput}
@@ -429,9 +436,7 @@
 					</div>
 
 					<div class="flex justify-end space-x-3 pt-4">
-						<Button variant="outline" onclick={cancelEdit} disabled={submitting}>
-							Cancel
-						</Button>
+						<Button variant="outline" onclick={cancelEdit} disabled={submitting}>Cancel</Button>
 						<Button onclick={saveMarker} disabled={submitting}>
 							{submitting ? 'Saving...' : 'Save'}
 						</Button>
@@ -439,18 +444,18 @@
 				</div>
 			{:else}
 				<!-- Main Content with Tabs -->
-				<Tabs.Root value={defaultTab} class="flex-1 flex flex-col">
+				<Tabs.Root value={defaultTab} class="flex flex-1 flex-col">
 					<div class="border-b px-6">
 						<Tabs.List class="grid w-full grid-cols-2">
 							<Tabs.Trigger value="pois" class="flex items-center gap-2">
-								<MapPin class="w-4 h-4" />
+								<MapPin class="h-4 w-4" />
 								{role === 'dm' ? 'Points of Interest' : 'Locations'}
 								{#if visiblePois.length > 0}
 									<Badge variant="secondary" class="ml-1">{visiblePois.length}</Badge>
 								{/if}
 							</Tabs.Trigger>
 							<Tabs.Trigger value="notes" class="flex items-center gap-2">
-								<StickyNote class="w-4 h-4" />
+								<StickyNote class="h-4 w-4" />
 								Notes
 								{#if visibleNotes.length > 0}
 									<Badge variant="secondary" class="ml-1">{visibleNotes.length}</Badge>
@@ -460,14 +465,14 @@
 					</div>
 
 					<!-- POIs Tab -->
-					<Tabs.Content value="pois" class="flex-1 p-6 m-0">
-						<div class="flex items-center justify-between mb-4">
+					<Tabs.Content value="pois" class="m-0 flex-1 p-6">
+						<div class="mb-4 flex items-center justify-between">
 							<h3 class="text-lg font-medium">
 								{role === 'dm' ? 'Points of Interest' : 'Locations'}
 							</h3>
 							{#if role === 'dm'}
 								<Button onclick={() => startCreate('poi')}>
-									<Plus class="w-4 h-4 mr-2" />
+									<Plus class="mr-2 h-4 w-4" />
 									Add Location
 								</Button>
 							{/if}
@@ -481,29 +486,31 @@
 											<div class="flex gap-4">
 												<!-- Image -->
 												{#if poi.imagePath}
-													<div class="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-muted">
+													<div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
 														<MarkerImage
 															campaignSlug={campaignData.campaign.slug}
 															markerId={poi.id}
 															variant="small"
 															alt={poi.title || 'POI image'}
-															class="w-full h-full object-cover"
+															class="h-full w-full object-cover"
 														/>
 													</div>
 												{/if}
 
 												<!-- Content -->
-												<div class="flex-1 min-w-0">
+												<div class="min-w-0 flex-1">
 													<div class="flex items-start justify-between">
 														<div>
-															<h4 class="font-medium text-lg">{poi.title || 'Untitled Location'}</h4>
+															<h4 class="text-lg font-medium">
+																{poi.title || 'Untitled Location'}
+															</h4>
 															{#if role === 'dm' && hasVisibility(poi)}
-																<div class="flex items-center gap-1 mt-1">
+																<div class="mt-1 flex items-center gap-1">
 																	{#if poi.visibleToPlayers}
-																		<Users class="w-4 h-4 text-green-600" />
+																		<Users class="h-4 w-4 text-green-600" />
 																		<span class="text-sm text-green-600">Visible to players</span>
 																	{:else}
-																		<Eye class="w-4 h-4 text-orange-600" />
+																		<Eye class="h-4 w-4 text-orange-600" />
 																		<span class="text-sm text-orange-600">DM only</span>
 																	{/if}
 																</div>
@@ -513,17 +520,22 @@
 														{#if role === 'dm'}
 															<div class="flex space-x-2">
 																<Button variant="ghost" size="sm" onclick={() => startEdit(poi)}>
-																	<Edit class="w-4 h-4" />
+																	<Edit class="h-4 w-4" />
 																</Button>
-																<Button variant="ghost" size="sm" onclick={() => deleteMarker(poi.id)} disabled={deleting === poi.id}>
-																	<Trash2 class="w-4 h-4" />
+																<Button
+																	variant="ghost"
+																	size="sm"
+																	onclick={() => deleteMarker(poi.id)}
+																	disabled={deleting === poi.id}
+																>
+																	<Trash2 class="h-4 w-4" />
 																</Button>
 															</div>
 														{/if}
 													</div>
-													
+
 													{#if poi.content}
-														<p class="text-muted-foreground mt-2">{poi.content}</p>
+														<p class="mt-2 text-muted-foreground">{poi.content}</p>
 													{/if}
 												</div>
 											</div>
@@ -532,17 +544,17 @@
 								{/each}
 							</div>
 						{:else}
-							<div class="text-center py-12">
-								<MapPin class="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-								<h3 class="text-lg font-medium mb-2">No locations yet</h3>
-								<p class="text-muted-foreground mb-4">
-									{role === 'dm' 
+							<div class="py-12 text-center">
+								<MapPin class="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+								<h3 class="mb-2 text-lg font-medium">No locations yet</h3>
+								<p class="mb-4 text-muted-foreground">
+									{role === 'dm'
 										? 'Add points of interest to help players explore this area.'
 										: 'No locations have been discovered on this tile.'}
 								</p>
 								{#if role === 'dm'}
 									<Button onclick={() => startCreate('poi')}>
-										<Plus class="w-4 h-4 mr-2" />
+										<Plus class="mr-2 h-4 w-4" />
 										Add Your First Location
 									</Button>
 								{/if}
@@ -551,11 +563,11 @@
 					</Tabs.Content>
 
 					<!-- Notes Tab -->
-					<Tabs.Content value="notes" class="flex-1 p-6 m-0">
-						<div class="flex items-center justify-between mb-4">
+					<Tabs.Content value="notes" class="m-0 flex-1 p-6">
+						<div class="mb-4 flex items-center justify-between">
 							<h3 class="text-lg font-medium">Notes</h3>
 							<Button onclick={() => startCreate('note')}>
-								<Plus class="w-4 h-4 mr-2" />
+								<Plus class="mr-2 h-4 w-4" />
 								Add Note
 							</Button>
 						</div>
@@ -568,29 +580,29 @@
 											<div class="flex gap-4">
 												<!-- Image -->
 												{#if note.imagePath}
-													<div class="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-muted">
+													<div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
 														<MarkerImage
 															campaignSlug={campaignData.campaign.slug}
 															markerId={note.id}
 															variant="small"
 															alt="Note image"
-															class="w-full h-full object-cover"
+															class="h-full w-full object-cover"
 														/>
 													</div>
 												{/if}
 
 												<!-- Content -->
-												<div class="flex-1 min-w-0">
+												<div class="min-w-0 flex-1">
 													<div class="flex items-start justify-between">
 														<div class="flex-1">
 															<p class="text-foreground">{note.content || 'Empty note'}</p>
 															{#if role === 'dm' && hasVisibility(note)}
-																<div class="flex items-center gap-1 mt-2">
+																<div class="mt-2 flex items-center gap-1">
 																	{#if note.visibleToPlayers}
-																		<Users class="w-4 h-4 text-green-600" />
+																		<Users class="h-4 w-4 text-green-600" />
 																		<span class="text-sm text-green-600">Visible to players</span>
 																	{:else}
-																		<User class="w-4 h-4 text-primary" />
+																		<User class="h-4 w-4 text-primary" />
 																		<span class="text-sm text-primary">Player note</span>
 																	{/if}
 																</div>
@@ -600,10 +612,15 @@
 														{#if role === 'dm'}
 															<div class="flex space-x-2">
 																<Button variant="ghost" size="sm" onclick={() => startEdit(note)}>
-																	<Edit class="w-4 h-4" />
+																	<Edit class="h-4 w-4" />
 																</Button>
-																<Button variant="ghost" size="sm" onclick={() => deleteMarker(note.id)} disabled={deleting === note.id}>
-																	<Trash2 class="w-4 h-4" />
+																<Button
+																	variant="ghost"
+																	size="sm"
+																	onclick={() => deleteMarker(note.id)}
+																	disabled={deleting === note.id}
+																>
+																	<Trash2 class="h-4 w-4" />
 																</Button>
 															</div>
 														{/if}
@@ -615,14 +632,14 @@
 								{/each}
 							</div>
 						{:else}
-							<div class="text-center py-12">
-								<StickyNote class="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-								<h3 class="text-lg font-medium mb-2">No notes yet</h3>
-								<p class="text-muted-foreground mb-4">
+							<div class="py-12 text-center">
+								<StickyNote class="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+								<h3 class="mb-2 text-lg font-medium">No notes yet</h3>
+								<p class="mb-4 text-muted-foreground">
 									Add notes to remember important details about this tile.
 								</p>
 								<Button onclick={() => startCreate('note')}>
-									<Plus class="w-4 h-4 mr-2" />
+									<Plus class="mr-2 h-4 w-4" />
 									Add Your First Note
 								</Button>
 							</div>

@@ -8,7 +8,7 @@ interface PendingOperation {
 
 interface PlayerTileState {
 	revealed: TileCoords[];
-	pending: PendingOperation | null;
+	pending: PendingOperation[] | null;
 	error: string | null;
 	currentPosition: TileCoords | null;
 }
@@ -105,7 +105,7 @@ function createPlayerTileManager(
 		// Optimistic update
 		update((state) => ({
 			...state,
-			pending: { coords },
+			pending: [{ coords }],
 			error: null
 		}));
 

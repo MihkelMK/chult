@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/session';
 import { db } from '$lib/server/db';
-import { eq, and, inArray, or } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { revealedTiles } from '$lib/server/db/schema';
 import eventEmitter from '$lib/server/events';
 
@@ -101,13 +101,19 @@ export const POST: RequestHandler = async (event) => {
 				const existingTiles = await tx
 					.select()
 					.from(revealedTiles)
-					.where(and(eq(revealedTiles.campaignId, session.campaignId), or(...coordinateConditions)));
+					.where(
+						and(eq(revealedTiles.campaignId, session.campaignId), or(...coordinateConditions))
+					);
 
 				const updatedTiles = await tx
 					.update(revealedTiles)
 					.set({ alwaysRevealed: alwaysRevealed })
 					.where(and(eq(revealedTiles.campaignId, session.campaignId), or(...coordinateConditions)))
-					.returning({ x: revealedTiles.x, y: revealedTiles.y, alwaysRevealed: revealedTiles.alwaysRevealed });
+					.returning({
+						x: revealedTiles.x,
+						y: revealedTiles.y,
+						alwaysRevealed: revealedTiles.alwaysRevealed
+					});
 
 				// For tiles that don't exist yet, create them as always-revealed
 				const existingCoords = new Set(existingTiles.map((t) => `${t.x},${t.y}`));

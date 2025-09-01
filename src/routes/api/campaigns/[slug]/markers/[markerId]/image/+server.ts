@@ -12,7 +12,7 @@ const UPLOADS_BASE = process.env.UPLOADS_DIR || '/tmp/uploads';
 
 export const POST: RequestHandler = async (event) => {
 	const session = requireAuth(event);
-	
+
 	if (!session) {
 		return error(401, 'Unauthorized');
 	}
@@ -22,7 +22,7 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	const markerId = parseInt(event.params.markerId, 10);
-	
+
 	// Verify marker exists and user has permission
 	const [marker] = await db
 		.select()
@@ -59,13 +59,13 @@ export const POST: RequestHandler = async (event) => {
 		// Create directory structure
 		const campaignDir = path.join(UPLOADS_BASE, event.params.slug);
 		const markersDir = path.join(campaignDir, 'markers');
-		
+
 		await mkdir(markersDir, { recursive: true });
 
 		// Save file
 		const fileName = `${markerId}.jpg`; // Convert all to jpg for consistency
 		const filePath = path.join(markersDir, fileName);
-		
+
 		const arrayBuffer = await file.arrayBuffer();
 		const buffer = Buffer.from(arrayBuffer);
 		await writeFile(filePath, buffer);
@@ -87,12 +87,11 @@ export const POST: RequestHandler = async (event) => {
 			role: updatedMarker.visibleToPlayers ? 'all' : 'dm'
 		});
 
-		return json({ 
-			success: true, 
+		return json({
+			success: true,
 			imagePath: imagePath,
 			marker: updatedMarker
 		});
-
 	} catch (err) {
 		console.error('Marker image upload failed:', err);
 		return error(500, 'Upload failed');
@@ -101,7 +100,7 @@ export const POST: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	const session = requireAuth(event);
-	
+
 	if (!session) {
 		return error(401, 'Unauthorized');
 	}
@@ -111,7 +110,7 @@ export const DELETE: RequestHandler = async (event) => {
 	}
 
 	const markerId = parseInt(event.params.markerId, 10);
-	
+
 	// Verify marker exists and user has permission
 	const [marker] = await db
 		.select()
@@ -144,11 +143,10 @@ export const DELETE: RequestHandler = async (event) => {
 			role: updatedMarker.visibleToPlayers ? 'all' : 'dm'
 		});
 
-		return json({ 
+		return json({
 			success: true,
 			marker: updatedMarker
 		});
-
 	} catch (err) {
 		console.error('Marker image delete failed:', err);
 		return error(500, 'Delete failed');

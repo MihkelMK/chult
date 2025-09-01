@@ -1,6 +1,6 @@
 import { CampaignState } from './campaignState.svelte';
 import type { CampaignDataResponse, MapMarkerResponse, RevealedTileResponse } from '$lib/types';
-import { SvelteDate } from 'svelte/reactivity';
+import { SvelteDate, SvelteMap } from 'svelte/reactivity';
 
 export class DMCampaignState extends CampaignState {
 	constructor(initialData: CampaignDataResponse, campaignSlug: string) {
@@ -47,16 +47,14 @@ export class DMCampaignState extends CampaignState {
 		const originalRevealedTiles = [...(this.campaign as CampaignDataResponse).revealedTiles];
 
 		// Optimistic update - update existing tiles and add new ones if needed
-		const existingTileMap = new Map(
-			(this.campaign as CampaignDataResponse).revealedTiles.map(
-				(t) => [`${t.x},${t.y}`, t]
-			)
+		const existingTileMap = new SvelteMap(
+			(this.campaign as CampaignDataResponse).revealedTiles.map((t) => [`${t.x},${t.y}`, t])
 		);
 
 		tiles.forEach((tile) => {
 			const key = `${tile.x},${tile.y}`;
 			const existing = existingTileMap.get(key);
-			
+
 			if (existing) {
 				existing.alwaysRevealed = alwaysRevealed;
 			} else if (alwaysRevealed) {
@@ -70,10 +68,10 @@ export class DMCampaignState extends CampaignState {
 		});
 
 		try {
-			await this.makeApiRequest('tiles/batch', 'POST', { 
-				type: 'toggle-always-revealed', 
-				tiles, 
-				alwaysRevealed 
+			await this.makeApiRequest('tiles/batch', 'POST', {
+				type: 'toggle-always-revealed',
+				tiles,
+				alwaysRevealed
 			});
 		} catch (error) {
 			// Rollback

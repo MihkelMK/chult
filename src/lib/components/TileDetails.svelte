@@ -16,9 +16,7 @@
 	const { campaign: campaignData, makeApiRequest } = campaignState;
 
 	let markers = $derived(
-		campaignData.mapMarkers.filter(
-			(m) => m.x === selectedTile.x && m.y === selectedTile.y
-		)
+		campaignData.mapMarkers.filter((m) => m.x === selectedTile.x && m.y === selectedTile.y)
 	);
 	let pois = $derived(markers.filter((m) => m.type === 'poi'));
 	let notes = $derived(markers.filter((m) => m.type === 'note'));
@@ -71,7 +69,8 @@
 			type: markerToSubmit.type,
 			title: markerToSubmit.title?.trim() || null,
 			content: markerToSubmit.content?.trim() || null,
-			visibleToPlayers: 'visibleToPlayers' in markerToSubmit ? markerToSubmit.visibleToPlayers : true
+			visibleToPlayers:
+				'visibleToPlayers' in markerToSubmit ? markerToSubmit.visibleToPlayers : true
 		};
 
 		try {

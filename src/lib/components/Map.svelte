@@ -4,6 +4,8 @@
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import MapImage from './MapImage.svelte';
+	import panzoom, { type PanZoom } from 'panzoom';
+	import type { Attachment } from 'svelte/attachments';
 
 	interface HexInteractable extends Hex {
 		points: string;
@@ -28,20 +30,19 @@
 		hexesPerCol?: number; // Number of hexagons per column on the actual map
 		xOffset?: number; // Horizontal offset in pixels from left edge to where grid starts
 		yOffset?: number; // Vertical offset in pixels from top edge to where grid starts
-		showControls?: boolean;
 		initiallyRevealed?: RevealedTileResponse[];
 		selectedTiles?: TileCoords[]; // Add this line
 		showCoords?: 'never' | 'always' | 'hover';
 		showAnimations?: boolean;
 		onHexRevealed?: (event: HexRevealedEvent) => void;
 		onHexHover?: (coords: TileCoords | null) => void;
-		onAllHexesReset?: () => void;
-		onAllHexesRevealed?: () => void;
 		onMapLoad?: (dimensions: { width: number; height: number }) => void;
 		onMapError?: () => void;
 		hasPoI?: (coords: TileCoords) => boolean;
 		hasNotes?: (coords: TileCoords) => boolean;
 		isPlayerPosition?: (coords: TileCoords) => boolean;
+		cursorMode?: 'interact' | 'pan' | 'select' | 'paint';
+		zoom: number;
 	}
 
 	let {
@@ -55,20 +56,19 @@
 		hexesPerCol = 86,
 		xOffset = 70,
 		yOffset = 58,
-		showControls = true,
 		initiallyRevealed = [],
 		selectedTiles = [], // Add this line
 		showCoords = 'hover',
 		showAnimations = true,
 		onHexRevealed = () => {},
 		onHexHover = () => {},
-		onAllHexesReset = () => {},
-		onAllHexesRevealed = () => {},
 		onMapLoad = () => {},
 		onMapError = () => {},
 		hasPoI = () => false,
 		hasNotes = () => false,
-		isPlayerPosition = () => false
+		isPlayerPosition = () => false,
+		cursorMode,
+		zoom
 	}: Props = $props();
 
 	let hexGrid: HexInteractable[] = $state([]);
@@ -104,6 +104,7 @@
 	let containerWidth: number = $derived(imageNaturalDimensions.width);
 	let containerHeight: number = $derived(imageNaturalDimensions.height);
 
+	let panEl: PanZoom | null = $state(null);
 	// Generate hex grid when dimensions change
 	$effect(() => {
 		if (mounted && mapLoaded && imageNaturalDimensions.width > 0) {
@@ -173,6 +174,37 @@
 		// Keep precise coordinates
 		return points.map((point) => `${point[0]},${point[1]}`).join(' ');
 	}
+
+	const panzoomAttach: Attachment = (element) => {
+		panEl = panzoom(element as HTMLElement, {
+			transformOrigin: { x: 0.5, y: 0.5 },
+			maxZoom: 4,
+			minZoom: 1,
+			smoothScroll: false,
+			disableKeyboardInteraction: true,
+			zoomDoubleClickSpeed: 1,
+			bounds: true,
+			beforeMouseDown() {
+				return cursorMode !== 'pan';
+			},
+			beforeWheel() {
+				return true;
+			}
+		});
+
+		return () => {
+			panEl?.dispose();
+		};
+	};
+
+	$effect(() => {
+		if (zoom === 1) {
+			panEl?.zoomAbs(0, 0, 1);
+			panEl?.moveTo(0, 0);
+		} else {
+			panEl?.zoomAbs(0, 0, zoom);
+		}
+	});
 </script>
 
 {#snippet label(hex: Hex | HexInteractable, showWhen: 'never' | 'hover' | 'always')}
@@ -191,6 +223,7 @@
 				: revealedSet.has(`${hex.col}-${hex.row}`)
 					? '[fill-opacity:0.5] [stroke-opacity:0.25]'
 					: ''} group-hover:[fill-opacity:1] group-hover:[stroke-opacity:1]"
+			text-rendering="geometricPrecision"
 			style={showAnimations ? 'transition: stroke-opacity 300ms, fill-opacity 300ms;' : ''}
 			pointer-events="none"
 		>
@@ -249,199 +282,178 @@
 	{/if}
 {/snippet}
 
-{#if showControls}
-	<div class="flex flex-wrap gap-3 justify-center my-5">
-		<button
-			class="py-2 px-5 font-medium text-white bg-blue-500 rounded-lg transition-colors duration-300 hover:bg-blue-600"
-			onclick={onAllHexesReset}
-		>
-			Reset All Hexes
-		</button>
-		<button
-			class="py-2 px-5 font-medium text-white bg-gray-500 rounded-lg transition-colors duration-300 hover:bg-gray-600"
-			onclick={onAllHexesRevealed}
-		>
-			Reveal All Hexes
-		</button>
-	</div>
-{/if}
+<div class="relative" {@attach panzoomAttach}>
+	<MapImage
+		{campaignSlug}
+		{variant}
+		alt="D&D Campaign Map"
+		class="absolute inset-0 h-full w-full rounded-lg shadow-xl select-none"
+		loading="eager"
+		onLoad={(imageElement) => handleMapLoad(imageElement)}
+		onError={handleMapError}
+	/>
 
-<div class="inline-block relative bg-white rounded-lg shadow-xl">
-	<div class="relative" style="width: {containerWidth}px; height: {containerHeight}px;">
-		<MapImage
-			{campaignSlug}
-			{variant}
-			alt="D&D Campaign Map"
-			class="absolute inset-0 w-full h-full rounded-lg select-none"
-			loading="eager"
-			onLoad={(imageElement) => handleMapLoad(imageElement)}
-			onError={handleMapError}
-		/>
-
-		{#if containerWidth > 0}
-			<svg
-				class="pointer-events-none absolute inset-0 h-full w-full mask-radial-from-85%"
-				viewBox="0 0 {containerWidth} {containerHeight}"
-			>
-				<defs>
-					<mask id="fade-mask">
-						<linearGradient id="fade-x" x1="0%" y1="0%" x2="100%" y2="0%">
-							<stop offset="0%" style="stop-color:black;stop-opacity:0" />
-							<stop
-								offset="{((xOffset - hexRadius) / containerWidth) * 100}%"
-								style="stop-color:black;stop-opacity:0"
-							/>
-							<stop
-								offset="{((xOffset + hexRadius) / containerWidth) * 100}%"
-								style="stop-color:white;stop-opacity:1"
-							/>
-							<stop
-								offset="{((containerWidth - xOffset + hexRadius / 2) / containerWidth) * 100}%"
-								style="stop-color:white;stop-opacity:1"
-							/>
-							<stop
-								offset="{((containerWidth - xOffset + hexRadius) / containerWidth) * 100}%"
-								style="stop-color:black;stop-opacity:0"
-							/>
-							<stop offset="100%" style="stop-color:black;stop-opacity:0" />
-						</linearGradient>
-						<linearGradient id="fade-y" x1="0%" y1="0%" x2="0%" y2="100%">
-							<stop offset="0%" style="stop-color:black;stop-opacity:0" />
-							<stop
-								offset="{((yOffset - 20) / containerHeight) * 100}%"
-								style="stop-color:black;stop-opacity:0"
-							/>
-							<stop
-								offset="{((yOffset + 20) / containerHeight) * 100}%"
-								style="stop-color:white;stop-opacity:1"
-							/>
-							<stop
-								offset="{((containerHeight - yOffset - 20) / containerHeight) * 100}%"
-								style="stop-color:white;stop-opacity:1"
-							/>
-							<stop
-								offset="{((containerHeight - yOffset + 20) / containerHeight) * 100}%"
-								style="stop-color:black;stop-opacity:0"
-							/>
-							<stop offset="100%" style="stop-color:black;stop-opacity:0" />
-						</linearGradient>
-						<rect x="0" y="0" width={containerWidth} height={containerHeight} fill="url(#fade-x)" />
-						<rect
-							x="0"
-							y="0"
-							width={containerWidth}
-							height={containerHeight}
-							fill="url(#fade-y)"
-							style="mix-blend-mode: multiply"
+	{#if containerWidth > 0}
+		<svg
+			class="pointer-events-none absolute inset-0 h-full w-full mask-radial-from-85%"
+			viewBox="0 0 {containerWidth} {containerHeight}"
+		>
+			<defs>
+				<mask id="fade-mask">
+					<linearGradient id="fade-x" x1="0%" y1="0%" x2="100%" y2="0%">
+						<stop offset="0%" style="stop-color:black;stop-opacity:0" />
+						<stop
+							offset="{((xOffset - hexRadius) / containerWidth) * 100}%"
+							style="stop-color:black;stop-opacity:0"
 						/>
-					</mask>
-				</defs>
-				<g mask="url(#fade-mask)">
-					{#each hexGrid as hex, index (hex.id)}
-						{#if hex.row >= 0}
-							{@const isAlwaysRevealed = alwaysRevealedSet.has(`${hex.col}-${hex.row}`)}
-							{@const shouldRender = !isAlwaysRevealed || (isDM && showAlwaysRevealed)}
+						<stop
+							offset="{((xOffset + hexRadius) / containerWidth) * 100}%"
+							style="stop-color:white;stop-opacity:1"
+						/>
+						<stop
+							offset="{((containerWidth - xOffset + hexRadius / 2) / containerWidth) * 100}%"
+							style="stop-color:white;stop-opacity:1"
+						/>
+						<stop
+							offset="{((containerWidth - xOffset + hexRadius) / containerWidth) * 100}%"
+							style="stop-color:black;stop-opacity:0"
+						/>
+						<stop offset="100%" style="stop-color:black;stop-opacity:0" />
+					</linearGradient>
+					<linearGradient id="fade-y" x1="0%" y1="0%" x2="0%" y2="100%">
+						<stop offset="0%" style="stop-color:black;stop-opacity:0" />
+						<stop
+							offset="{((yOffset - 20) / containerHeight) * 100}%"
+							style="stop-color:black;stop-opacity:0"
+						/>
+						<stop
+							offset="{((yOffset + 20) / containerHeight) * 100}%"
+							style="stop-color:white;stop-opacity:1"
+						/>
+						<stop
+							offset="{((containerHeight - yOffset - 20) / containerHeight) * 100}%"
+							style="stop-color:white;stop-opacity:1"
+						/>
+						<stop
+							offset="{((containerHeight - yOffset + 20) / containerHeight) * 100}%"
+							style="stop-color:black;stop-opacity:0"
+						/>
+						<stop offset="100%" style="stop-color:black;stop-opacity:0" />
+					</linearGradient>
+					<rect x="0" y="0" width={containerWidth} height={containerHeight} fill="url(#fade-x)" />
+					<rect
+						x="0"
+						y="0"
+						width={containerWidth}
+						height={containerHeight}
+						fill="url(#fade-y)"
+						style="mix-blend-mode: multiply"
+					/>
+				</mask>
+			</defs>
+			<g mask="url(#fade-mask)">
+				{#each hexGrid as hex, index (hex.id)}
+					{#if hex.row >= 0}
+						{@const isAlwaysRevealed = alwaysRevealedSet.has(`${hex.col}-${hex.row}`)}
+						{@const shouldRender = !isAlwaysRevealed || (isDM && showAlwaysRevealed)}
 
-							{#if shouldRender}
-								<g class="group">
-									<polygon
-										points={hex.points}
-										fill={(() => {
-											const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
+						{#if shouldRender}
+							<g class="group">
+								<polygon
+									points={hex.points}
+									fill={(() => {
+										const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
 
-											// Selected tiles get orange fill (highest priority)
-											if (isSelected) {
-												return 'rgba(249, 115, 22, 0.6)'; // Orange with transparency
-											}
+										// Selected tiles get orange fill (highest priority)
+										if (isSelected) {
+											return 'rgba(249, 115, 22, 0.6)'; // Orange with transparency
+										}
 
-											// Always-revealed tiles get blue fill
-											if (isAlwaysRevealed) {
-												return isDM ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.5)';
-											}
+										// Always-revealed tiles get blue fill
+										if (isAlwaysRevealed) {
+											return isDM ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.5)';
+										}
 
-											// Regular tiles with dynamic transparency
-											return isDM
-												? `rgba(253, 250, 240, ${tileTransparency})`
-												: 'rgb(253, 250, 240)';
-										})()}
-										stroke={(() => {
-											const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
+										// Regular tiles with dynamic transparency
+										return isDM ? `rgba(253, 250, 240, ${tileTransparency})` : 'rgb(253, 250, 240)';
+									})()}
+									stroke={(() => {
+										const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
 
-											// Selected tiles get orange stroke (highest priority)
-											if (isSelected) {
-												return '#f97316'; // Orange
-											}
+										// Selected tiles get orange stroke (highest priority)
+										if (isSelected) {
+											return '#f97316'; // Orange
+										}
 
-											// Always-revealed tiles get blue stroke
-											if (isAlwaysRevealed) {
-												return '#3b82f6';
-											}
+										// Always-revealed tiles get blue stroke
+										if (isAlwaysRevealed) {
+											return '#3b82f6';
+										}
 
-											// Regular tiles
-											return 'black';
-										})()}
-										stroke-width={(() => {
-											const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
+										// Regular tiles
+										return 'black';
+									})()}
+									stroke-width={(() => {
+										const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
 
-											// Selected tiles get thicker stroke
-											if (isSelected) {
-												return '3';
-											}
+										// Selected tiles get thicker stroke
+										if (isSelected) {
+											return '3';
+										}
 
-											// Always-revealed tiles get medium stroke
-											if (isAlwaysRevealed) {
-												return '2';
-											}
+										// Always-revealed tiles get medium stroke
+										if (isAlwaysRevealed) {
+											return '2';
+										}
 
-											// Regular tiles
-											return '1';
-										})()}
-										class="!outline-0 {(() => {
-											const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
+										// Regular tiles
+										return '1';
+									})()}
+									class="!outline-0 {(() => {
+										const isSelected = selectedSet.has(`${hex.col}-${hex.row}`);
 
-											// Selected tiles get high stroke opacity
-											if (isSelected) {
-												return '[stroke-opacity:1]';
-											}
+										// Selected tiles get high stroke opacity
+										if (isSelected) {
+											return '[stroke-opacity:1]';
+										}
 
-											// Always-revealed tiles get medium stroke opacity
-											if (isAlwaysRevealed) {
-												return '[stroke-opacity:0.4]';
-											}
+										// Always-revealed tiles get medium stroke opacity
+										if (isAlwaysRevealed) {
+											return '[stroke-opacity:0.4]';
+										}
 
-											// Regular tiles
-											return '[stroke-opacity:0.15]';
-										})()} {showAnimations ? 'hover:[stroke-opacity:0.4]' : ''} {hex.row > 0
-											? 'pointer-events-auto'
-											: 'pointer-events-none mask-t-from-0 mask-t-to-75%'}
+										// Regular tiles
+										return '[stroke-opacity:0.15]';
+									})()} {showAnimations ? 'hover:[stroke-opacity:0.4]' : ''} {hex.row > 0
+										? 'pointer-events-auto'
+										: 'pointer-events-none mask-t-from-0 mask-t-to-75%'}
 						  {revealedSet.has(`${hex.col}-${hex.row}`)
-											? '[fill-opacity:0.2]'
-											: 'cursor-pointer [fill-opacity:1]'}"
-										style={showAnimations
-											? 'transition: stroke-opacity 300ms, fill-opacity 300ms;'
-											: ''}
-										onclick={() => onHexRevealed({ hex, index })}
-										onmouseenter={() => onHexHover({ x: hex.col, y: hex.row })}
-										onmouseleave={() => onHexHover(null)}
-										role="button"
-										tabindex="0"
-										aria-label="Hex {hex.row}, {hex.col}"
-										onkeydown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												onHexRevealed({ hex, index });
-											}
-										}}
-									/>
-									{#if hex.row > 0}
-										{@render label(hex, showCoords)}
-										{@render indicators(hex)}
-									{/if}
-								</g>
-							{/if}
+										? '[fill-opacity:0.2]'
+										: 'cursor-pointer [fill-opacity:1]'}"
+									style={showAnimations
+										? 'transition: stroke-opacity 300ms, fill-opacity 300ms;'
+										: ''}
+									onclick={() => onHexRevealed({ hex, index })}
+									onmouseenter={() => onHexHover({ x: hex.col, y: hex.row })}
+									onmouseleave={() => onHexHover(null)}
+									role="button"
+									tabindex="0"
+									aria-label="Hex {hex.row}, {hex.col}"
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											onHexRevealed({ hex, index });
+										}
+									}}
+								/>
+								{#if hex.row > 0}
+									{@render label(hex, showCoords)}
+									{@render indicators(hex)}
+								{/if}
+							</g>
 						{/if}
-					{/each}
-				</g>
-			</svg>
-		{/if}
-	</div>
+					{/if}
+				{/each}
+			</g>
+		</svg>
+	{/if}
 </div>

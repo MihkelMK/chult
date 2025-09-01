@@ -73,7 +73,11 @@ export function generateMapUrl(campaignSlug: string, options: ImageOptions = {})
 	return `${IMGPROXY_URL}/${signature}${target}`;
 }
 
-export function generateMarkerImageUrl(campaignSlug: string, markerId: number, options: ImageOptions = {}): string {
+export function generateMarkerImageUrl(
+	campaignSlug: string,
+	markerId: number,
+	options: ImageOptions = {}
+): string {
 	// Use preset if specified
 	if (options.preset) {
 		const sourceUrl = `local:///${campaignSlug}/markers/${markerId}.jpg`;
@@ -180,9 +184,17 @@ export function generateMapVariants(campaignSlug: string): ImageVariants {
 
 export function generateMarkerImageVariants(campaignSlug: string, markerId: number) {
 	return {
-		thumbnail: generateMarkerImageUrl(campaignSlug, markerId, { width: 120, height: 120, quality: 80 }),
+		thumbnail: generateMarkerImageUrl(campaignSlug, markerId, {
+			width: 120,
+			height: 120,
+			quality: 80
+		}),
 		small: generateMarkerImageUrl(campaignSlug, markerId, { width: 240, height: 240, quality: 85 }),
-		medium: generateMarkerImageUrl(campaignSlug, markerId, { width: 480, height: 480, quality: 90 }),
+		medium: generateMarkerImageUrl(campaignSlug, markerId, {
+			width: 480,
+			height: 480,
+			quality: 90
+		}),
 		large: generateMarkerImageUrl(campaignSlug, markerId, { width: 800, height: 800, quality: 95 }),
 		popup: generateMarkerImageUrl(campaignSlug, markerId, { width: 300, height: 200, quality: 85 }), // For hover popups
 		modal: generateMarkerImageUrl(campaignSlug, markerId, { width: 600, height: 400, quality: 90 }) // For modals

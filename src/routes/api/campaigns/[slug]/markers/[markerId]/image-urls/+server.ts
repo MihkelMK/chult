@@ -33,7 +33,7 @@ export const GET: RequestHandler = async (event) => {
 			src: variants.medium, // Default fallback
 			timestamp: Date.now() // For cache busting
 		};
-		
+
 		return json(response);
 	} catch (err) {
 		console.error('Error generating marker image URLs:', err);

@@ -9,7 +9,7 @@ export class CampaignState extends EventEmitter {
 	public campaign: CampaignDataResponse | PlayerCampaignDataResponse;
 	private campaignSlug: string;
 	private eventSource: EventSource | null = null;
-	
+
 	// Hover state management
 	public hoveredTile = $state<TileCoords | null>(null);
 	public showTileModal = $state(false);
@@ -156,7 +156,7 @@ export class CampaignState extends EventEmitter {
 	// Get markers for a specific tile with role-based filtering
 	getTileMarkers(coords: TileCoords, role: 'dm' | 'player') {
 		if (!('mapMarkers' in this.campaign)) return [];
-		
+
 		const tileMarkers = this.campaign.mapMarkers.filter(
 			(m) => m.x === coords.x && m.y === coords.y
 		);

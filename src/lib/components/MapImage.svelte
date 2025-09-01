@@ -85,7 +85,7 @@
 </script>
 
 {#if urlsLoading}
-	<div class="animate-pulse rounded-lg bg-gray-200 {className}" style="aspect-ratio: 1;">
+	<div class="animate-pulse rounded-lg bg-gray-200 {className} min-h-[80vh]">
 		<div class="flex h-full items-center justify-center">
 			<svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
@@ -98,7 +98,7 @@
 		</div>
 	</div>
 {:else if imageError || !mapUrls}
-	<div class="rounded-lg border-2 border-dashed border-gray-300 bg-gray-100 {className}">
+	<div class="animate-pulse rounded-lg bg-gray-200 {className} min-h-[80vh]">
 		<div class="flex h-full flex-col items-center justify-center p-8">
 			<svg
 				class="mb-4 h-12 w-12 text-gray-400"
@@ -122,17 +122,17 @@
 	<div class="relative {className}">
 		<!-- Loading overlay -->
 		{#if imageLoading}
-			<div
-				class="absolute inset-0 z-10 flex animate-pulse items-center justify-center rounded-lg bg-gray-200"
-			>
-				<svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-					/>
-				</svg>
+			<div class="animate-pulse rounded-lg bg-gray-200 {className} min-h-[80vh]">
+				<div class="flex h-full items-center justify-center">
+					<svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+						/>
+					</svg>
+				</div>
 			</div>
 		{/if}
 
@@ -148,6 +148,7 @@
 			class="h-auto w-full rounded-lg"
 			onload={handleImageLoad}
 			onerror={handleImageError}
+			draggable="false"
 		/>
 	</div>
 {/if}
