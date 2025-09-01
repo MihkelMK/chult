@@ -23,15 +23,15 @@ interface TileState {
 
 function createTileManager(
 	campaignSlug: string,
-	initialRevealed: TileCoords[] = [], // Accept full revealed tile objects or basic coords
+	initialRevealed: RevealedTile[] | TileCoords[] = [], // Accept full revealed tile objects or basic coords
 	campaignState?: DMCampaignState
 ) {
 	const { subscribe, update } = writable<TileState>({
 		revealed: initialRevealed.map((tile) => ({
 			x: tile.x,
 			y: tile.y,
-			alwaysRevealed: tile.alwaysRevealed ?? false,
-			revealedAt: tile.revealedAt ? new SvelteDate(tile.revealedAt) : new SvelteDate()
+			alwaysRevealed: 'alwaysRevealed' in tile && tile.alwaysRevealed,
+			revealedAt: 'revealedAt' in tile ? new SvelteDate(tile.revealedAt) : new SvelteDate()
 		})),
 		pending: [],
 		errors: []
@@ -39,7 +39,7 @@ function createTileManager(
 
 	// Connect to campaign state events if available
 	if (campaignState) {
-		campaignState.addEventListener('tile-revealed', (tile: TileCoords) => {
+		campaignState.addEventListener('tile-revealed', (tile: TileCoords | RevealedTile) => {
 			update((state) => {
 				// Only add if not already revealed and not from our own optimistic update
 				if (
@@ -55,8 +55,9 @@ function createTileManager(
 							{
 								x: tile.x,
 								y: tile.y,
-								alwaysRevealed: tile.alwaysRevealed || false,
-								revealedAt: tile.revealedAt ? new SvelteDate(tile.revealedAt) : new SvelteDate()
+								alwaysRevealed: 'alwaysRevealed' in tile ? tile.alwaysRevealed : false,
+								revealedAt:
+									'revealedAt' in tile ? new SvelteDate(tile.revealedAt) : new SvelteDate()
 							}
 						]
 					};

@@ -69,20 +69,20 @@
 
 	// Remove liveRevealedTiles - now using tileManager as single source of truth
 
-	function onTileAction(coords: TileCoords) {
-		if (isDM && dmTileManager) {
-			// DM: Single tile reveal/hide toggle
-			const isRevealed = dmTileManager.isRevealed(coords, dmTileState);
-			if (isRevealed) {
-				dmTileManager.hideTile(coords);
-			} else {
-				dmTileManager.revealTile(coords);
-			}
-		} else if (playerTileManager) {
-			// Player navigation
-			playerTileManager.navigate(coords);
-		}
-	}
+	// function onTileAction(coords: TileCoords) {
+	// 	if (isDM && dmTileManager) {
+	// 		// DM: Single tile reveal/hide toggle
+	// 		const isRevealed = dmTileManager.isRevealed(coords, dmTileState);
+	// 		if (isRevealed) {
+	// 			dmTileManager.hideTile(coords);
+	// 		} else {
+	// 			dmTileManager.revealTile(coords);
+	// 		}
+	// 	} else if (playerTileManager) {
+	// 		// Player navigation
+	// 		playerTileManager.navigate(coords);
+	// 	}
+	// }
 
 	function onMultiSelect(coords: TileCoords) {
 		if (!isDM) return;
@@ -117,6 +117,5 @@
 	tileState={isDM ? dmTileState : playerTileState}
 	tileManager={isDM ? dmTileManager : playerTileManager}
 	bind:selectedTiles
-	{onTileAction}
 	{onMultiSelect}
 />

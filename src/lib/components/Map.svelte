@@ -24,7 +24,7 @@
 			| 'detail'
 			| 'responsive';
 		isDM?: boolean;
-		isSelecting?: boolean;
+		previewMode?: boolean;
 		showAlwaysRevealed?: boolean;
 		tileTransparency?: number;
 		hexesPerRow?: number; // Number of hexagons per row on the actual map
@@ -50,7 +50,7 @@
 		campaignSlug,
 		variant = 'hexGrid',
 		isDM = false,
-		isSelecting = false,
+		previewMode = false,
 		showAlwaysRevealed = false,
 		tileTransparency = 0.75,
 		hexesPerRow = 72,
@@ -116,7 +116,12 @@
 			const isAlwaysRevealed = alwaysRevealedSet.has(key);
 			const isSelected = selectedSet.has(key);
 
-			const edgeMaskClasses = hex.row === 0 ? 'mask-t-from-0 mask-t-to-75' : '';
+			const edgeMaskClasses =
+				hex.row === 0 && hex.col % 2 === 1
+					? 'mask-t-from-0 mask-t-to-5'
+					: hex.row === rows - 1 && hex.col % 2 === cols % 2
+						? 'mask-b-from-0 mask-b-to-5'
+						: '';
 			const animationClasses =
 				showAnimations && cursorMode === 'interact'
 					? 'hover:[stroke-opacity:0.4] cursor-pointer'
@@ -125,21 +130,25 @@
 			return {
 				...hex,
 				fill: isSelected
-					? 'rgba(249, 115, 22, 0.6)'
+					? 'rgb(249, 115, 22)'
 					: isAlwaysRevealed
-						? isDM
-							? 'rgba(59, 130, 246, 0.3)'
-							: 'rgba(59, 130, 246, 0.5)'
-						: isDM
-							? `rgba(253, 250, 240, ${tileTransparency})`
-							: 'rgb(253, 250, 240)',
+						? 'rgb(59, 130, 246)'
+						: 'rgb(253, 250, 240',
 				stroke: isSelected ? '#f97316' : isAlwaysRevealed ? '#3b82f6' : 'black',
-				strokeWidth: isSelected ? '3' : isAlwaysRevealed ? '2' : '1',
+				strokeWidth: isSelected ? '3' : isAlwaysRevealed || previewMode ? '2' : '1',
 				strokeOpacity: isSelected ? '1' : isAlwaysRevealed ? '0.4' : '0.15',
 				class: ['hex-polygon !outline-0', edgeMaskClasses, animationClasses].join(' '),
 				style: showAnimations ? 'transition: stroke-opacity 300ms, fill-opacity 300ms;' : '',
 				poinerEvents: hex.row > 0 ? 'auto' : 'none',
-				fillOpacity: isRevealed ? '0.2' : '1',
+				fillOpacity: previewMode
+					? '0.25'
+					: isSelected
+						? '0.6'
+						: isRevealed
+							? '0'
+							: isDM
+								? tileTransparency
+								: '1',
 				shouldRender: !isAlwaysRevealed || (isDM && showAlwaysRevealed)
 			};
 		})
@@ -253,7 +262,7 @@
 	const panzoomAttach: Attachment = (element) => {
 		panEl = panzoom(element as HTMLElement, {
 			transformOrigin: { x: 0.5, y: 0.5 },
-			maxZoom: 4,
+			maxZoom: 6,
 			minZoom: 1,
 			smoothScroll: false,
 			disableKeyboardInteraction: true,
@@ -364,7 +373,7 @@
 		{campaignSlug}
 		{variant}
 		alt="D&D Campaign Map"
-		class="absolute inset-0 w-full h-full rounded-lg shadow-xl select-none"
+		class="absolute inset-0 h-full w-full rounded-lg shadow-xl select-none"
 		loading="eager"
 		onLoad={(imageElement) => handleMapLoad(imageElement)}
 		onError={handleMapError}
@@ -428,33 +437,45 @@
 					/>
 				</mask>
 			</defs>
-			<g mask="url(#fade-mask)">
+			<g mask={previewMode ? undefined : 'url(#fade-mask)'}>
 				{#each hexRenderData as hex, index (hex.id)}
 					{#if hex.row >= 0 && hex.shouldRender}
 						<g class="group hex-group">
-							<polygon
-								points={hex.points}
-								fill={hex.fill}
-								stroke={hex.stroke}
-								stroke-width={hex.strokeWidth}
-								stroke-opacity={hex.strokeOpacity}
-								fill-opacity={hex.fillOpacity}
-								class={hex.class}
-								style={hex.style}
-								pointer-events={hex.poinerEvents}
-								onclick={() => handleHexClick({ hex, index })}
-								onmouseenter={() => handleMouseEnter({ x: hex.col, y: hex.row })}
-								onmouseleave={() => handleMouseLeave()}
-								role="button"
-								tabindex="0"
-								aria-label="Hex {hex.row}, {hex.col}"
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										onHexRevealed({ hex, index });
-									}
-								}}
-							/>
-							{#if hex.row > 0}
+							{#if previewMode}
+								<polygon
+									points={hex.points}
+									fill={hex.fill}
+									stroke={hex.stroke}
+									stroke-width={hex.strokeWidth}
+									stroke-opacity={hex.strokeOpacity}
+									fill-opacity={hex.fillOpacity}
+								/>
+							{:else}
+								<polygon
+									points={hex.points}
+									fill={hex.fill}
+									stroke={hex.stroke}
+									stroke-width={hex.strokeWidth}
+									stroke-opacity={hex.strokeOpacity}
+									fill-opacity={hex.fillOpacity}
+									class={hex.class}
+									style={hex.style}
+									pointer-events={hex.poinerEvents}
+									onclick={() => handleHexClick({ hex, index })}
+									onmouseenter={() => handleMouseEnter({ x: hex.col, y: hex.row })}
+									onmouseleave={() => handleMouseLeave()}
+									role="button"
+									tabindex="0"
+									aria-label={`Hex ${hex.row}, ${hex.col}`}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											onHexRevealed({ hex, index });
+										}
+									}}
+								/>
+							{/if}
+							<!-- Don't render labels or indicators in preview mode -->
+							{#if hex.row > 0 && !previewMode}
 								{@render label(hex, showCoords)}
 								{@render indicators(hex)}
 							{/if}
@@ -463,27 +484,7 @@
 				{/each}
 			</g>
 		</svg>
-	{/if}<!-- Debug info - remove in production -->
-	<!-- {#if isDM} -->
-	<!-- 	<div class="absolute left-4 top-20 p-2 text-xs text-white rounded bg-black/50"> -->
-	<!-- 		<div>Total hexes: {hexGrid.length}</div> -->
-	<!-- 		<div> -->
-	<!-- 			Visible hexes: {hexGrid -->
-	<!-- 				.map((hex) => hexElements.get(hex.id)) -->
-	<!-- 				.filter((el) => el?.style.display === 'none').length} -->
-	<!-- 		</div> -->
-	<!-- 		<div> -->
-	<!-- 			Reduction: {Math.round( -->
-	<!-- 				(1 - -->
-	<!-- 					hexGrid -->
-	<!-- 						.map((hex) => hexElements.get(hex.id)) -->
-	<!-- 						.filter((el) => el?.style.display === 'none').length / -->
-	<!-- 						hexGrid.length) * -->
-	<!-- 					100 -->
-	<!-- 			)}% -->
-	<!-- 		</div> -->
-	<!-- 	</div> -->
-	<!-- {/if} -->
+	{/if}
 </div>
 
 <style>
