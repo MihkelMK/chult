@@ -1,3 +1,6 @@
+export * from '$lib/types/database';
+export * from '$lib/types/imgproxy';
+
 export interface TileCoords {
 	x: number;
 	y: number;
@@ -13,4 +16,17 @@ export interface TileCoordsRange {
 	yEnd: number;
 	xStart: number;
 	xEnd: number;
+}
+
+export interface Hex {
+	id: string;
+	row: number;
+	col: number;
+	centerX: number;
+	centerY: number;
+}
+
+export interface HexRevealedEvent {
+	hex: Hex;
+	index: number;
 }
