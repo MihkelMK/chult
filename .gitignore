@@ -26,4 +26,5 @@ vite.config.ts.timestamp-*
 *.db
 
 # User Data
-uploads/
+uploads/*
+!uploads/.gitkeep
