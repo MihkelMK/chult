@@ -37,5 +37,5 @@ COPY --from=build /app/drizzle /app/drizzle
 
 RUN npm install --omit=dev --legacy-peer-deps
 
-ENTRYPOINT [ "entrypoint.sh" ]
+ENTRYPOINT [ "/app/entrypoint.sh" ]
 CMD ["node", "build/index.js"]
