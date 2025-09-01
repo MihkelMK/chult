@@ -248,7 +248,7 @@
 			} else {
 				selectedTiles = [
 					...currentRevealedTiles.filter(
-						(tile: TileCoords | RevealedTile) => 'alwaysRevealed' in tile && tile.alwaysRevealed
+						(tile: TileCoords | RevealedTile) => 'alwaysRevealed' in tile && !tile.alwaysRevealed
 					)
 				];
 			}
