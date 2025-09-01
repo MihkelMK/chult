@@ -75,7 +75,6 @@ export const POST: RequestHandler = async (event) => {
 					.where(
 						and(
 							eq(revealedTiles.campaignId, session.campaignId),
-							eq(revealedTiles.alwaysRevealed, false), // Only delete non-always-revealed tiles
 							or(...coordinateConditions)
 						)
 					)
