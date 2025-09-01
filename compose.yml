@@ -1,6 +1,10 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        DATABASE_URL: '${DATABASE_URL}'
+    env_file: .env
     restart: unless-stopped
     depends_on:
       - postgres

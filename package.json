@@ -30,7 +30,6 @@
 		"@types/node": "^22",
 		"bits-ui": "^2.9.4",
 		"clsx": "^2.1.1",
-		"drizzle-kit": "^0.30.6",
 		"eslint": "^9.18.0",
 		"eslint-config-prettier": "^10.0.1",
 		"eslint-plugin-svelte": "^3.0.0",
@@ -55,6 +54,7 @@
 		]
 	},
 	"dependencies": {
+		"drizzle-kit": "^0.30.6",
 		"@node-rs/argon2": "^2.0.2",
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
