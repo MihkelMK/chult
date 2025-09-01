@@ -43,7 +43,7 @@ services:
       IMGPROXY_RETURN_ATTACHMENT: 'false' # Faster delivery
 
       # Limits for large D&D maps
-      IMGPROXY_MAX_SRC_FILE_SIZE: 52428800 # 50MB
+      IMGPROXY_MAX_SRC_FILE_SIZE: '${PUBLIC_MAX_IMAGE_SIZE}' # 50MB
       IMGPROXY_MAX_SRC_DIMENSION: 16000 # 16000px (was 8000px)
       IMGPROXY_MAX_SRC_RESOLUTION: 268435456 # 268MP (16384x16384)
       IMGPROXY_MAX_ANIMATION_FRAMES: 1 # Static maps only
@@ -56,11 +56,6 @@ services:
       # Caching
       IMGPROXY_CACHE_CONTROL_PASSTHROUGH: 'true'
       IMGPROXY_SET_CANONICAL_HEADER: 'true'
-
-      # Dev
-      IMGPROXY_IGNORE_SSL_VERIFICATION: true
-      IMGPROXY_DEVELOPMENT_ERRORS_MODE: true
-
     volumes:
       - ./uploads:/var/lib/imgproxy:ro # Read-only access to uploads
       - ./imgproxy-cache:/tmp/imgproxy

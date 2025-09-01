@@ -2,6 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Upload, Image, Trash2, Loader2, CheckCircle, AlertCircle } from '@lucide/svelte';
+	import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
 
 	interface Props {
 		hasMapImage?: boolean;
@@ -34,8 +35,8 @@
 			return;
 		}
 
-		if (file.size > 100 * 1024 * 1024) {
-			uploadError = 'File size must be less than 100MB';
+		if (file.size > Number(PUBLIC_MAX_IMAGE_SIZE)) {
+			uploadError = 'File size must be less than 50MB';
 			return;
 		}
 
@@ -142,15 +143,15 @@
 <div class="space-y-4">
 	<!-- Status Messages -->
 	{#if uploadError}
-		<div class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-			<AlertCircle class="h-4 w-4" />
+		<div class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive">
+			<AlertCircle class="w-4 h-4" />
 			<span>{uploadError}</span>
 		</div>
 	{/if}
 
 	{#if uploadSuccess}
-		<div class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800">
-			<CheckCircle class="h-4 w-4" />
+		<div class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
+			<CheckCircle class="w-4 h-4" />
 			<div>
 				<p class="font-medium">Success!</p>
 				<p class="text-xs opacity-90">{uploadSuccess}</p>
@@ -160,10 +161,10 @@
 
 	<!-- Map Status -->
 	{#if mapExists && !showUploadInterface}
-		<div class="flex items-center justify-between rounded-lg">
-			<div class="flex items-center gap-3">
-				<div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-					<Image class="h-5 w-5 text-green-600" />
+		<div class="flex justify-between items-center rounded-lg">
+			<div class="flex gap-3 items-center">
+				<div class="flex justify-center items-center w-10 h-10 bg-green-100 rounded-full">
+					<Image class="w-5 h-5 text-green-600" />
 				</div>
 				<div>
 					<p class="font-medium">Map Uploaded</p>
@@ -175,7 +176,7 @@
 					Replace
 				</Button>
 				<Button variant="outline" size="sm" onclick={deleteExistingMap}>
-					<Trash2 class="h-4 w-4" />
+					<Trash2 class="w-4 h-4" />
 				</Button>
 			</div>
 		</div>
@@ -186,7 +187,7 @@
 		<div>
 			<div>
 				{#if mapExists}
-					<div class="mb-4 flex items-center justify-between">
+					<div class="flex justify-between items-center mb-4">
 						<h4 class="font-medium">Replace Map</h4>
 						<Button variant="ghost" size="sm" onclick={() => (showUploadInterface = false)}>
 							Cancel
@@ -208,7 +209,7 @@
 				>
 					{#if uploading}
 						<div class="py-6">
-							<Loader2 class="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
+							<Loader2 class="mx-auto mb-3 w-8 h-8 animate-spin text-primary" />
 							<p class="text-sm font-medium">Processing map...</p>
 							<p class="mt-1 text-xs text-muted-foreground">
 								Large maps may take a moment to optimize
@@ -221,17 +222,17 @@
 						</div>
 					{:else}
 						<div class="space-y-4">
-							<Upload class="mx-auto h-12 w-12 text-muted-foreground" />
+							<Upload class="mx-auto w-12 h-12 text-muted-foreground" />
 							<div>
 								<p class="mb-2 font-medium">Drop your D&D map here</p>
 								<p class="mb-4 text-sm text-muted-foreground">or click to browse files</p>
 								<Button onclick={() => fileInput.click()}>
-									<Upload class="mr-2 h-4 w-4" />
+									<Upload class="mr-2 w-4 h-4" />
 									Choose Map File
 								</Button>
 							</div>
 							<div class="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-								<p>Max 100MB</p>
+								<p>Max 50MB</p>
 								<p>JPEG, PNG, WebP</p>
 							</div>
 						</div>

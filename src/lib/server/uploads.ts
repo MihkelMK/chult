@@ -1,9 +1,10 @@
 import { writeFile, mkdir, unlink, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
 
 const UPLOAD_DIR = './uploads';
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = Number(PUBLIC_MAX_IMAGE_SIZE); // 50MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export interface UploadResult {
