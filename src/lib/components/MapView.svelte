@@ -60,7 +60,10 @@
 	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
 
 	const heldKeyboardKeys = new PressedKeys();
-	let shiftHeld = $derived(heldKeyboardKeys.has('Shift'));
+	let shouldCaptureKeyboard = $state(true);
+
+	let shiftHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Shift'));
+	let ctrlHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Control'));
 
 	// UI State
 	let sidebarOpen = $state(false);
@@ -70,10 +73,10 @@
 	const campaignState = getCampaignState();
 
 	let selectedTool = $state<'interact' | 'pan' | 'select' | 'paint'>('interact');
-	let activeTool = $derived(shiftHeld && selectedTool === 'interact' ? 'pan' : selectedTool);
+	let activeTool = $derived(shiftHeld ? 'pan' : selectedTool);
 	let selectedSelectMode = $state<'add' | 'remove'>('add');
 	let activeSelectMode = $derived<'add' | 'remove'>(
-		!shiftHeld ? selectedSelectMode : selectedSelectMode === 'add' ? 'remove' : 'add'
+		!ctrlHeld ? selectedSelectMode : selectedSelectMode === 'add' ? 'remove' : 'add'
 	);
 
 	let brushSize = $state<number>(3); // Brush radius (1-5)
@@ -150,7 +153,12 @@
 			case 'select':
 				// Multi-select mode - toggle selection
 				if (mode === 'dm') {
-					onMultiSelect?.(coords);
+					const selected = selectedTiles.some((t) => t.x === coords.x && t.y === coords.y);
+
+					// Add if not selected, remove if selected
+					if ((activeSelectMode === 'add') !== selected) {
+						onMultiSelect?.(coords);
+					}
 				}
 				break;
 			case 'paint':
@@ -219,7 +227,7 @@
 
 	// Keyboard shortcuts for zoom and tool switching
 	function handleKeyDown(event: KeyboardEvent) {
-		if (event.target !== document.body) return; // Only when not in input fields
+		if (!shouldCaptureKeyboard) return; // Only when not in input fields
 
 		// Separate check to support estonian keyboards
 		if (event.code === 'Equal' || event.key === '=' || event.key === '?') {
@@ -229,6 +237,15 @@
 		}
 
 		switch (event.code) {
+			case 'Escape':
+				event.preventDefault();
+				if (selectedTiles.length > 0) {
+					clearSelection();
+				} else if (selectedTool !== 'interact') {
+					selectedTool = 'interact';
+				}
+				break;
+
 			case 'Equal':
 				event.preventDefault();
 				zoomIn();
@@ -254,12 +271,12 @@
 				setSelectedTool('interact');
 				break;
 
-			case 'KeyP':
+			case 'KeyB':
 				event.preventDefault();
 				setSelectedTool('paint');
 				break;
 
-			case 'KeyM':
+			case 'KeyP':
 				event.preventDefault();
 				setSelectedTool('pan');
 				break;
@@ -388,7 +405,7 @@
 					</div>
 
 					<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
-					{#if mode === 'dm' && (activeTool === 'select' || activeTool === 'paint')}
+					{#if mode === 'dm' && (selectedTool === 'select' || selectedTool === 'paint')}
 						<div
 							class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 						>
@@ -427,6 +444,28 @@
 								</Tooltip.Trigger>
 								<Tooltip.Content>
 									{showAlwaysRevealed ? 'Hide Always-Revealed' : 'Show Always-Revealed'}
+								</Tooltip.Content>
+							</Tooltip.Root>
+
+							<!-- Show Revealed Toggle -->
+							<Separator orientation="vertical" class="h-6" />
+
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									<Button
+										variant={showRevealed ? 'default' : 'ghost'}
+										size="sm"
+										onclick={() => (showRevealed = !showRevealed)}
+									>
+										{#if showRevealed}
+											<Eye class="w-4 h-4" />
+										{:else}
+											<EyeOff class="w-4 h-4" />
+										{/if}
+									</Button>
+								</Tooltip.Trigger>
+								<Tooltip.Content>
+									{showRevealed ? 'Hide Revealed' : 'Show Revealed'}
 								</Tooltip.Content>
 							</Tooltip.Root>
 
@@ -588,7 +627,7 @@
 						? isDragging
 							? 'grabbing'
 							: 'grab'
-						: activeTool === 'paint'
+						: activeTool === 'paint' || activeTool === 'select'
 							? activeSelectMode === 'add'
 								? 'crosshair'
 								: 'not-allowed'
