@@ -9,15 +9,17 @@
 		hexRenderData,
 		xOffset = 0,
 		yOffset = 0,
-		cursorMode,
-		zoom,
-		hasNotes,
-		hasPoI,
-		isPlayerPosition,
 		hexesPerCol,
 		hexRadius,
+		zoom,
+		cursorMode,
 		previewMode,
-		showCoords
+		showCoords,
+		onHexRevealed,
+		onHexHover,
+		hasNotes,
+		hasPoI,
+		isPlayerPosition
 	}: MapCanvasProps = $props();
 
 	const calculatePanBounds = (
@@ -48,6 +50,25 @@
 		return { max: centered + padding, min: centered - padding };
 	};
 
+	function handleHexClick(hex: HexRendered, index: number) {
+		if (cursorMode === 'pan') return;
+		onHexRevealed?.({ hex, index });
+	}
+
+	function handleMouseEnter(coords: { x: number; y: number }) {
+		clearTimeout(hoverTimeout);
+		hoverTimeout = setTimeout(() => {
+			hoveredTile = coords;
+			onHexHover?.(coords);
+		}, 150);
+	}
+
+	function handleMouseLeave() {
+		clearTimeout(hoverTimeout);
+		hoveredTile = null;
+		onHexHover?.(null);
+	}
+
 	let firstLoad = $state(true);
 	let tileGroupEl: GroupConfig | undefined = $state();
 
@@ -64,6 +85,11 @@
 	let portrait = $derived(image ? image.height > image.width : false);
 	let scaledImageWidth = $derived(image ? image.width * scale : 0);
 	let scaledImageHeight = $derived(image ? image.height * scale : 0);
+
+	let hoveredTile = $state<{ x: number; y: number } | null>(null);
+	let hoverTimeout: ReturnType<typeof setTimeout>;
+	let isDragging = $state(false);
+	let lastPaintedTile = $state<string | null>(null);
 
 	let { max: maxXPos, min: minXPos } = $derived(
 		calculatePanBounds(scaledImageWidth, canvasWidth, dragBoundPaddingPX, zoom)
@@ -204,6 +230,19 @@
 
 			return { x: clampedX, y: clampedY };
 		}}
+		onmousedown={() => {
+			if (cursorMode === 'paint' || cursorMode === 'select') {
+				isDragging = true;
+			}
+		}}
+		onmouseup={() => {
+			isDragging = false;
+			lastPaintedTile = null;
+		}}
+		onmouseleave={() => {
+			isDragging = false;
+			lastPaintedTile = null;
+		}}
 	>
 		<Layer staticConfig={true} listening={false}>
 			<Image x={0} y={0} {image} staticConfig={true}></Image>
@@ -212,7 +251,7 @@
 			<!-- <Rect width={image.width - xOffset * 2} height={image.height - yOffset * 2} fill="black" /> -->
 			<!-- <Rect width={hexRadius * hexesPerRow * 1.5} height={hexHeight * hexesPerCol} fill="red" /> -->
 			<Group>
-				{#each hexRenderData as hex (hex.id)}
+				{#each hexRenderData as hex, index (hex.id)}
 					{#if hex.row >= 0 && hex.shouldRender}
 						<Group>
 							{#if previewMode}
@@ -239,6 +278,20 @@
 									strokeWidth={Number(hex.strokeWidth)}
 									opacity={Number(hex.fillOpacity)}
 									rotation={90}
+									onclick={() => handleHexClick(hex, index)}
+									onmouseenter={() => {
+										if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
+											const key = `${hex.col}-${hex.row}`;
+											if (lastPaintedTile !== key) {
+												onHexRevealed?.({ hex, index });
+												lastPaintedTile = key;
+											}
+										} else {
+											handleMouseEnter({ x: hex.col, y: hex.row });
+										}
+									}}
+									onmouseleave={handleMouseLeave}
+									cursor={cursorMode === 'pan' ? 'grab' : 'pointer'}
 								/>
 								{@const fontSize = Math.round(hexRadius * 0.4)}
 								{@const lineHeight = 1.6}

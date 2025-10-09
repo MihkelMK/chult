@@ -22,24 +22,23 @@
 		hexesPerCol = 86,
 		xOffset = 70,
 		yOffset = 58,
+		cursorMode,
+		zoom,
+		showAnimations = true,
+		showCoords = 'hover',
 		initiallyRevealed = [],
 		selectedTiles = [], // Add this line
-		showCoords = 'hover',
-		showAnimations = true,
 		onHexRevealed = () => {},
 		onHexHover = () => {},
 		onMapLoad = () => {},
 		onMapError = () => {},
 		hasPoI = () => false,
 		hasNotes = () => false,
-		isPlayerPosition = () => false,
-		cursorMode,
-		zoom
+		isPlayerPosition = () => false
 	}: MapCanvasWrapperProps = $props();
 
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
-	let dragBoundPaddingPX = $derived(canvasWidth * 0.1);
 	let mapUrls = $state<MapUrlsResponse | null>(null);
 	let imageError = $state(false);
 	let urlsLoading = $state(true);
