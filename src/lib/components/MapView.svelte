@@ -83,7 +83,8 @@
 	let isDragging = $state(false);
 	let alwaysRevealMode = $state(false);
 	let showAlwaysRevealed = $state(false);
-	let tileTransparency = $state(0.75); // 0 = transparent, 1 = opaque
+	let showRevealed = $state(false);
+	let tileTransparency = $state(1); // 0 = transparent, 1 = opaque
 
 	let zoomIndex = $state(0);
 	let zoom = $derived(zoomSteps[zoomIndex]);
@@ -641,6 +642,7 @@
 							variant="detail"
 							isDM={mode === 'dm'}
 							showAlwaysRevealed={mode === 'dm' ? showAlwaysRevealed : false}
+							showRevealed={mode === 'dm' ? showRevealed : false}
 							tileTransparency={mode === 'dm' ? tileTransparency : 0.75}
 							hexesPerRow={data.campaign?.hexesPerRow ?? 20}
 							hexesPerCol={data.campaign?.hexesPerCol ?? 20}

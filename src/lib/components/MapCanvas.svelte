@@ -1,19 +1,24 @@
 <script lang="ts">
-	import type { HexRendered, MapCanvasProps } from '$lib/types';
-	import type { GroupConfig } from 'konva/lib/Group';
-	import { onMount } from 'svelte';
-	import { Stage, Layer, Image, RegularPolygon, Group, Text } from 'svelte-konva';
+	import type { Hex, HexRendered, MapCanvasProps } from '$lib/types';
+	import { Stage, Layer, Image, RegularPolygon, Text } from 'svelte-konva';
 
 	let {
 		image,
-		hexRenderData,
+		hexGrid,
+		isDM,
+		selectedSet,
+		revealedSet,
+		alwaysRevealedSet,
 		xOffset = 0,
 		yOffset = 0,
 		hexesPerCol,
 		hexRadius,
 		zoom,
 		cursorMode,
+		tileTransparency,
 		previewMode,
+		showRevealed,
+		showAlwaysRevealed,
 		showCoords,
 		onHexRevealed,
 		onHexHover,
@@ -50,9 +55,9 @@
 		return { max: centered + padding, min: centered - padding };
 	};
 
-	function handleHexClick(hex: HexRendered, index: number) {
+	function handleHexClick(hex: Hex) {
 		if (cursorMode === 'pan') return;
-		onHexRevealed?.({ hex, index });
+		onHexRevealed?.({ hex });
 	}
 
 	function handleMouseEnter(coords: { x: number; y: number }) {
@@ -70,7 +75,6 @@
 	}
 
 	let firstLoad = $state(true);
-	let tileGroupEl: GroupConfig | undefined = $state();
 
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
@@ -86,10 +90,29 @@
 	let scaledImageWidth = $derived(image ? image.width * scale : 0);
 	let scaledImageHeight = $derived(image ? image.height * scale : 0);
 
+	const fontSize = $derived(Math.round(hexRadius * 0.4));
+	const lineHeight = $state(1.6);
+	const textXOffset = $derived(fontSize);
+	const textYOffset = $derived(-fontSize / lineHeight);
+
 	let hoveredTile = $state<{ x: number; y: number } | null>(null);
 	let hoverTimeout: ReturnType<typeof setTimeout>;
 	let isDragging = $state(false);
 	let lastPaintedTile = $state<string | null>(null);
+
+	// Filter tiles for layer based rendering
+	let revealedTiles = $derived.by(() =>
+		hexGrid.filter((hex) => revealedSet.has(`${hex.col}-${hex.row}`))
+	);
+	let alwaysRevealedTiles = $derived.by(() =>
+		hexGrid.filter((hex) => alwaysRevealedSet.has(`${hex.col}-${hex.row}`))
+	);
+	let unrevealedTiles = $derived.by(() =>
+		hexGrid.filter(
+			(hex) =>
+				!revealedSet.has(`${hex.col}-${hex.row}`) && !alwaysRevealedSet.has(`${hex.col}-${hex.row}`)
+		)
+	);
 
 	let { max: maxXPos, min: minXPos } = $derived(
 		calculatePanBounds(scaledImageWidth, canvasWidth, dragBoundPaddingPX, zoom)
@@ -136,32 +159,7 @@
 			previousZoom = zoom;
 		}
 	});
-
-	onMount(() => {
-		tileGroupEl?.cache();
-
-		return tileGroupEl?.clearCache();
-	});
 </script>
-
-{#snippet label(
-	hex: HexRendered,
-	showWhen: 'never' | 'hover' | 'always' | undefined,
-	fontSize: number,
-	textXOffset: number,
-	textYOffset: number
-)}
-	{#if showWhen !== 'never'}
-		<Text
-			listening={false}
-			x={hex.centerX - (hex.col === hexesPerCol - 1 ? 0 : textXOffset)}
-			y={hex.centerY + textYOffset}
-			text="{(hex.col - 1).toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}"
-			fill="#000000"
-			{fontSize}
-		/>
-	{/if}
-{/snippet}
 
 {#snippet indicators(hex: HexRendered)}
 	{@const coords = { x: hex.col, y: hex.row }}
@@ -213,6 +211,60 @@
 	{/if}
 {/snippet}
 
+{#snippet tile(hex: Hex, isRevealed: boolean, isAlways: boolean)}
+	{@const key = `${hex.col}-${hex.row}`}
+	{@const isSelected = isDM && selectedSet.has(key)}
+	{#if isSelected || (!isRevealed && !isAlways)}
+		<RegularPolygon
+			x={hex.centerX}
+			y={hex.centerY}
+			radius={hexRadius}
+			sides={6}
+			rotation={90}
+			fill={isSelected
+				? 'rgb(249, 115, 22)'
+				: isAlways
+					? 'rgb(59, 130, 246)'
+					: isRevealed
+						? '#bfd5fc'
+						: 'rgb(253, 250, 240)'}
+			opacity={isSelected ? 0.6 : isDM ? tileTransparency : 1}
+			stroke={isSelected ? '#f97316' : isAlways ? '#3b82f6' : 'black'}
+			strokeWidth={isSelected ? 3 : previewMode ? 2 : 1}
+			strokeOpacity={isSelected ? 1 : isAlways ? 0.4 : 0.15}
+			listening={true}
+			onclick={() => handleHexClick(hex)}
+			onmouseenter={() => {
+				if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
+					const key = `${hex.col}-${hex.row}`;
+					if (lastPaintedTile !== key) {
+						onHexRevealed?.({ hex });
+						lastPaintedTile = key;
+					}
+				} else {
+					handleMouseEnter({ x: hex.col, y: hex.row });
+				}
+			}}
+			onmouseleave={handleMouseLeave}
+			cursor={cursorMode === 'pan' ? 'grab' : 'pointer'}
+		/>
+		{#if hex.row > 0 && showCoords !== 'never'}
+			<Text
+				staticConfig={true}
+				listening={false}
+				x={hex.centerX - (hex.col === hexesPerCol - 1 ? 0 : textXOffset)}
+				y={hex.centerY + textYOffset}
+				text="{(hex.col - 1).toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}"
+				fill="#000000"
+				{fontSize}
+			/>
+		{/if}
+		<!-- {#if hex.row > 0 && showCoords !== 'never'} -->
+		<!-- {@render indicators(hex)} -->
+		<!-- {/if} -->
+	{/if}
+{/snippet}
+
 <svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
 
 {#if image}
@@ -244,69 +296,42 @@
 			lastPaintedTile = null;
 		}}
 	>
+		<!-- Layer 1: Background - never cull -->
 		<Layer staticConfig={true} listening={false}>
-			<Image x={0} y={0} {image} staticConfig={true}></Image>
+			<Image x={0} y={0} {image}></Image>
 		</Layer>
-		<Layer x={xOffset} y={yOffset} bind:handle={tileGroupEl}>
-			<!-- <Rect width={image.width - xOffset * 2} height={image.height - yOffset * 2} fill="black" /> -->
-			<!-- <Rect width={hexRadius * hexesPerRow * 1.5} height={hexHeight * hexesPerCol} fill="red" /> -->
-			<Group>
-				{#each hexRenderData as hex, index (hex.id)}
-					{#if hex.row >= 0 && hex.shouldRender}
-						<Group>
-							{#if previewMode}
-								<RegularPolygon
-									listening={false}
-									x={hex.centerX}
-									y={hex.centerY}
-									radius={hexRadius}
-									sides={6}
-									fill={hex.fill}
-									stroke={hex.stroke}
-									strokeWidth={Number(hex.strokeWidth)}
-									stroke-opacity={hex.strokeOpacity}
-									rotation={90}
-								/>
-							{:else}
-								<RegularPolygon
-									x={hex.centerX}
-									y={hex.centerY}
-									radius={hexRadius}
-									sides={6}
-									fill="white"
-									stroke={hex.stroke}
-									strokeWidth={Number(hex.strokeWidth)}
-									opacity={Number(hex.fillOpacity)}
-									rotation={90}
-									onclick={() => handleHexClick(hex, index)}
-									onmouseenter={() => {
-										if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
-											const key = `${hex.col}-${hex.row}`;
-											if (lastPaintedTile !== key) {
-												onHexRevealed?.({ hex, index });
-												lastPaintedTile = key;
-											}
-										} else {
-											handleMouseEnter({ x: hex.col, y: hex.row });
-										}
-									}}
-									onmouseleave={handleMouseLeave}
-									cursor={cursorMode === 'pan' ? 'grab' : 'pointer'}
-								/>
-								{@const fontSize = Math.round(hexRadius * 0.4)}
-								{@const lineHeight = 1.6}
-								{@const textXOffset = fontSize}
-								{@const textYOffset = -fontSize / lineHeight}
-								{#if hex.row > 0}
-									{@render label(hex, showCoords, fontSize, textXOffset, textYOffset)}
-									<!-- {@render indicators(hex)} -->
-								{/if}
-							{/if}
-							<!-- Don't render labels or indicators in preview mode -->
-						</Group>
-					{/if}
-				{/each}
-			</Group>
+
+		<!-- Layer 2: Fog-of-war - Only cull for DM when fog is visible -->
+		<Layer x={xOffset} y={yOffset} listening={cursorMode !== 'pan'}>
+			{#each unrevealedTiles as hex (hex.id)}
+				<!--  ^^^^^^^^ Players: render ALL fog tiles (no culling) -->
+				<!--            DMs: can cull with large buffer (5x radius) -->
+				{#if hex.row >= 0}
+					{@render tile(hex, false, false)}
+				{/if}
+			{/each}
 		</Layer>
+
+		{#if isDM}
+			<!-- Layer 3: Revealed tiles -->
+			{#if showRevealed}
+				<Layer x={xOffset} y={yOffset} listening={cursorMode !== 'pan'}>
+					{#each revealedTiles as hex (hex.id)}
+						{#if hex.row >= 0}
+							{@render tile(hex, true, false)}
+						{/if}
+					{/each}
+				</Layer>
+			{/if}
+
+			<!-- Layer 4: Always-revealed markers - SAFE to cull -->
+			{#if showAlwaysRevealed}
+				<Layer x={xOffset} y={yOffset} listening={cursorMode !== 'pan'}>
+					{#each alwaysRevealedTiles as hex (hex.id)}
+						{@render tile(hex, false, true)}
+					{/each}
+				</Layer>
+			{/if}
+		{/if}
 	</Stage>
 {/if}

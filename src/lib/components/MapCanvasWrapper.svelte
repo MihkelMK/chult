@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import useImage from '$lib/hooks/useImage.svelte';
-	import type {
-		Hex,
-		HexRendered,
-		MapCanvasProps,
-		MapCanvasWrapperProps,
-		MapUrlsResponse
-	} from '$lib/types';
+	import type { Hex, MapCanvasProps, MapCanvasWrapperProps, MapUrlsResponse } from '$lib/types';
 	import type { Component } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
@@ -17,6 +11,7 @@
 		isDM = false,
 		previewMode = false,
 		showAlwaysRevealed = false,
+		showRevealed = false,
 		tileTransparency = 0.75,
 		hexesPerRow = 72,
 		hexesPerCol = 86,
@@ -102,13 +97,9 @@
 	// let hoveredHex: TileCoords | null = $state(null);
 	// let hoverTimeout: ReturnType<typeof setTimeout> | undefined = $state();
 
-	let revealedSet = $derived(new SvelteSet(initiallyRevealed.map((tile) => `${tile.x}-${tile.y}`)));
-	let alwaysRevealedSet = $derived(
-		new SvelteSet(
-			initiallyRevealed.filter((tile) => tile.alwaysRevealed).map((tile) => `${tile.x}-${tile.y}`)
-		)
-	);
-	let selectedSet = $derived(new SvelteSet(selectedTiles.map((tile) => `${tile.x}-${tile.y}`))); // Add this line
+	let revealedSet = new SvelteSet<string>();
+	let alwaysRevealedSet = new SvelteSet<string>();
+	let selectedSet = new SvelteSet<string>();
 
 	// Calculate hex dimensions based on usable width and hexes per row
 	let hexRadius: number = $derived(
@@ -120,37 +111,6 @@
 	let horizontalSpacing: number = $derived(hexRadius * 1.5); // Hexes overlap by 1/4 of their width
 	let verticalSpacing: number = $derived(hexHeight); // Full height spacing between rows
 
-	let hexRenderData: HexRendered[] = $derived(
-		hexGrid.map((hex) => {
-			const key = `${hex.col}-${hex.row}`;
-			const isRevealed = revealedSet.has(key);
-			const isAlwaysRevealed = alwaysRevealedSet.has(key);
-			const isSelected = selectedSet.has(key);
-
-			return {
-				...hex,
-				fill: isSelected
-					? 'rgb(249, 115, 22)'
-					: isAlwaysRevealed
-						? 'rgb(59, 130, 246)'
-						: 'rgb(253, 250, 240',
-				stroke: isSelected ? '#f97316' : isAlwaysRevealed ? '#3b82f6' : 'black',
-				strokeWidth: isSelected ? '3' : isAlwaysRevealed || previewMode ? '2' : '1',
-				strokeOpacity: isSelected ? '1' : isAlwaysRevealed ? '0.4' : '0.15',
-				fillOpacity: previewMode
-					? '0.25'
-					: isSelected
-						? '0.6'
-						: isRevealed
-							? '0'
-							: isDM
-								? tileTransparency
-								: '1',
-				shouldRender: !isAlwaysRevealed || (isDM && showAlwaysRevealed)
-			};
-		})
-	);
-
 	$effect(() => {
 		loadMapUrls();
 	});
@@ -159,6 +119,69 @@
 		if (status === 'loaded' && image) {
 			generateHexGrid();
 		}
+	});
+
+	// Sync revealedSet incrementally
+	$effect(() => {
+		const newKeys = new Set(
+			initiallyRevealed.filter((t) => !t.alwaysRevealed).map((t) => `${t.x}-${t.y}`)
+		);
+
+		// Add new tiles
+		newKeys.forEach((key) => {
+			if (!revealedSet.has(key)) {
+				revealedSet.add(key);
+			}
+		});
+
+		// Remove tiles no longer revealed
+		const toRemove: string[] = [];
+		revealedSet.forEach((key) => {
+			if (!newKeys.has(key)) {
+				toRemove.push(key);
+			}
+		});
+		toRemove.forEach((key) => revealedSet.delete(key));
+	});
+
+	// Sync alwaysRevealedSet incrementally
+	$effect(() => {
+		const newKeys = new Set(
+			initiallyRevealed.filter((t) => t.alwaysRevealed).map((t) => `${t.x}-${t.y}`)
+		);
+
+		newKeys.forEach((key) => {
+			if (!alwaysRevealedSet.has(key)) {
+				alwaysRevealedSet.add(key);
+			}
+		});
+
+		const toRemove: string[] = [];
+		alwaysRevealedSet.forEach((key) => {
+			if (!newKeys.has(key)) {
+				toRemove.push(key);
+			}
+		});
+		toRemove.forEach((key) => alwaysRevealedSet.delete(key));
+	});
+
+	// Sync selectedSet incrementally
+	$effect(() => {
+		const newKeys = new Set(selectedTiles.map((t) => `${t.x}-${t.y}`));
+
+		newKeys.forEach((key) => {
+			if (!selectedSet.has(key)) {
+				selectedSet.add(key);
+			}
+		});
+
+		const toRemove: string[] = [];
+		selectedSet.forEach((key) => {
+			if (!newKeys.has(key)) {
+				toRemove.push(key);
+			}
+		});
+		toRemove.forEach((key) => selectedSet.delete(key));
 	});
 </script>
 
@@ -214,17 +237,24 @@
 		{@render placeholder()}
 	{:then MapCanvas}
 		<MapCanvas
+			{hexGrid}
+			{revealedSet}
+			{selectedSet}
+			{alwaysRevealedSet}
 			{image}
 			{zoom}
 			{cursorMode}
-			{hexRenderData}
 			{xOffset}
 			{yOffset}
 			{hexesPerCol}
 			{hexesPerRow}
 			{showCoords}
 			{showAnimations}
+			{showAlwaysRevealed}
+			{showRevealed}
 			{previewMode}
+			{isDM}
+			{tileTransparency}
 			{onHexRevealed}
 			{onHexHover}
 			{onMapLoad}
@@ -232,7 +262,6 @@
 			{hasPoI}
 			{hasNotes}
 			{isPlayerPosition}
-			{revealedSet}
 			{hexRadius}
 		/>
 	{/await}

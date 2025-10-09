@@ -31,7 +31,6 @@ export interface Hex {
 
 export interface HexRevealedEvent {
 	hex: Hex;
-	index: number;
 }
 
 export interface HexRendered extends Hex {
@@ -52,14 +51,18 @@ export interface CanvasImage {
 }
 
 interface MapCanvasSharedProps {
+	isDM?: boolean;
 	previewMode: boolean;
 	hexesPerRow: number; // Number of hexagons per row on the actual map
 	hexesPerCol: number; // Number of hexagons per column on the actual map
 	xOffset: number; // Horizontal offset in pixels from left edge to where grid starts
 	yOffset: number; // Vertical offset in pixels from top edge to where grid starts
 	zoom: number;
-	showCoords: 'never' | 'always' | 'hover';
+	tileTransparency?: number;
 	showAnimations: boolean;
+	showAlwaysRevealed?: boolean;
+	showRevealed?: boolean;
+	showCoords: 'never' | 'always' | 'hover';
 	cursorMode: 'interact' | 'pan' | 'select' | 'paint';
 	onHexRevealed: (event: HexRevealedEvent) => void;
 	onHexHover: (coords: TileCoords | null) => void;
@@ -73,16 +76,15 @@ interface MapCanvasSharedProps {
 export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 	campaignSlug: string;
 	variant?: 'thumbnail' | 'small' | 'medium' | 'large' | 'hexGrid' | 'overview' | 'detail';
-	isDM?: boolean;
-	showAlwaysRevealed?: boolean;
-	tileTransparency?: number;
 	initiallyRevealed?: RevealedTileResponse[];
 	selectedTiles?: TileCoords[]; // Add this line
 }
 
 export interface MapCanvasProps extends MapCanvasSharedProps {
 	image: HTMLImageElement | undefined;
-	hexRenderData: HexRendered[];
-	revealedSet: SvelteSet<string>;
+	hexGrid: Hex[];
 	hexRadius: number;
+	selectedSet: SvelteSet<string>;
+	revealedSet: SvelteSet<string>;
+	alwaysRevealedSet: SvelteSet<string>;
 }
