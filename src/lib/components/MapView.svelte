@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PressedKeys } from 'runed';
 	import Map from './Map.svelte';
 	import TileDetails from './TileDetails.svelte';
 	import TileContentPreview from './TileContentPreview.svelte';
@@ -16,7 +17,6 @@
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { Slider } from '$lib/components/ui/slider';
 	import type { HexRevealedEvent, RevealedTile, TileCoords } from '$lib/types';
-	import type { PageData } from '../../routes/(campaign)/[slug]/map/$types';
 	import { getCampaignState } from '$lib/contexts/campaignContext';
 	import {
 		Menu,
@@ -36,6 +36,8 @@
 	} from '@lucide/svelte';
 	import type { PlayerTileState } from '$lib/stores/playerTileManager.svelte';
 	import type { TileState } from '$lib/stores/tileManager.svelte';
+	import MapCanvasWrapper from './MapCanvasWrapper.svelte';
+	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
 
 	interface Props {
 		data: PageData;
@@ -55,21 +57,33 @@
 		selectedTiles = $bindable([])
 	}: Props = $props();
 
+	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
+
+	const heldKeyboardKeys = new PressedKeys();
+	let shiftHeld = $derived(heldKeyboardKeys.has('Shift'));
+
 	// UI State
 	let sidebarOpen = $state(false);
 	let selectedTile = $state<TileCoords | null>(null);
 	let showTileDetails = $state(false);
 	// Use campaign state for hover management
 	const campaignState = getCampaignState();
-	let cursorMode = $state<'interact' | 'pan' | 'select' | 'paint'>('interact');
+
+	let selectedTool = $state<'interact' | 'pan' | 'select' | 'paint'>('interact');
+	let activeTool = $derived(shiftHeld && selectedTool === 'interact' ? 'pan' : selectedTool);
+	let selectedSelectMode = $state<'add' | 'remove'>('add');
+	let activeSelectMode = $derived<'add' | 'remove'>(
+		!shiftHeld ? selectedSelectMode : selectedSelectMode === 'add' ? 'remove' : 'add'
+	);
+
 	let brushSize = $state<number>(3); // Brush radius (1-5)
-	let paintMode = $state<'add' | 'remove'>('add');
 	let isDragging = $state(false);
 	let alwaysRevealMode = $state(false);
 	let showAlwaysRevealed = $state(false);
 	let tileTransparency = $state(0.75); // 0 = transparent, 1 = opaque
 
-	let zoom = $state(1);
+	let zoomIndex = $state(0);
+	let zoom = $derived(zoomSteps[zoomIndex]);
 
 	// Computed values
 	let currentRevealedTiles = $derived(
@@ -128,7 +142,7 @@
 	function handleTileClick(event: HexRevealedEvent) {
 		const coords: TileCoords = { x: event.hex.col, y: event.hex.row };
 
-		switch (cursorMode) {
+		switch (activeTool) {
 			case 'interact':
 				// Default action: open new tile content modal
 				campaignState.openTileModal(coords);
@@ -143,7 +157,7 @@
 				// Paint mode - paint multiple tiles based on brush size and add/remove mode
 				if (mode === 'dm') {
 					const tilesToPaint = getBrushTiles(coords);
-					if (paintMode === 'add') {
+					if (activeSelectMode === 'add') {
 						// Add tiles to selection
 						tilesToPaint.forEach((tile) => {
 							const exists = selectedTiles.some((t) => t.x === tile.x && t.y === tile.y);
@@ -175,7 +189,7 @@
 
 	function handleHexHover(coords: TileCoords | null) {
 		// Only show hover in interact mode and if tile has content
-		if (cursorMode === 'interact' && coords) {
+		if (activeTool === 'interact' && coords) {
 			const markers = campaignState.getTileMarkers(coords, mode);
 			if (markers.length > 0) {
 				campaignState.setHoveredTile(coords);
@@ -188,38 +202,66 @@
 	}
 
 	function zoomIn() {
-		if (zoom < 4) {
-			zoom += 1;
+		if (zoomIndex < zoomSteps.length - 1) {
+			zoomIndex += 1;
 		}
 	}
 
 	function zoomOut() {
-		if (zoom > 1) {
-			zoom -= 1;
+		if (zoomIndex > 0) {
+			zoomIndex -= 1;
 		}
 	}
 
 	function resetZoom() {
-		zoom = 1;
+		zoomIndex = 0;
 	}
 
-	// Keyboard shortcuts for zoom
+	// Keyboard shortcuts for zoom and tool switching
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.target !== document.body) return; // Only when not in input fields
 
-		switch (event.key) {
-			case '+':
-			case '=':
+		// Separate check to support estonian keyboards
+		if (event.code === 'Equal' || event.key === '=' || event.key === '?') {
+			event.preventDefault();
+			zoomIn();
+			return;
+		}
+
+		switch (event.code) {
+			case 'Equal':
 				event.preventDefault();
 				zoomIn();
 				break;
-			case '-':
+
+			case 'Digit0':
+				event.preventDefault();
+				resetZoom();
+				break;
+
+			case 'Minus':
 				event.preventDefault();
 				zoomOut();
 				break;
-			case '0':
+
+			case 'KeyS':
 				event.preventDefault();
-				resetZoom();
+				setSelectedTool('select');
+				break;
+
+			case 'KeyI':
+				event.preventDefault();
+				setSelectedTool('interact');
+				break;
+
+			case 'KeyP':
+				event.preventDefault();
+				setSelectedTool('paint');
+				break;
+
+			case 'KeyM':
+				event.preventDefault();
+				setSelectedTool('pan');
 				break;
 		}
 	}
@@ -234,8 +276,8 @@
 	});
 
 	// Cursor mode functions
-	function setCursorMode(mode: 'interact' | 'pan' | 'select' | 'paint') {
-		cursorMode = mode;
+	function setSelectedTool(mode: 'interact' | 'pan' | 'select' | 'paint') {
+		selectedTool = mode;
 		if (mode !== 'select' && mode !== 'paint') {
 			selectedTiles = [];
 		}
@@ -282,27 +324,27 @@
 
 <!-- Full screen layout -->
 <Tooltip.Provider>
-	<div class="fixed inset-0 flex bg-background">
+	<div class="flex fixed inset-0 bg-background">
 		<!-- Collapsible Sidebar -->
 		<Sheet bind:open={sidebarOpen}>
-			<div class="relative flex flex-1 flex-col">
+			<div class="flex relative flex-col flex-1">
 				<!-- Floating Toolbars -->
-				<div class="absolute top-4 left-4 z-20 flex flex-col gap-2">
+				<div class="flex absolute top-4 left-4 z-20 flex-col gap-2">
 					<!-- Main toolbar -->
 					<div
-						class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+						class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 					>
 						<SheetTrigger>
 							{#snippet child({ props })}
 								<Button {...props} variant="ghost" size="sm">
-									<Menu class="h-4 w-4" />
+									<Menu class="w-4 h-4" />
 								</Button>
 							{/snippet}
 						</SheetTrigger>
 
 						<Separator orientation="vertical" class="h-6" />
 
-						<div class="flex items-center gap-2">
+						<div class="flex gap-2 items-center">
 							<div class="text-sm font-medium">
 								{data.campaign?.name || data.session?.campaignSlug}
 							</div>
@@ -326,7 +368,7 @@
 						<!-- DM Transparency Control -->
 						{#if mode === 'dm'}
 							<Separator orientation="vertical" class="h-6" />
-							<div class="flex items-center gap-2">
+							<div class="flex gap-2 items-center">
 								<span class="text-xs text-muted-foreground">Tile opacity:</span>
 								<div class="w-20">
 									<Slider
@@ -338,7 +380,7 @@
 										class="w-full"
 									/>
 								</div>
-								<span class="w-8 text-center font-mono text-xs"
+								<span class="w-8 font-mono text-xs text-center"
 									>{Math.round(tileTransparency * 100)}%</span
 								>
 							</div>
@@ -346,9 +388,9 @@
 					</div>
 
 					<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
-					{#if mode === 'dm' && (cursorMode === 'select' || cursorMode === 'paint')}
+					{#if mode === 'dm' && (activeTool === 'select' || activeTool === 'paint')}
 						<div
-							class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+							class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 						>
 							<!-- Always-Reveal Toggle -->
 							<Tooltip.Root>
@@ -358,7 +400,7 @@
 										size="sm"
 										onclick={() => (alwaysRevealMode = !alwaysRevealMode)}
 									>
-										<CircleDot class="h-4 w-4" />
+										<CircleDot class="w-4 h-4" />
 									</Button>
 								</Tooltip.Trigger>
 								<Tooltip.Content>
@@ -377,9 +419,9 @@
 										onclick={() => (showAlwaysRevealed = !showAlwaysRevealed)}
 									>
 										{#if showAlwaysRevealed}
-											<Eye class="h-4 w-4" />
+											<Eye class="w-4 h-4" />
 										{:else}
-											<EyeOff class="h-4 w-4" />
+											<EyeOff class="w-4 h-4" />
 										{/if}
 									</Button>
 								</Tooltip.Trigger>
@@ -388,41 +430,41 @@
 								</Tooltip.Content>
 							</Tooltip.Root>
 
-							<!-- Paint Mode Controls (only in paint mode) -->
-							{#if cursorMode === 'paint'}
-								<Separator orientation="vertical" class="h-6" />
+							<!-- Select Mode Controls -->
+							<Separator orientation="vertical" class="h-6" />
 
-								<!-- Add/Remove Mode Toggle -->
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button
-											variant={paintMode === 'add' ? 'default' : 'ghost'}
-											size="sm"
-											onclick={() => (paintMode = 'add')}
-										>
-											<Plus class="h-4 w-4" />
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>Add Mode - Paint to add tiles</Tooltip.Content>
-								</Tooltip.Root>
+							<!-- Add/Remove Mode Toggle -->
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									<Button
+										variant={activeSelectMode === 'add' ? 'default' : 'ghost'}
+										size="sm"
+										onclick={() => (activeSelectMode = 'add')}
+									>
+										<Plus class="w-4 h-4" />
+									</Button>
+								</Tooltip.Trigger>
+								<Tooltip.Content>Add to selection</Tooltip.Content>
+							</Tooltip.Root>
 
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button
-											variant={paintMode === 'remove' ? 'default' : 'ghost'}
-											size="sm"
-											onclick={() => (paintMode = 'remove')}
-										>
-											<Minus class="h-4 w-4" />
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>Remove Mode - Paint to remove tiles</Tooltip.Content>
-								</Tooltip.Root>
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									<Button
+										variant={activeSelectMode === 'remove' ? 'default' : 'ghost'}
+										size="sm"
+										onclick={() => (activeSelectMode = 'remove')}
+									>
+										<Minus class="w-4 h-4" />
+									</Button>
+								</Tooltip.Trigger>
+								<Tooltip.Content>Remove from selection</Tooltip.Content>
+							</Tooltip.Root>
 
+							{#if activeTool === 'paint'}
 								<!-- Brush Size Slider -->
 								<Separator orientation="vertical" class="h-6" />
 
-								<div class="flex items-center gap-2 px-2">
+								<div class="flex gap-2 items-center px-2">
 									<span class="text-xs text-muted-foreground">Size:</span>
 									<div class="w-20">
 										<Slider
@@ -434,7 +476,7 @@
 											class="w-full"
 										/>
 									</div>
-									<span class="w-6 text-center font-mono text-xs">{brushSize}</span>
+									<span class="w-6 font-mono text-xs text-center">{brushSize}</span>
 								</div>
 							{/if}
 
@@ -447,7 +489,7 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button variant="ghost" size="sm" onclick={revealSelectedTiles}>
-											<Eye class="h-4 w-4" />
+											<Eye class="w-4 h-4" />
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content>Reveal Selected</Tooltip.Content>
@@ -456,7 +498,7 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button variant="ghost" size="sm" onclick={hideSelectedTiles}>
-											<EyeOff class="h-4 w-4" />
+											<EyeOff class="w-4 h-4" />
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content>Hide Selected</Tooltip.Content>
@@ -465,7 +507,7 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button variant="ghost" size="sm" onclick={clearSelection}>
-											<Trash2 class="h-4 w-4" />
+											<Trash2 class="w-4 h-4" />
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content>Clear Selection</Tooltip.Content>
@@ -482,12 +524,12 @@
 				<!-- Zoom Controls -->
 				<div class="absolute bottom-4 left-4 z-20">
 					<div
-						class="flex flex-col gap-1 rounded-lg border bg-background/95 p-1 shadow-xs backdrop-blur-sm"
+						class="flex flex-col gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 					>
 						<Tooltip.Root>
 							<Tooltip.Trigger>
 								<Button variant="ghost" size="sm" onclick={zoomIn}>
-									<Plus class="h-4 w-4" />
+									<Plus class="w-4 h-4" />
 								</Button>
 							</Tooltip.Trigger>
 							<Tooltip.Content side="right">Zoom In</Tooltip.Content>
@@ -510,7 +552,7 @@
 						<Tooltip.Root>
 							<Tooltip.Trigger>
 								<Button variant="ghost" size="sm" onclick={zoomOut}>
-									<Minus class="h-4 w-4" />
+									<Minus class="w-4 h-4" />
 								</Button>
 							</Tooltip.Trigger>
 							<Tooltip.Content side="right">Zoom Out</Tooltip.Content>
@@ -522,15 +564,15 @@
 				{#if data.session?.role === 'dm'}
 					<div class="absolute top-4 right-4 z-20">
 						<div
-							class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+							class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 						>
 							<form action="?/toggleView" method="POST" class="contents">
 								<Button variant="link" size="sm" type="submit">
 									{#if mode === 'dm'}
-										<Users class="mr-2 h-4 w-4" />
+										<Users class="mr-2 w-4 h-4" />
 										Player View
 									{:else}
-										<User class="mr-2 h-4 w-4" />
+										<User class="mr-2 w-4 h-4" />
 										DM View
 									{/if}
 								</Button>
@@ -541,13 +583,13 @@
 
 				<!-- Map Container with native scroll -->
 				<div
-					class="max-w-screen flex-1 overflow-auto bg-muted/20"
-					style="cursor: {cursorMode === 'pan'
+					class="overflow-auto flex-1 max-w-screen bg-muted/20"
+					style="cursor: {activeTool === 'pan'
 						? isDragging
 							? 'grabbing'
 							: 'grab'
-						: cursorMode === 'paint'
-							? paintMode === 'add'
+						: activeTool === 'paint'
+							? activeSelectMode === 'add'
 								? 'crosshair'
 								: 'not-allowed'
 							: 'default'} !important;"
@@ -555,52 +597,75 @@
 					aria-label="Interactive map"
 				>
 					{#if data.hasMapImage}
-						<div class="h-screen max-w-screen min-w-screen p-4">
-							<Map
-								campaignSlug={mode === 'dm' ? data.session?.campaignSlug : data.campaign?.slug}
-								variant={mode === 'dm' ? 'hexGrid' : 'responsive'}
-								isDM={mode === 'dm'}
-								showAlwaysRevealed={mode === 'dm' ? showAlwaysRevealed : false}
-								tileTransparency={mode === 'dm' ? tileTransparency : 0.75}
-								hexesPerRow={data.campaign?.hexesPerRow ?? 20}
-								hexesPerCol={data.campaign?.hexesPerCol ?? 20}
-								xOffset={data.campaign?.hexOffsetX ?? 70}
-								yOffset={data.campaign?.hexOffsetY ?? 58}
-								initiallyRevealed={currentRevealedTiles}
-								selectedTiles={mode === 'dm' ? selectedTiles : undefined}
-								showCoords={mode === 'dm' ? 'always' : 'hover'}
-								onHexRevealed={handleTileClick}
-								onHexHover={handleHexHover}
-								{hasPoI}
-								{hasNotes}
-								{isPlayerPosition}
-								{cursorMode}
-								{zoom}
-							/>
-
-							<!-- Hover Preview Overlay -->
-							{#if campaignState.hoveredTile}
-								<TileContentPreview
-									coords={campaignState.hoveredTile}
-									markers={campaignState.getTileMarkers(campaignState.hoveredTile, mode)}
-									campaignSlug={data.campaign?.slug || data.session?.campaignSlug}
-									role={mode}
-								>
-									<!-- Invisible trigger element positioned over the hovered hex -->
-									<div
-										class="pointer-events-none absolute"
-										style="left: 0; top: 0; width: 1px; height: 1px;"
-									></div>
-								</TileContentPreview>
-							{/if}
-						</div>
+						<MapCanvasWrapper
+							campaignSlug={mode === 'dm' ? data.session?.campaignSlug : data.campaign?.slug}
+							variant="detail"
+							isDM={mode === 'dm'}
+							showAlwaysRevealed={mode === 'dm' ? showAlwaysRevealed : false}
+							tileTransparency={mode === 'dm' ? tileTransparency : 0.75}
+							hexesPerRow={data.campaign?.hexesPerRow ?? 20}
+							hexesPerCol={data.campaign?.hexesPerCol ?? 20}
+							xOffset={data.campaign?.hexOffsetX ?? 70}
+							yOffset={data.campaign?.hexOffsetY ?? 58}
+							initiallyRevealed={currentRevealedTiles}
+							selectedTiles={mode === 'dm' ? selectedTiles : undefined}
+							showCoords={mode === 'dm' ? 'always' : 'hover'}
+							onHexRevealed={handleTileClick}
+							onHexHover={handleHexHover}
+							{hasPoI}
+							{hasNotes}
+							{isPlayerPosition}
+							cursorMode={activeTool}
+							showAnimations={true}
+							previewMode={false}
+							{zoom}
+						/>
+						<!-- <div class="p-4 h-screen max-w-screen min-w-screen"> -->
+						<!-- 	<Map -->
+						<!-- 		campaignSlug={mode === 'dm' ? data.session?.campaignSlug : data.campaign?.slug} -->
+						<!-- 		variant={mode === 'dm' ? 'hexGrid' : 'responsive'} -->
+						<!-- 		isDM={mode === 'dm'} -->
+						<!-- 		showAlwaysRevealed={mode === 'dm' ? showAlwaysRevealed : false} -->
+						<!-- 		tileTransparency={mode === 'dm' ? tileTransparency : 0.75} -->
+						<!-- 		hexesPerRow={data.campaign?.hexesPerRow ?? 20} -->
+						<!-- 		hexesPerCol={data.campaign?.hexesPerCol ?? 20} -->
+						<!-- 		xOffset={data.campaign?.hexOffsetX ?? 70} -->
+						<!-- 		yOffset={data.campaign?.hexOffsetY ?? 58} -->
+						<!-- 		initiallyRevealed={currentRevealedTiles} -->
+						<!-- 		selectedTiles={mode === 'dm' ? selectedTiles : undefined} -->
+						<!-- 		showCoords={mode === 'dm' ? 'always' : 'hover'} -->
+						<!-- 		onHexRevealed={handleTileClick} -->
+						<!-- 		onHexHover={handleHexHover} -->
+						<!-- 		{hasPoI} -->
+						<!-- 		{hasNotes} -->
+						<!-- 		{isPlayerPosition} -->
+						<!-- 		cursorMode={selectedTool} -->
+						<!-- 		{zoom} -->
+						<!-- 	/> -->
+						<!---->
+						<!-- Hover Preview Overlay -->
+						<!-- 	{#if campaignState.hoveredTile} -->
+						<!-- 		<TileContentPreview -->
+						<!-- 			coords={campaignState.hoveredTile} -->
+						<!-- 			markers={campaignState.getTileMarkers(campaignState.hoveredTile, mode)} -->
+						<!-- 			campaignSlug={data.campaign?.slug || data.session?.campaignSlug} -->
+						<!-- 			role={mode} -->
+						<!-- 		> -->
+						<!-- Invisible trigger element positioned over the hovered hex -->
+						<!-- 			<div -->
+						<!-- 				class="absolute pointer-events-none" -->
+						<!-- 				style="left: 0; top: 0; width: 1px; height: 1px;" -->
+						<!-- 			></div> -->
+						<!-- 		</TileContentPreview> -->
+						<!-- 	{/if} -->
+						<!-- </div> -->
 					{:else}
-						<div class="flex h-full items-center justify-center">
+						<div class="flex justify-center items-center h-full">
 							<div class="text-center">
 								<div
-									class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted"
+									class="flex justify-center items-center mx-auto mb-4 w-16 h-16 rounded-full bg-muted"
 								>
-									<MapPin class="h-8 w-8 text-muted-foreground" />
+									<MapPin class="w-8 h-8 text-muted-foreground" />
 								</div>
 								<h3 class="text-lg font-medium">Map Not Available</h3>
 								<p class="text-muted-foreground">
@@ -618,17 +683,17 @@
 
 				<!-- Bottom Toolbar with Cursor Modes -->
 				<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-					<div class="flex gap-1 rounded-lg border bg-background/95 p-1 shadow-xs backdrop-blur-sm">
+					<div class="flex gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm">
 						<Tooltip.Root>
 							<Tooltip.Trigger>
 								{#snippet child({ props })}
 									<Button
 										{...props}
-										variant={cursorMode === 'interact' ? 'default' : 'ghost'}
+										variant={activeTool === 'interact' ? 'default' : 'ghost'}
 										size="sm"
-										onclick={() => setCursorMode('interact')}
+										onclick={() => setSelectedTool('interact')}
 									>
-										<MousePointer class="h-4 w-4" />
+										<MousePointer class="w-4 h-4" />
 									</Button>
 								{/snippet}
 							</Tooltip.Trigger>
@@ -640,11 +705,11 @@
 								{#snippet child({ props })}
 									<Button
 										{...props}
-										variant={cursorMode === 'pan' ? 'default' : 'ghost'}
+										variant={activeTool === 'pan' ? 'default' : 'ghost'}
 										size="sm"
-										onclick={() => setCursorMode('pan')}
+										onclick={() => setSelectedTool('pan')}
 									>
-										<Hand class="h-4 w-4" />
+										<Hand class="w-4 h-4" />
 									</Button>
 								{/snippet}
 							</Tooltip.Trigger>
@@ -657,11 +722,26 @@
 									{#snippet child({ props })}
 										<Button
 											{...props}
-											variant={cursorMode === 'select' ? 'default' : 'ghost'}
+											variant={activeTool === 'select' ? 'default' : 'ghost'}
 											size="sm"
-											onclick={() => setCursorMode('select')}
+											onclick={() => setSelectedTool('select')}
+											class="relative"
 										>
-											<Square class="h-4 w-4" />
+											<Square class="w-4 h-4" />
+											{#if activeTool === 'select'}
+												<span
+													class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full text-xs {activeSelectMode ===
+													'add'
+														? 'bg-green-500'
+														: 'bg-red-500'}"
+												>
+													{#if activeSelectMode === 'add'}
+														<Plus class="w-2 h-2 text-white" />
+													{:else}
+														<Minus class="w-2 h-2 text-white" />
+													{/if}
+												</span>
+											{/if}
 										</Button>
 									{/snippet}
 								</Tooltip.Trigger>
@@ -675,23 +755,23 @@
 									{#snippet child({ props })}
 										<Button
 											{...props}
-											variant={cursorMode === 'paint' ? 'default' : 'ghost'}
+											variant={activeTool === 'paint' ? 'default' : 'ghost'}
 											size="sm"
-											onclick={() => setCursorMode('paint')}
+											onclick={() => setSelectedTool('paint')}
 											class="relative"
 										>
-											<Paintbrush class="h-4 w-4" />
-											{#if cursorMode === 'paint'}
+											<Paintbrush class="w-4 h-4" />
+											{#if activeTool === 'paint'}
 												<span
-													class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full text-xs {paintMode ===
+													class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full text-xs {activeSelectMode ===
 													'add'
 														? 'bg-green-500'
 														: 'bg-red-500'}"
 												>
-													{#if paintMode === 'add'}
-														<Plus class="h-2 w-2 text-white" />
+													{#if activeSelectMode === 'add'}
+														<Plus class="w-2 h-2 text-white" />
 													{:else}
-														<Minus class="h-2 w-2 text-white" />
+														<Minus class="w-2 h-2 text-white" />
 													{/if}
 												</span>
 											{/if}
@@ -699,7 +779,7 @@
 									{/snippet}
 								</Tooltip.Trigger>
 								<Tooltip.Content side="top">
-									Paint Mode - {paintMode === 'add' ? 'Add' : 'Remove'} tiles (size {brushSize})
+									Paint Mode - {activeSelectMode === 'add' ? 'Add' : 'Remove'} tiles (size {brushSize})
 								</Tooltip.Content>
 							</Tooltip.Root>
 						{/if}
@@ -715,7 +795,7 @@
 					</SheetTitle>
 				</SheetHeader>
 
-				<div class="mt-6 space-y-4 px-6">
+				<div class="px-6 mt-6 space-y-4">
 					<!-- Statistics -->
 					<div>
 						<h3 class="mb-3 text-sm font-medium">Statistics</h3>
@@ -785,9 +865,9 @@
 							<div>
 								<h3 class="mb-3 text-sm font-medium">Current Position</h3>
 								<div
-									class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-2"
+									class="flex gap-2 items-center p-2 bg-green-50 rounded-md border border-green-200"
 								>
-									<User class="h-4 w-4 text-green-600" />
+									<User class="w-4 h-4 text-green-600" />
 									<span class="text-sm">
 										{tileState.currentPosition.x + 1}, {tileState.currentPosition.y + 1}
 									</span>

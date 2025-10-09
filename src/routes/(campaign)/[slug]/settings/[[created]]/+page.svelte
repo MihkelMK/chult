@@ -28,6 +28,7 @@
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import MapImage from '$lib/components/MapImage.svelte';
+	import MapCanvasWrapper from '$lib/components/MapCanvasWrapper.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -136,13 +137,13 @@
 	<title>Settings - {data.campaign?.name}</title>
 </svelte:head>
 
-<div class="container mx-auto max-w-4xl space-y-8 p-6">
+<div class="container p-6 mx-auto space-y-8 max-w-4xl">
 	<!-- Welcome Message for New Campaigns -->
 	{#if isNewCampaign}
-		<Card class="border-green-200 bg-green-50">
+		<Card class="bg-green-50 border-green-200">
 			<CardHeader>
-				<div class="flex items-center gap-2">
-					<Crown class="h-5 w-5 text-green-600" />
+				<div class="flex gap-2 items-center">
+					<Crown class="w-5 h-5 text-green-600" />
 					<CardTitle class="text-green-800">Welcome, Dungeon Master!</CardTitle>
 				</div>
 				<CardDescription class="text-green-700">
@@ -155,18 +156,18 @@
 
 	<!-- Page Header -->
 	<div class="flex justify-between">
-		<div class="flex items-center gap-3">
-			<Settings class="h-6 w-6 text-muted-foreground" />
+		<div class="flex gap-3 items-center">
+			<Settings class="w-6 h-6 text-muted-foreground" />
 			<div>
 				<h1 class="text-2xl font-bold">Campaign Settings</h1>
 				<p class="text-muted-foreground">Configure your campaign map and access tokens</p>
 			</div>
 		</div>
 		<div
-			class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+			class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 		>
 			<Button href="/{data.campaign.slug}" variant="link" size="sm" type="submit">
-				<MapIcon class="mr-2 h-4 w-4" />
+				<MapIcon class="mr-2 w-4 h-4" />
 				Back
 			</Button>
 		</div>
@@ -186,22 +187,22 @@
 				<CardContent class="space-y-4">
 					<!-- DM Token -->
 					<div class="space-y-2">
-						<div class="flex items-center gap-2">
-							<Crown class="h-4 w-4 text-amber-600" />
+						<div class="flex gap-2 items-center">
+							<Crown class="w-4 h-4 text-amber-600" />
 							<!-- svelte-ignore a11y_label_has_associated_control -->
 							<label class="text-sm font-medium">Dungeon Master Access</label>
 							<Badge variant="secondary">DM</Badge>
 						</div>
 
 						<div class="flex gap-2">
-							<div class="flex-1 rounded-md bg-muted p-3 font-mono text-sm">
+							<div class="flex-1 p-3 font-mono text-sm rounded-md bg-muted">
 								{showDmToken ? data.dmToken : '****************'}
 							</div>
 							<Button variant="outline" size="sm" onclick={() => (showDmToken = !showDmToken)}>
 								{#if showDmToken}
-									<EyeOff class="h-4 w-4" />
+									<EyeOff class="w-4 h-4" />
 								{:else}
-									<Eye class="h-4 w-4" />
+									<Eye class="w-4 h-4" />
 								{/if}
 							</Button>
 							<Button
@@ -210,9 +211,9 @@
 								onclick={() => copyToken(data.dmToken || '', 'dm')}
 							>
 								{#if dmTokenCopied}
-									<Check class="h-4 w-4 text-green-600" />
+									<Check class="w-4 h-4 text-green-600" />
 								{:else}
-									<Copy class="h-4 w-4" />
+									<Copy class="w-4 h-4" />
 								{/if}
 							</Button>
 						</div>
@@ -222,15 +223,15 @@
 
 					<!-- Player Token -->
 					<div class="space-y-2">
-						<div class="flex items-center gap-2">
-							<Users class="h-4 w-4 text-blue-600" />
+						<div class="flex gap-2 items-center">
+							<Users class="w-4 h-4 text-blue-600" />
 							<!-- svelte-ignore a11y_label_has_associated_control -->
 							<label class="text-sm font-medium">Player Access</label>
 							<Badge variant="outline">Player</Badge>
 						</div>
 
 						<div class="flex gap-2">
-							<div class="flex-1 rounded-md bg-muted p-3 font-mono text-sm">
+							<div class="flex-1 p-3 font-mono text-sm rounded-md bg-muted">
 								{showPlayerToken ? data.playerToken : '****************'}
 							</div>
 							<Button
@@ -239,9 +240,9 @@
 								onclick={() => (showPlayerToken = !showPlayerToken)}
 							>
 								{#if showPlayerToken}
-									<EyeOff class="h-4 w-4" />
+									<EyeOff class="w-4 h-4" />
 								{:else}
-									<Eye class="h-4 w-4" />
+									<Eye class="w-4 h-4" />
 								{/if}
 							</Button>
 							<Button
@@ -250,9 +251,9 @@
 								onclick={() => copyToken(data.playerToken || '', 'player')}
 							>
 								{#if playerTokenCopied}
-									<Check class="h-4 w-4 text-green-600" />
+									<Check class="w-4 h-4 text-green-600" />
 								{:else}
-									<Copy class="h-4 w-4" />
+									<Copy class="w-4 h-4" />
 								{/if}
 							</Button>
 						</div>
@@ -269,7 +270,7 @@
 					<!-- Grid Size Controls -->
 					<div class="space-y-4">
 						<div>
-							<label class="mb-2 block text-sm font-medium" for="tilesPerColumnSlider">
+							<label class="block mb-2 text-sm font-medium" for="tilesPerColumnSlider">
 								Tiles per Column: {tilesPerColumn}
 							</label>
 							<Slider
@@ -284,7 +285,7 @@
 						</div>
 
 						<div>
-							<label class="mb-2 block text-sm font-medium" for="tilesPerRowSlider">
+							<label class="block mb-2 text-sm font-medium" for="tilesPerRowSlider">
 								Tiles per Row: {tilesPerRow}
 							</label>
 							<Slider
@@ -304,7 +305,7 @@
 					<!-- Offset Controls -->
 					<div class="space-y-4">
 						<div>
-							<label class="mb-2 block text-sm font-medium" for="offsetXSlider">
+							<label class="block mb-2 text-sm font-medium" for="offsetXSlider">
 								Horizontal Offset: {offsetX}px
 							</label>
 							<Slider
@@ -319,7 +320,7 @@
 						</div>
 
 						<div>
-							<label class="mb-2 block text-sm font-medium" for="offsetYSlider">
+							<label class="block mb-2 text-sm font-medium" for="offsetYSlider">
 								Vertical Offset: {offsetY}px
 							</label>
 							<Slider
@@ -337,16 +338,16 @@
 					<!-- Save Status and Button -->
 					{#if saveError}
 						<div
-							class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+							class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive"
 						>
-							<AlertCircle class="h-4 w-4" />
+							<AlertCircle class="w-4 h-4" />
 							<span>{saveError}</span>
 						</div>
 					{/if}
 
 					{#if saveSuccess}
-						<div class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800">
-							<Check class="h-4 w-4" />
+						<div class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
+							<Check class="w-4 h-4" />
 							<span>Hex grid configuration saved successfully!</span>
 						</div>
 					{/if}
@@ -394,9 +395,9 @@
 						<CardDescription>Preview your map with hex grid overlay</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div class="relative min-h-80 overflow-hidden rounded-lg">
+						<div class="overflow-hidden relative rounded-lg min-h-80">
 							{#if showHexPreview}
-								<Map
+								<MapCanvasWrapper
 									campaignSlug={data.campaign?.slug}
 									variant="hexGrid"
 									hexesPerRow={tilesPerRow}
@@ -408,32 +409,38 @@
 									showCoords="never"
 									tileTransparency={0.75}
 									zoom={previewZoom}
+									cursorMode="pan"
+									onHexRevealed={() => {}}
+									onHexHover={() => {}}
+									hasPoI={() => false}
+									hasNotes={() => false}
+									isPlayerPosition={() => false}
 								/>
 							{:else}
 								<div class="relative">
 									<MapImage
 										campaignSlug={data.campaign?.slug}
 										variant="medium"
-										class="absolute inset-0 h-full w-full rounded-lg shadow-xl select-none"
+										class="absolute inset-0 w-full h-full rounded-lg shadow-xl select-none"
 										loading="eager"
 									/>
 								</div>
 							{/if}
 
 							<!-- Overlay Controls -->
-							<div class="absolute top-2 right-2 flex gap-1">
+							<div class="flex absolute top-2 right-2 gap-1">
 								<!-- Zoom Toggle -->
 								{#if showHexPreview}
 									<Button
 										variant="outline"
 										size="sm"
 										onclick={() => (previewZoom = previewZoom === 1 ? 6 : 1)}
-										class="h-8 w-8 bg-background/90 p-0 backdrop-blur-sm"
+										class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
 									>
 										{#if previewZoom === 1}
-											<ZoomIn class="h-3 w-3" />
+											<ZoomIn class="w-3 h-3" />
 										{:else}
-											<ZoomOut class="h-3 w-3" />
+											<ZoomOut class="w-3 h-3" />
 										{/if}
 									</Button>
 								{/if}
@@ -443,12 +450,12 @@
 									variant="outline"
 									size="sm"
 									onclick={() => (showHexPreview = !showHexPreview)}
-									class="h-8 w-8 bg-background/90 p-0 backdrop-blur-sm"
+									class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
 								>
 									{#if showHexPreview}
-										<EyeOff class="h-3 w-3" />
+										<EyeOff class="w-3 h-3" />
 									{:else}
-										<Eye class="h-3 w-3" />
+										<Eye class="w-3 h-3" />
 									{/if}
 								</Button>
 							</div>

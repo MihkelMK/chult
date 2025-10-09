@@ -1,3 +1,6 @@
+import type { RevealedTileResponse } from '$lib/types/database';
+import type { SvelteSet } from 'svelte/reactivity';
+
 export * from '$lib/types/database';
 export * from '$lib/types/imgproxy';
 
@@ -29,4 +32,57 @@ export interface Hex {
 export interface HexRevealedEvent {
 	hex: Hex;
 	index: number;
+}
+
+export interface HexRendered extends Hex {
+	fill: string;
+	stroke: string;
+	strokeWidth: string;
+	strokeOpacity: string | number;
+	class?: string;
+	style?: string;
+	poinerEvents?: string;
+	fillOpacity: string | number;
+	shouldRender: boolean;
+}
+
+export interface CanvasImage {
+	image: HTMLImageElement | undefined;
+	status: 'loading' | 'loaded' | 'failed';
+}
+
+interface MapCanvasSharedProps {
+	previewMode: boolean;
+	hexesPerRow: number; // Number of hexagons per row on the actual map
+	hexesPerCol: number; // Number of hexagons per column on the actual map
+	xOffset: number; // Horizontal offset in pixels from left edge to where grid starts
+	yOffset: number; // Vertical offset in pixels from top edge to where grid starts
+	zoom: number;
+	showCoords: 'never' | 'always' | 'hover';
+	showAnimations: boolean;
+	cursorMode: 'interact' | 'pan' | 'select' | 'paint';
+	onHexRevealed: (event: HexRevealedEvent) => void;
+	onHexHover: (coords: TileCoords | null) => void;
+	onMapLoad?: (dimensions: { width: number; height: number }) => void;
+	onMapError?: () => void;
+	hasPoI: (coords: TileCoords) => boolean;
+	hasNotes: (coords: TileCoords) => boolean;
+	isPlayerPosition: (coords: TileCoords) => boolean;
+}
+
+export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
+	campaignSlug: string;
+	variant?: 'thumbnail' | 'small' | 'medium' | 'large' | 'hexGrid' | 'overview' | 'detail';
+	isDM?: boolean;
+	showAlwaysRevealed?: boolean;
+	tileTransparency?: number;
+	initiallyRevealed?: RevealedTileResponse[];
+	selectedTiles?: TileCoords[]; // Add this line
+}
+
+export interface MapCanvasProps extends MapCanvasSharedProps {
+	image: HTMLImageElement | undefined;
+	hexRenderData: HexRendered[];
+	revealedSet: SvelteSet<string>;
+	hexRadius: number;
 }
