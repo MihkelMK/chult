@@ -7,7 +7,7 @@
 		'Checking for traps',
 		'Pestering the DM',
 		'Waiting for party consensus',
-		'Placing mimcs in unfair locations',
+		'Placing mimics in unfair locations',
 		'Unfurling ancient scrolls',
 		'Rerolling the encounter table',
 		'Waiting for the bard to finish their song',
