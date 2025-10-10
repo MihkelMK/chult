@@ -2,9 +2,9 @@
 	import { browser } from '$app/environment';
 	import useImage from '$lib/hooks/useImage.svelte';
 	import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
-	import { LoaderCircleIcon } from '@lucide/svelte';
 	import type { Component } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import LoadingBar from './LoadingBar.svelte';
 
 	let {
 		mapUrls,
@@ -157,22 +157,12 @@
 	});
 </script>
 
-<!-- Loading overlay -->
-{#snippet placeholder()}
-	<div class="flex justify-center items-center p-4 h-screen bg-gray-200 rounded-lg animate-pulse">
-		<LoaderCircleIcon class="w-8 h-8 animate-spin" />
-	</div>
-{/snippet}
-
-<svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
-
-{#if status !== 'loaded' || !image}
-	{@render placeholder()}
-{/if}
-
 {#await MapCanvasLoader}
-	{@render placeholder()}
+	<LoadingBar />
 {:then MapCanvas}
+	{#if status !== 'loaded' || !image}
+		<LoadingBar />
+	{/if}
 	<MapCanvas
 		{hexGrid}
 		{revealedSet}
