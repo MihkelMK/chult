@@ -21,6 +21,8 @@
 		showUnrevealed,
 		showAlwaysRevealed,
 		showCoords,
+		imageHeight,
+		imageWidth,
 		onHexRevealed,
 		onHexHover,
 		hasNotes,
@@ -73,21 +75,24 @@
 		onHexHover?.(null);
 	}
 
-	let firstLoad = $state(true);
-
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
-
-	let absoluteScale = $state(1);
-
 	let dragBoundPaddingPX = $derived(canvasWidth * 0.1);
+
+	let imageAspectRatio = $derived(imageHeight / imageWidth);
+	let canvasAspectRatio = $derived(canvasHeight / canvasWidth);
+
+	let absoluteScale = $derived(
+		imageAspectRatio > canvasAspectRatio
+			? canvasHeight / (imageHeight + dragBoundPaddingPX * 2)
+			: canvasWidth / (imageWidth + dragBoundPaddingPX * 2)
+	);
+	let previousZoom = $state(zoom);
 	let scale = $derived(absoluteScale * zoom);
 	let position = $state({ x: 0, y: 0 });
-	let previousZoom = $state(zoom);
 
-	let portrait = $derived(image ? image.height > image.width : false);
-	let scaledImageWidth = $derived(image ? image.width * scale : 0);
-	let scaledImageHeight = $derived(image ? image.height * scale : 0);
+	let scaledImageWidth = $derived(imageWidth * scale);
+	let scaledImageHeight = $derived(imageHeight * scale);
 
 	const fontSize = $derived(Math.round(hexRadius * 0.4));
 	const lineHeight = $state(1.6);
@@ -97,6 +102,10 @@
 	let hoverTimeout: ReturnType<typeof setTimeout>;
 	let isDragging = $state(false);
 	let lastPaintedTile = $state<string | null>(null);
+
+	let fogLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
+	let backgroundLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
+	let alwaysRevealedLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
 
 	// Filter tiles for layer based rendering
 	let revealedTiles = $derived.by(() =>
@@ -121,12 +130,32 @@
 	);
 
 	$effect(() => {
-		if (firstLoad && image) {
-			firstLoad = false;
+		if (fogLayerRef) {
+			fogLayerRef.cache();
+		}
 
-			absoluteScale = portrait
-				? canvasHeight / (image.height + dragBoundPaddingPX * 2)
-				: canvasWidth / (image.width + dragBoundPaddingPX * 2);
+		return () => fogLayerRef?.clearCache();
+	});
+
+	$effect(() => {
+		if (backgroundLayerRef) {
+			backgroundLayerRef.cache();
+		}
+
+		return () => backgroundLayerRef?.clearCache();
+	});
+
+	$effect(() => {
+		if (alwaysRevealedLayerRef) {
+			alwaysRevealedLayerRef.cache();
+		}
+
+		return () => alwaysRevealedLayerRef?.clearCache();
+	});
+
+	// Snap to center on first load
+	$effect(() => {
+		if (zoom === 1 && position.x !== maxXPos && position.y !== maxYPos) {
 			position.x = maxXPos;
 			position.y = maxYPos;
 		}
@@ -134,26 +163,20 @@
 
 	$effect(() => {
 		if (previousZoom && zoom !== previousZoom) {
-			if (zoom === 1) {
-				position.x = maxXPos;
-				position.y = maxYPos;
-			} else {
-				const changeRatio = zoom / previousZoom;
+			const changeRatio = zoom / previousZoom;
 
-				const centerX = canvasWidth / 2;
-				const centerY = canvasHeight / 2;
+			const centerX = canvasWidth / 2;
+			const centerY = canvasHeight / 2;
 
-				// Offset new position from center by the previous offset proportional to zoom change
-				const newX = centerX - (centerX - position.x) * changeRatio;
-				const newY = centerY - (centerY - position.y) * changeRatio;
+			// Offset new position from center by the previous offset proportional to zoom change
+			const newX = centerX - (centerX - position.x) * changeRatio;
+			const newY = centerY - (centerY - position.y) * changeRatio;
 
-				// Set new position, clamped to same values as panning
-				position = {
-					x: Math.max(Math.min(maxXPos, newX), minXPos),
-					y: Math.max(Math.min(maxYPos, newY), minYPos)
-				};
-			}
-
+			// Set new position, clamped to same values as panning
+			position = {
+				x: Math.max(Math.min(maxXPos, newX), minXPos),
+				y: Math.max(Math.min(maxYPos, newY), minYPos)
+			};
 			previousZoom = zoom;
 		}
 	});
@@ -225,10 +248,9 @@
 				: isRevealed
 					? '#bfd5fc'
 					: 'rgb(253, 250, 240)'}
-		opacity={isSelected ? 0.6 : isDM ? tileTransparency : 1}
+		opacity={isDM ? tileTransparency : 1}
 		stroke={isSelected ? '#f97316' : isAlways ? '#3b82f6' : 'black'}
 		strokeWidth={isSelected ? 3 : previewMode ? 2 : 1}
-		strokeOpacity={isSelected ? 1 : isAlways ? 0.4 : 0.15}
 		listening={true}
 		onclick={() => handleHexClick(hex)}
 		onmouseenter={() => {
@@ -293,7 +315,7 @@
 	}}
 >
 	<!-- Layer 1: Background - never cull -->
-	<Layer staticConfig={true} listening={false}>
+	<Layer staticConfig={true} listening={false} bind:handle={backgroundLayerRef}>
 		<Image
 			x={0}
 			y={0}
@@ -306,16 +328,15 @@
 		></Image>
 	</Layer>
 
-	<!-- Layer 2: Fog-of-war - Only cull for DM when fog is visible -->
+	<!-- Layer 2: Fog-of-war -->
 	<Layer
 		x={xOffset}
 		y={yOffset}
-		listening={cursorMode !== 'pan'}
+		listening={showUnrevealed && cursorMode !== 'pan'}
 		visible={showUnrevealed && tileTransparency !== 0}
+		bind:handle={fogLayerRef}
 	>
 		{#each unrevealedTiles as hex (hex.id)}
-			<!--  ^^^^^^^^ Players: render ALL fog tiles (no culling) -->
-			<!--            DMs: can cull with large buffer (5x radius) -->
 			{#if hex.row >= 0}
 				{@render tile(hex, false, false)}
 			{/if}
@@ -327,7 +348,7 @@
 		<Layer
 			x={xOffset}
 			y={yOffset}
-			listening={cursorMode !== 'pan'}
+			listening={showRevealed && cursorMode !== 'pan'}
 			visible={showRevealed && tileTransparency !== 0}
 		>
 			{#each revealedTiles as hex (hex.id)}
@@ -337,12 +358,13 @@
 			{/each}
 		</Layer>
 
-		<!-- Layer 4: Always-revealed markers - SAFE to cull -->
+		<!-- Layer 4: Always-revealed tiles -->
 		<Layer
 			x={xOffset}
 			y={yOffset}
-			listening={cursorMode !== 'pan'}
+			listening={showAlwaysRevealed && cursorMode !== 'pan'}
 			visible={showAlwaysRevealed && tileTransparency !== 0}
+			bind:handle={alwaysRevealedLayerRef}
 		>
 			{#each alwaysRevealedTiles as hex (hex.id)}
 				{@render tile(hex, false, true)}

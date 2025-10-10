@@ -173,8 +173,8 @@
 		{cursorMode}
 		{xOffset}
 		{yOffset}
-		{imageHeight}
-		{imageWidth}
+		imageHeight={variantHeight}
+		imageWidth={variantWidth}
 		{hexesPerCol}
 		{hexesPerRow}
 		{showCoords}
