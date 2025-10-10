@@ -159,35 +159,44 @@
 			case 'select':
 				// Multi-select mode - toggle selection
 				if (mode === 'dm') {
-					const selected = selectedTiles.some((t) => t.x === coords.x && t.y === coords.y);
+					const key = `${coords.x}-${coords.y}`;
+					const isRevealed = campaignState.revealedTilesSet.has(key);
+					const isAlwaysRevealed = campaignState.alwaysRevealedTilesSet.has(key);
+					const isUnrevealed = !isRevealed && !isAlwaysRevealed;
+					const alreadySelected = selectedTiles.some((t) => t.x === coords.x && t.y === coords.y);
 
-					// Add if not selected, remove if selected
-					if ((activeSelectMode === 'add') !== selected) {
+					// Only select tiles from visible layers
+					const canSelect =
+						(isUnrevealed && showUnrevealed) ||
+						(isRevealed && showRevealed) ||
+						(isAlwaysRevealed && showAlwaysRevealed);
+
+					if (canSelect && !alreadySelected) {
 						onMultiSelect?.(coords);
 					}
 				}
 				break;
 			case 'paint':
-				// Paint mode - paint multiple tiles based on brush size and add/remove mode
+				// Paint mode - paint multiple tiles based on brush size
 				if (mode === 'dm') {
 					const tilesToPaint = getBrushTiles(coords);
-					if (activeSelectMode === 'add') {
-						// Add tiles to selection
-						tilesToPaint.forEach((tile) => {
-							const exists = selectedTiles.some((t) => t.x === tile.x && t.y === tile.y);
-							if (!exists) {
-								onMultiSelect?.(tile);
-							}
-						});
-					} else {
-						// Remove tiles from selection
-						tilesToPaint.forEach((tile) => {
-							const exists = selectedTiles.some((t) => t.x === tile.x && t.y === tile.y);
-							if (exists) {
-								onMultiSelect?.(tile);
-							}
-						});
-					}
+					tilesToPaint.forEach((tile) => {
+						const key = `${tile.x}-${tile.y}`;
+						const isRevealed = campaignState.revealedTilesSet.has(key);
+						const isAlwaysRevealed = campaignState.alwaysRevealedTilesSet.has(key);
+						const isUnrevealed = !isRevealed && !isAlwaysRevealed;
+						const alreadySelected = selectedTiles.some((t) => t.x === tile.x && t.y === tile.y);
+
+						// Only select tiles from visible layers
+						const canSelect =
+							(isUnrevealed && showUnrevealed) ||
+							(isRevealed && showRevealed) ||
+							(isAlwaysRevealed && showAlwaysRevealed);
+
+						if (canSelect && !alreadySelected) {
+							onMultiSelect?.(tile);
+						}
+					});
 				}
 				break;
 			case 'pan':
@@ -664,7 +673,7 @@
 							yOffset={data.campaign?.hexOffsetY ?? 58}
 							imageHeight={data.campaign?.imageHeight}
 							imageWidth={data.campaign?.imageWidth}
-							initiallyRevealed={currentRevealedTiles}
+							{campaignState}
 							selectedTiles={mode === 'dm' ? selectedTiles : undefined}
 							showCoords={mode === 'dm' ? 'always' : 'hover'}
 							onHexRevealed={handleTileClick}

@@ -2,7 +2,7 @@
 	import { browser } from '$app/environment';
 	import useImage from '$lib/hooks/useImage.svelte';
 	import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
-	import type { Component } from 'svelte';
+	import { untrack, type Component } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import LoadingBar from './LoadingBar.svelte';
 
@@ -25,7 +25,7 @@
 		zoom,
 		showAnimations = true,
 		showCoords = 'hover',
-		initiallyRevealed = [],
+		campaignState,
 		selectedTiles = [],
 		onHexRevealed = () => {},
 		onHexHover = () => {},
@@ -77,8 +77,7 @@
 	let mapImageLoader = $derived(useImage(mapUrl));
 	let { image, status } = $derived(mapImageLoader());
 
-	let revealedSet = new SvelteSet<string>();
-	let alwaysRevealedSet = new SvelteSet<string>();
+	// svelte-ignore non_reactive_update
 	let selectedSet = new SvelteSet<string>();
 
 	// Calculate hex dimensions based on usable width and hexes per row
@@ -93,67 +92,27 @@
 		generateHexGrid(hexesPerCol, hexesPerRow, horizontalSpacing, verticalSpacing)
 	);
 
-	// Sync revealedSet incrementally
-	$effect(() => {
-		const newKeys = new Set(
-			initiallyRevealed.filter((t) => !t.alwaysRevealed).map((t) => `${t.x}-${t.y}`)
-		);
-
-		// Add new tiles
-		newKeys.forEach((key) => {
-			if (!revealedSet.has(key)) {
-				revealedSet.add(key);
-			}
-		});
-
-		// Remove tiles no longer revealed
-		const toRemove: string[] = [];
-		revealedSet.forEach((key) => {
-			if (!newKeys.has(key)) {
-				toRemove.push(key);
-			}
-		});
-		toRemove.forEach((key) => revealedSet.delete(key));
-	});
-
-	// Sync alwaysRevealedSet incrementally
-	$effect(() => {
-		const newKeys = new Set(
-			initiallyRevealed.filter((t) => t.alwaysRevealed).map((t) => `${t.x}-${t.y}`)
-		);
-
-		newKeys.forEach((key) => {
-			if (!alwaysRevealedSet.has(key)) {
-				alwaysRevealedSet.add(key);
-			}
-		});
-
-		const toRemove: string[] = [];
-		alwaysRevealedSet.forEach((key) => {
-			if (!newKeys.has(key)) {
-				toRemove.push(key);
-			}
-		});
-		toRemove.forEach((key) => alwaysRevealedSet.delete(key));
-	});
-
-	// Sync selectedSet incrementally
+	// Sync selectedSet incrementally (only UI-specific Set we manage)
 	$effect(() => {
 		const newKeys = new Set(selectedTiles.map((t) => `${t.x}-${t.y}`));
 
-		newKeys.forEach((key) => {
-			if (!selectedSet.has(key)) {
-				selectedSet.add(key);
-			}
+		untrack(() => {
+			newKeys.forEach((key) => {
+				if (!selectedSet.has(key)) {
+					selectedSet.add(key);
+				}
+			});
+
+			const toRemove: string[] = [];
+			selectedSet.forEach((key) => {
+				if (!newKeys.has(key)) {
+					toRemove.push(key);
+				}
+			});
+			toRemove.forEach((key) => selectedSet.delete(key));
 		});
 
-		const toRemove: string[] = [];
-		selectedSet.forEach((key) => {
-			if (!newKeys.has(key)) {
-				toRemove.push(key);
-			}
-		});
-		toRemove.forEach((key) => selectedSet.delete(key));
+		selectedSet = selectedSet;
 	});
 </script>
 
@@ -165,9 +124,9 @@
 	{/if}
 	<MapCanvas
 		{hexGrid}
-		{revealedSet}
+		revealedSet={campaignState.revealedTilesSet}
+		alwaysRevealedSet={campaignState.alwaysRevealedTilesSet}
 		{selectedSet}
-		{alwaysRevealedSet}
 		{image}
 		{zoom}
 		{cursorMode}

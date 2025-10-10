@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import type { TileCoords } from '$lib/types';
 import type { DMCampaignState } from './dmCampaignState.svelte';
-import { SvelteDate } from 'svelte/reactivity';
+import { SvelteDate, SvelteSet } from 'svelte/reactivity';
 
 interface PendingOperation {
 	type: 'reveal' | 'hide';
@@ -77,7 +77,7 @@ function createTileManager(
 	}
 
 	let batchTimeout: number | null = null;
-	const BATCH_DELAY = 1000; // Wait 1 second before sending batch
+	const BATCH_DELAY = 50; // Wait 50ms before sending batch
 
 	// Check if tile is revealed (including optimistic updates)
 	function isTileRevealed(coords: TileCoords, state: TileState): boolean {
@@ -220,6 +220,12 @@ function createTileManager(
 				// Don't add if already revealed or pending reveal
 				if (isTileRevealed(coords, state)) return state;
 
+				// Optimistically update campaignState Sets if available
+				if (campaignState && 'revealedTilesSet' in campaignState) {
+					const key = `${coords.x}-${coords.y}`;
+					campaignState.revealedTilesSet.add(key);
+				}
+
 				const newPending = state.pending.filter(
 					(op) => !(op.coords.x === coords.x && op.coords.y === coords.y)
 				);
@@ -241,6 +247,13 @@ function createTileManager(
 			update((state) => {
 				// Don't add if already hidden or pending hide
 				if (!isTileRevealed(coords, state)) return state;
+
+				// Optimistically update campaignState Sets if available
+				if (campaignState && 'revealedTilesSet' in campaignState) {
+					const key = `${coords.x}-${coords.y}`;
+					campaignState.revealedTilesSet.delete(key);
+					campaignState.alwaysRevealedTilesSet.delete(key);
+				}
 
 				const newPending = state.pending.filter(
 					(op) => !(op.coords.x === coords.x && op.coords.y === coords.y)
@@ -267,26 +280,27 @@ function createTileManager(
 			}
 
 			update((state) => {
-				const newPending = [...state.pending];
 				const timestamp = Date.now();
+				const tilesToRevealSet = new SvelteSet(tiles.map((t) => `${t.x}-${t.y}`));
+
+				// Optimistically update campaignState Sets for regular reveals
+				if (campaignState && 'revealedTilesSet' in campaignState) {
+					tilesToRevealSet.forEach((key) => {
+						campaignState.revealedTilesSet.add(key);
+					});
+				}
+
+				const newPending = state.pending.filter(
+					(op) => !tilesToRevealSet.has(`${op.coords.x}-${op.coords.y}`)
+				);
 
 				tiles.forEach((coords) => {
 					if (!isTileRevealed(coords, state)) {
-						// Remove any existing operations for this tile
-						const filtered = newPending.filter(
-							(op) => !(op.coords.x === coords.x && op.coords.y === coords.y)
-						);
-						filtered.push({ type: 'reveal', coords, timestamp, alwaysRevealed });
-						newPending.length = 0;
-						newPending.push(...filtered);
+						newPending.push({ type: 'reveal', coords, timestamp, alwaysRevealed });
 					}
 				});
 
-				return {
-					...state,
-					pending: newPending,
-					errors: []
-				};
+				return { ...state, pending: newPending, errors: [] };
 			});
 
 			scheduleBatch();
@@ -294,26 +308,30 @@ function createTileManager(
 
 		hideTiles: (tiles: TileCoords[]) => {
 			update((state) => {
-				const newPending = [...state.pending];
 				const timestamp = Date.now();
+				const tilesToHideSet = new SvelteSet(tiles.map((t) => `${t.x}-${t.y}`));
 
+				// Optimistically update campaignState Sets
+				if (campaignState && 'revealedTilesSet' in campaignState) {
+					tilesToHideSet.forEach((key) => {
+						campaignState.revealedTilesSet.delete(key);
+						campaignState.alwaysRevealedTilesSet.delete(key);
+					});
+				}
+
+				// Remove pending operations for tiles we're about to hide
+				const newPending = state.pending.filter(
+					(op) => !tilesToHideSet.has(`${op.coords.x}-${op.coords.y}`)
+				);
+
+				// Add hide operations for tiles that are currently revealed
 				tiles.forEach((coords) => {
 					if (isTileRevealed(coords, state)) {
-						// Remove any existing operations for this tile
-						const filtered = newPending.filter(
-							(op) => !(op.coords.x === coords.x && op.coords.y === coords.y)
-						);
-						filtered.push({ type: 'hide', coords, timestamp });
-						newPending.length = 0;
-						newPending.push(...filtered);
+						newPending.push({ type: 'hide', coords, timestamp });
 					}
 				});
 
-				return {
-					...state,
-					pending: newPending,
-					errors: []
-				};
+				return { ...state, pending: newPending, errors: [] };
 			});
 
 			scheduleBatch();

@@ -81,7 +81,8 @@ export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 	mapUrls: MapUrlsResponse;
 	variant?: ImageVariant;
 	initiallyRevealed?: RevealedTileResponse[];
-	selectedTiles?: TileCoords[]; // Add this line
+	selectedTiles?: TileCoords[];
+	campaignState: CampaignState;
 }
 
 export interface MapCanvasProps extends MapCanvasSharedProps {

@@ -106,6 +106,7 @@
 	let fogLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
 	let backgroundLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
 	let alwaysRevealedLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
+	let selectionLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
 
 	// Filter tiles for layer based rendering
 	let revealedTiles = $derived.by(() =>
@@ -119,6 +120,9 @@
 			(hex) =>
 				!revealedSet.has(`${hex.col}-${hex.row}`) && !alwaysRevealedSet.has(`${hex.col}-${hex.row}`)
 		)
+	);
+	let selectedTiles = $derived.by(() =>
+		hexGrid.filter((hex) => selectedSet.has(`${hex.col}-${hex.row}`))
 	);
 
 	let { max: maxXPos, min: minXPos } = $derived(
@@ -151,6 +155,14 @@
 		}
 
 		return () => alwaysRevealedLayerRef?.clearCache();
+	});
+
+	$effect(() => {
+		if (selectionLayerRef) {
+			selectionLayerRef.cache();
+		}
+
+		return () => selectionLayerRef?.clearCache();
 	});
 
 	// Snap to center on first load
@@ -233,24 +245,16 @@
 {/snippet}
 
 {#snippet tile(hex: Hex, isRevealed: boolean, isAlways: boolean)}
-	{@const key = `${hex.col}-${hex.row}`}
-	{@const isSelected = isDM && selectedSet.has(key)}
 	<RegularPolygon
 		x={hex.centerX}
 		y={hex.centerY}
 		radius={hexRadius}
 		sides={6}
 		rotation={90}
-		fill={isSelected
-			? 'rgb(249, 115, 22)'
-			: isAlways
-				? 'rgb(59, 130, 246)'
-				: isRevealed
-					? '#bfd5fc'
-					: 'rgb(253, 250, 240)'}
+		fill={isAlways ? '#faa16a' : isRevealed ? '#bfd5fc' : 'rgb(253, 250, 240)'}
 		opacity={isDM ? tileTransparency : 1}
-		stroke={isSelected ? '#f97316' : isAlways ? '#3b82f6' : 'black'}
-		strokeWidth={isSelected ? 3 : previewMode ? 2 : 1}
+		stroke={isAlways ? '#f97316' : 'black'}
+		strokeWidth={previewMode ? 2 : 1}
 		listening={true}
 		onclick={() => handleHexClick(hex)}
 		onmouseenter={() => {
@@ -281,6 +285,20 @@
 	<!-- {#if hex.row > 0 && showCoords !== 'never'} -->
 	<!-- {@render indicators(hex)} -->
 	<!-- {/if} -->
+{/snippet}
+
+{#snippet selectedTileBorder(hex: Hex)}
+	<RegularPolygon
+		staticConfig={true}
+		listening={false}
+		x={hex.centerX}
+		y={hex.centerY}
+		radius={hexRadius - 3}
+		sides={6}
+		rotation={90}
+		stroke="#3b82f6"
+		strokeWidth={5}
+	/>
 {/snippet}
 
 <svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
@@ -368,6 +386,19 @@
 		>
 			{#each alwaysRevealedTiles as hex (hex.id)}
 				{@render tile(hex, false, true)}
+			{/each}
+		</Layer>
+
+		<!-- Layer 5: Selection borders (non-interactive overlay) -->
+		<Layer
+			x={xOffset}
+			y={yOffset}
+			listening={false}
+			visible={selectedTiles.length > 0}
+			bind:handle={selectionLayerRef}
+		>
+			{#each selectedTiles as hex (hex.id)}
+				{@render selectedTileBorder(hex)}
 			{/each}
 		</Layer>
 	{/if}
