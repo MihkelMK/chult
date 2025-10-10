@@ -294,7 +294,16 @@
 	>
 		<!-- Layer 1: Background - never cull -->
 		<Layer staticConfig={true} listening={false}>
-			<Image x={0} y={0} {image}></Image>
+			<Image
+				x={0}
+				y={0}
+				{image}
+				cornerRadius={24}
+				shadowColor="black"
+				shadowBlur={25}
+				shadowOffset={{ x: 0, y: 20 }}
+				shadowOpacity={0.1}
+			></Image>
 		</Layer>
 
 		<!-- Layer 2: Fog-of-war - Only cull for DM when fog is visible -->
