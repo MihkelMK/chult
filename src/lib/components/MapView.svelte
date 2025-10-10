@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { PressedKeys } from 'runed';
-	import Map from './Map.svelte';
 	import TileDetails from './TileDetails.svelte';
-	import TileContentPreview from './TileContentPreview.svelte';
 	import TileContentModal from './TileContentModal.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import {
@@ -16,6 +14,8 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { Slider } from '$lib/components/ui/slider';
+	import * as ToggleGroup from '$lib/components/ui/toggle-group/index.js';
+	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { HexRevealedEvent, RevealedTile, TileCoords } from '$lib/types';
 	import { getCampaignState } from '$lib/contexts/campaignContext';
 	import {
@@ -32,7 +32,9 @@
 		Hand,
 		MousePointer,
 		Paintbrush,
-		CircleDot
+		CircleDot,
+		ChevronDownIcon,
+		ChevronUpIcon
 	} from '@lucide/svelte';
 	import type { PlayerTileState } from '$lib/stores/playerTileManager.svelte';
 	import type { TileState } from '$lib/stores/tileManager.svelte';
@@ -79,12 +81,15 @@
 		!ctrlHeld ? selectedSelectMode : selectedSelectMode === 'add' ? 'remove' : 'add'
 	);
 
+	let loading = $state(false);
 	let brushSize = $state<number>(3); // Brush radius (1-5)
 	let isDragging = $state(false);
 	let alwaysRevealMode = $state(false);
 	let showAlwaysRevealed = $state(false);
 	let showRevealed = $state(false);
-	let tileTransparency = $state(1); // 0 = transparent, 1 = opaque
+	let showUnrevealed = $state(true);
+	let tileTransparency = $state('1'); // 0 = transparent, 1 = opaque
+	let layerVisibilityOpen = $state(false);
 
 	let zoomIndex = $state(0);
 	let zoom = $derived(zoomSteps[zoomIndex]);
@@ -301,18 +306,30 @@
 		}
 	}
 
-	function selectAllRevealed() {
-		if (mode === 'dm') {
-			if (showAlwaysRevealed) {
-				selectedTiles = [...currentRevealedTiles];
-			} else {
-				selectedTiles = [
-					...currentRevealedTiles.filter(
-						(tile: TileCoords | RevealedTile) => 'alwaysRevealed' in tile && !tile.alwaysRevealed
-					)
-				];
-			}
-		}
+	// TODO: Remove this slow array parsing
+	// Move over the mappings from MapCanvas
+	function selectRevealed() {
+		if (mode !== 'dm') return;
+		loading = true;
+		selectedTool = 'select';
+		selectedTiles = [
+			...currentRevealedTiles.filter(
+				(tile: TileCoords | RevealedTile) => 'alwaysRevealed' in tile && !tile.alwaysRevealed
+			)
+		];
+		loading = false;
+	}
+
+	function selectAlwaysRevealed() {
+		if (mode !== 'dm') return;
+		loading = true;
+		selectedTool = 'select';
+		selectedTiles = [
+			...currentRevealedTiles.filter(
+				(tile: TileCoords | RevealedTile) => 'alwaysRevealed' in tile && tile.alwaysRevealed
+			)
+		];
+		loading = false;
 	}
 
 	function clearSelection() {
@@ -340,6 +357,52 @@
 	}
 </script>
 
+{#snippet layerControl(
+	name: string,
+	visibleState: boolean,
+	onToggle: () => void,
+	onSelect?: () => void
+)}
+	<div class="flex justify-between gap-6 {visibleState ? '' : 'text-muted-foreground'}">
+		<div class="flex items-center">
+			<Tooltip.Root>
+				<Tooltip.Trigger>
+					<Button variant="ghost" size="sm" onclick={() => onToggle()}>
+						{#if visibleState}
+							<Eye class="w-4 h-4" />
+						{:else}
+							<EyeOff class="w-4 h-4" />
+						{/if}
+					</Button>
+				</Tooltip.Trigger>
+				<Tooltip.Content>
+					{visibleState ? `Hide ${name}` : `Show ${name}`}
+				</Tooltip.Content>
+			</Tooltip.Root>
+			<p class="font-mono text-xs mt-[0.175em]">{name}</p>
+		</div>
+
+		{#if onSelect}
+			<Tooltip.Root>
+				<Tooltip.Trigger>
+					<Button
+						disabled={!visibleState}
+						variant="ghost"
+						size="icon"
+						class="m-0 !p-0"
+						onclick={() => onSelect()}
+					>
+						<Square class="w-4 h-4" />
+					</Button>
+				</Tooltip.Trigger>
+				<Tooltip.Content>
+					{visibleState ? `Select all ${name.toLowerCase()} tiles` : "Can't select hidden tiles"}
+				</Tooltip.Content>
+			</Tooltip.Root>
+		{/if}
+	</div>
+{/snippet}
+
 <!-- Full screen layout -->
 <Tooltip.Provider>
 	<div class="flex fixed inset-0 bg-background">
@@ -350,212 +413,160 @@
 				<div class="flex absolute top-4 left-4 z-20 flex-col gap-2">
 					<!-- Main toolbar -->
 					<div
-						class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
+						class="flex justify-between items-center p-2 rounded-lg border min-w-80 bg-background/95 shadow-xs backdrop-blur-sm"
 					>
-						<SheetTrigger>
-							{#snippet child({ props })}
-								<Button {...props} variant="ghost" size="sm">
-									<Menu class="w-4 h-4" />
-								</Button>
-							{/snippet}
-						</SheetTrigger>
-
-						<Separator orientation="vertical" class="h-6" />
-
 						<div class="flex gap-2 items-center">
-							<div class="text-sm font-medium">
-								{data.campaign?.name || data.session?.campaignSlug}
+							<SheetTrigger>
+								{#snippet child({ props })}
+									<Button {...props} variant="ghost" size="sm">
+										<Menu class="w-4 h-4" />
+									</Button>
+								{/snippet}
+							</SheetTrigger>
+
+							<div class="flex gap-2 items-center">
+								<div class="text-sm font-medium">
+									{data.campaign?.name || data.session?.campaignSlug}
+								</div>
+								<Badge variant="secondary" class="text-xs">
+									{mode === 'dm' ? 'DM' : 'Player'}
+								</Badge>
 							</div>
-							<Badge variant="secondary" class="text-xs">
-								{mode === 'dm' ? 'DM' : 'Player'}
-							</Badge>
 						</div>
 
-						{#if hasErrors}
-							<Separator orientation="vertical" class="h-6" />
-							<Badge variant="destructive" class="text-xs">Error</Badge>
-						{/if}
+						<div class="flex gap-2 items-center">
+							{#if hasErrors}
+								<Badge variant="destructive" class="text-xs">Error</Badge>
+							{/if}
 
-						{#if mode === 'player' && 'error' in tileState && tileState.error}
-							<Separator orientation="vertical" class="h-6" />
-							<Badge variant="destructive" class="text-xs">
-								{tileState.error}
-							</Badge>
-						{/if}
-
-						<!-- DM Transparency Control -->
-						{#if mode === 'dm'}
-							<Separator orientation="vertical" class="h-6" />
-							<div class="flex gap-2 items-center">
-								<span class="text-xs text-muted-foreground">Tile opacity:</span>
-								<div class="w-20">
-									<Slider
-										type="single"
-										bind:value={tileTransparency}
-										min={0}
-										max={1}
-										step={0.05}
-										class="w-full"
-									/>
-								</div>
-								<span class="w-8 font-mono text-xs text-center"
-									>{Math.round(tileTransparency * 100)}%</span
-								>
-							</div>
-						{/if}
+							{#if mode === 'player' && 'error' in tileState && tileState.error}
+								<Badge variant="destructive" class="text-xs">
+									{tileState.error}
+								</Badge>
+							{/if}
+							{#if selectedTool === 'select' || selectedTool === 'paint'}
+								<Badge variant="secondary" class="justify-self-end text-xs">
+									{selectedTiles.length} selected
+								</Badge>
+							{/if}
+						</div>
 					</div>
 
 					<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
 					{#if mode === 'dm' && (selectedTool === 'select' || selectedTool === 'paint')}
 						<div
-							class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
+							class="flex flex-col gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 						>
-							<!-- Always-Reveal Toggle -->
-							<Tooltip.Root>
-								<Tooltip.Trigger>
-									<Button
-										variant={alwaysRevealMode ? 'default' : 'ghost'}
-										size="sm"
-										onclick={() => (alwaysRevealMode = !alwaysRevealMode)}
-									>
-										<CircleDot class="w-4 h-4" />
-									</Button>
-								</Tooltip.Trigger>
-								<Tooltip.Content>
-									{alwaysRevealMode ? 'Always Reveal: ON' : 'Always Reveal: OFF'}
-								</Tooltip.Content>
-							</Tooltip.Root>
+							<div class="flex gap-2 items-center">
+								<!-- Always-Reveal Toggle -->
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<Button
+											variant={alwaysRevealMode ? 'default' : 'ghost'}
+											size="sm"
+											onclick={() => (alwaysRevealMode = !alwaysRevealMode)}
+										>
+											<CircleDot class="w-4 h-4" />
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content>
+										{alwaysRevealMode ? 'Always Reveal: ON' : 'Always Reveal: OFF'}
+									</Tooltip.Content>
+								</Tooltip.Root>
 
-							<!-- Show Always-Revealed Toggle -->
-							<Separator orientation="vertical" class="h-6" />
+								<!-- Select Mode Controls -->
+								<Separator orientation="vertical" class="!h-6" />
 
-							<Tooltip.Root>
-								<Tooltip.Trigger>
-									<Button
-										variant={showAlwaysRevealed ? 'default' : 'ghost'}
-										size="sm"
-										onclick={() => (showAlwaysRevealed = !showAlwaysRevealed)}
-									>
-										{#if showAlwaysRevealed}
-											<Eye class="w-4 h-4" />
-										{:else}
-											<EyeOff class="w-4 h-4" />
-										{/if}
-									</Button>
-								</Tooltip.Trigger>
-								<Tooltip.Content>
-									{showAlwaysRevealed ? 'Hide Always-Revealed' : 'Show Always-Revealed'}
-								</Tooltip.Content>
-							</Tooltip.Root>
+								<!-- Add/Remove Mode Toggle -->
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<Button
+											variant={activeSelectMode === 'add' ? 'default' : 'ghost'}
+											size="sm"
+											onclick={() => (activeSelectMode = 'add')}
+										>
+											<Plus class="w-4 h-4" />
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content>Add to selection</Tooltip.Content>
+								</Tooltip.Root>
 
-							<!-- Show Revealed Toggle -->
-							<Separator orientation="vertical" class="h-6" />
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<Button
+											variant={activeSelectMode === 'remove' ? 'default' : 'ghost'}
+											size="sm"
+											onclick={() => (activeSelectMode = 'remove')}
+										>
+											<Minus class="w-4 h-4" />
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content>Remove from selection</Tooltip.Content>
+								</Tooltip.Root>
 
-							<Tooltip.Root>
-								<Tooltip.Trigger>
-									<Button
-										variant={showRevealed ? 'default' : 'ghost'}
-										size="sm"
-										onclick={() => (showRevealed = !showRevealed)}
-									>
-										{#if showRevealed}
-											<Eye class="w-4 h-4" />
-										{:else}
-											<EyeOff class="w-4 h-4" />
-										{/if}
-									</Button>
-								</Tooltip.Trigger>
-								<Tooltip.Content>
-									{showRevealed ? 'Hide Revealed' : 'Show Revealed'}
-								</Tooltip.Content>
-							</Tooltip.Root>
+								{#if selectedTool === 'select' || selectedTool === 'paint'}
+									<Separator orientation="vertical" class="!h-6" />
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<Button
+												disabled={selectedTiles.length === 0}
+												variant="ghost"
+												size="sm"
+												onclick={revealSelectedTiles}
+											>
+												<Eye class="w-4 h-4" />
+											</Button>
+										</Tooltip.Trigger>
+										<Tooltip.Content>Reveal Selected</Tooltip.Content>
+									</Tooltip.Root>
 
-							<!-- Select Mode Controls -->
-							<Separator orientation="vertical" class="h-6" />
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<Button
+												disabled={selectedTiles.length === 0}
+												variant="ghost"
+												size="sm"
+												onclick={hideSelectedTiles}
+											>
+												<EyeOff class="w-4 h-4" />
+											</Button>
+										</Tooltip.Trigger>
+										<Tooltip.Content>Hide Selected</Tooltip.Content>
+									</Tooltip.Root>
 
-							<!-- Add/Remove Mode Toggle -->
-							<Tooltip.Root>
-								<Tooltip.Trigger>
-									<Button
-										variant={activeSelectMode === 'add' ? 'default' : 'ghost'}
-										size="sm"
-										onclick={() => (activeSelectMode = 'add')}
-									>
-										<Plus class="w-4 h-4" />
-									</Button>
-								</Tooltip.Trigger>
-								<Tooltip.Content>Add to selection</Tooltip.Content>
-							</Tooltip.Root>
-
-							<Tooltip.Root>
-								<Tooltip.Trigger>
-									<Button
-										variant={activeSelectMode === 'remove' ? 'default' : 'ghost'}
-										size="sm"
-										onclick={() => (activeSelectMode = 'remove')}
-									>
-										<Minus class="w-4 h-4" />
-									</Button>
-								</Tooltip.Trigger>
-								<Tooltip.Content>Remove from selection</Tooltip.Content>
-							</Tooltip.Root>
-
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<Button
+												disabled={selectedTiles.length === 0}
+												variant="ghost"
+												size="sm"
+												onclick={clearSelection}
+											>
+												<Trash2 class="w-4 h-4" />
+											</Button>
+										</Tooltip.Trigger>
+										<Tooltip.Content>Clear Selection</Tooltip.Content>
+									</Tooltip.Root>
+								{/if}
+							</div>
+							<!-- Brush Size Slider -->
 							{#if activeTool === 'paint'}
-								<!-- Brush Size Slider -->
-								<Separator orientation="vertical" class="h-6" />
-
-								<div class="flex gap-2 items-center px-2">
-									<span class="text-xs text-muted-foreground">Size:</span>
-									<div class="w-20">
-										<Slider
-											type="single"
-											bind:value={brushSize}
-											min={1}
-											max={5}
-											step={1}
-											class="w-full"
-										/>
+								<div class="flex gap-2 items-center">
+									<div class="flex gap-2 items-center px-2">
+										<span class="text-xs text-muted-foreground">Brush Size:</span>
+										<div class="w-20">
+											<Slider
+												type="single"
+												bind:value={brushSize}
+												min={1}
+												max={5}
+												step={1}
+												class="w-full"
+											/>
+										</div>
+										<span class="w-6 font-mono text-xs text-center">{brushSize}</span>
 									</div>
-									<span class="w-6 font-mono text-xs text-center">{brushSize}</span>
 								</div>
-							{/if}
-
-							{#if selectedTiles.length > 0}
-								<Separator orientation="vertical" class="h-6" />
-								<Badge variant="secondary" class="text-xs">
-									{selectedTiles.length} selected
-								</Badge>
-
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button variant="ghost" size="sm" onclick={revealSelectedTiles}>
-											<Eye class="w-4 h-4" />
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>Reveal Selected</Tooltip.Content>
-								</Tooltip.Root>
-
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button variant="ghost" size="sm" onclick={hideSelectedTiles}>
-											<EyeOff class="w-4 h-4" />
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>Hide Selected</Tooltip.Content>
-								</Tooltip.Root>
-
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button variant="ghost" size="sm" onclick={clearSelection}>
-											<Trash2 class="w-4 h-4" />
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>Clear Selection</Tooltip.Content>
-								</Tooltip.Root>
-							{:else}
-								<Button variant="ghost" size="sm" onclick={selectAllRevealed}>
-									Select All Revealed
-								</Button>
 							{/if}
 						</div>
 					{/if}
@@ -624,15 +635,17 @@
 				<!-- Map Container with native scroll -->
 				<div
 					class="overflow-auto flex-1 max-w-screen bg-muted/20"
-					style="cursor: {activeTool === 'pan'
-						? isDragging
-							? 'grabbing'
-							: 'grab'
-						: activeTool === 'paint' || activeTool === 'select'
-							? activeSelectMode === 'add'
-								? 'crosshair'
-								: 'not-allowed'
-							: 'default'} !important;"
+					style="cursor: {loading
+						? 'loading'
+						: activeTool === 'pan'
+							? isDragging
+								? 'grabbing'
+								: 'grab'
+							: activeTool === 'paint' || activeTool === 'select'
+								? activeSelectMode === 'add'
+									? 'crosshair'
+									: 'not-allowed'
+								: 'default'} !important;"
 					role="application"
 					aria-label="Interactive map"
 				>
@@ -643,7 +656,8 @@
 							isDM={mode === 'dm'}
 							showAlwaysRevealed={mode === 'dm' ? showAlwaysRevealed : false}
 							showRevealed={mode === 'dm' ? showRevealed : false}
-							tileTransparency={mode === 'dm' ? tileTransparency : 0.75}
+							showUnrevealed={mode === 'dm' ? showUnrevealed : true}
+							tileTransparency={mode === 'dm' ? Number(tileTransparency) : 0.75}
 							hexesPerRow={data.campaign?.hexesPerRow ?? 20}
 							hexesPerCol={data.campaign?.hexesPerCol ?? 20}
 							xOffset={data.campaign?.hexOffsetX ?? 70}
@@ -661,45 +675,6 @@
 							previewMode={false}
 							{zoom}
 						/>
-						<!-- <div class="p-4 h-screen max-w-screen min-w-screen"> -->
-						<!-- 	<Map -->
-						<!-- 		campaignSlug={mode === 'dm' ? data.session?.campaignSlug : data.campaign?.slug} -->
-						<!-- 		variant={mode === 'dm' ? 'hexGrid' : 'responsive'} -->
-						<!-- 		isDM={mode === 'dm'} -->
-						<!-- 		showAlwaysRevealed={mode === 'dm' ? showAlwaysRevealed : false} -->
-						<!-- 		tileTransparency={mode === 'dm' ? tileTransparency : 0.75} -->
-						<!-- 		hexesPerRow={data.campaign?.hexesPerRow ?? 20} -->
-						<!-- 		hexesPerCol={data.campaign?.hexesPerCol ?? 20} -->
-						<!-- 		xOffset={data.campaign?.hexOffsetX ?? 70} -->
-						<!-- 		yOffset={data.campaign?.hexOffsetY ?? 58} -->
-						<!-- 		initiallyRevealed={currentRevealedTiles} -->
-						<!-- 		selectedTiles={mode === 'dm' ? selectedTiles : undefined} -->
-						<!-- 		showCoords={mode === 'dm' ? 'always' : 'hover'} -->
-						<!-- 		onHexRevealed={handleTileClick} -->
-						<!-- 		onHexHover={handleHexHover} -->
-						<!-- 		{hasPoI} -->
-						<!-- 		{hasNotes} -->
-						<!-- 		{isPlayerPosition} -->
-						<!-- 		cursorMode={selectedTool} -->
-						<!-- 		{zoom} -->
-						<!-- 	/> -->
-						<!---->
-						<!-- Hover Preview Overlay -->
-						<!-- 	{#if campaignState.hoveredTile} -->
-						<!-- 		<TileContentPreview -->
-						<!-- 			coords={campaignState.hoveredTile} -->
-						<!-- 			markers={campaignState.getTileMarkers(campaignState.hoveredTile, mode)} -->
-						<!-- 			campaignSlug={data.campaign?.slug || data.session?.campaignSlug} -->
-						<!-- 			role={mode} -->
-						<!-- 		> -->
-						<!-- Invisible trigger element positioned over the hovered hex -->
-						<!-- 			<div -->
-						<!-- 				class="absolute pointer-events-none" -->
-						<!-- 				style="left: 0; top: 0; width: 1px; height: 1px;" -->
-						<!-- 			></div> -->
-						<!-- 		</TileContentPreview> -->
-						<!-- 	{/if} -->
-						<!-- </div> -->
 					{:else}
 						<div class="flex justify-center items-center h-full">
 							<div class="text-center">
@@ -711,10 +686,10 @@
 								<h3 class="text-lg font-medium">Map Not Available</h3>
 								<p class="text-muted-foreground">
 									{#if mode === 'dm'}
-										<a href="/{data.campaign.slug}/settings">'Upload a map image to get started.'</a
-										>
+										<a class="underline" href="/{data.campaign.slug}/settings">Upload a map</a>
+										to get started.
 									{:else}
-										'The campaign map is being prepared by your DM.'
+										The campaign map is being prepared by your DM.
 									{/if}
 								</p>
 							</div>
@@ -827,6 +802,87 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- Layer Controls -->
+			{#if mode === 'dm'}
+				<div class="absolute right-4 bottom-4 z-20">
+					<Collapsible.Root
+						class="px-1 w-56 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
+						bind:open={layerVisibilityOpen}
+					>
+						<div class="flex justify-between items-center py-1 pl-2">
+							<h4 class="text-sm font-semibold">Layers</h4>
+							<Collapsible.Trigger
+								class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-9 p-0' })}
+							>
+								{#if layerVisibilityOpen}
+									<ChevronDownIcon />
+								{:else}
+									<ChevronUpIcon />
+								{/if}
+								<span class="sr-only">Toggle</span>
+							</Collapsible.Trigger>
+						</div>
+						<Collapsible.Content>
+							<div class="flex flex-col pb-1 bg-accent">
+								{@render layerControl(
+									'Always Revealed',
+									showAlwaysRevealed,
+									() => (showAlwaysRevealed = !showAlwaysRevealed),
+									() => selectAlwaysRevealed()
+								)}
+
+								{@render layerControl(
+									'Revealed',
+									showRevealed,
+									() => (showRevealed = !showRevealed),
+									() => selectRevealed()
+								)}
+
+								{@render layerControl(
+									'Unrevealed',
+									showUnrevealed,
+									() => (showUnrevealed = !showUnrevealed)
+								)}
+							</div>
+
+							<!-- Tile Transparency Control -->
+							<div class="flex gap-2 justify-between items-center py-1 pl-2">
+								<span class="text-xs">Opacity</span>
+
+								<ToggleGroup.Root
+									size="sm"
+									variant="text"
+									type="single"
+									bind:value={tileTransparency}
+								>
+									<ToggleGroup.Item
+										value="0"
+										disabled={tileTransparency === '0'}
+										aria-label="Make tiles transparent"
+									>
+										<span class="w-6 font-mono text-xs text-center">0</span>
+									</ToggleGroup.Item>
+									<ToggleGroup.Item
+										value="0.5"
+										disabled={tileTransparency === '0.5'}
+										aria-label="Make tiles half transparent"
+									>
+										<span class="w-6 font-mono text-xs text-center">0.5</span>
+									</ToggleGroup.Item>
+									<ToggleGroup.Item
+										value="1"
+										disabled={tileTransparency === '1'}
+										aria-label="Make tiles opaque"
+									>
+										<span class="w-6 font-mono text-xs text-center">1</span>
+									</ToggleGroup.Item>
+								</ToggleGroup.Root>
+							</div>
+						</Collapsible.Content>
+					</Collapsible.Root>
+				</div>
+			{/if}
 
 			<!-- Sidebar Content -->
 			<SheetContent side="left" class="w-80">

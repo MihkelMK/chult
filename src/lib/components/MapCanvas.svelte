@@ -18,6 +18,7 @@
 		tileTransparency,
 		previewMode,
 		showRevealed,
+		showUnrevealed,
 		showAlwaysRevealed,
 		showCoords,
 		onHexRevealed,
@@ -214,55 +215,53 @@
 {#snippet tile(hex: Hex, isRevealed: boolean, isAlways: boolean)}
 	{@const key = `${hex.col}-${hex.row}`}
 	{@const isSelected = isDM && selectedSet.has(key)}
-	{#if isSelected || (!isRevealed && !isAlways)}
-		<RegularPolygon
-			x={hex.centerX}
-			y={hex.centerY}
-			radius={hexRadius}
-			sides={6}
-			rotation={90}
-			fill={isSelected
-				? 'rgb(249, 115, 22)'
-				: isAlways
-					? 'rgb(59, 130, 246)'
-					: isRevealed
-						? '#bfd5fc'
-						: 'rgb(253, 250, 240)'}
-			opacity={isSelected ? 0.6 : isDM ? tileTransparency : 1}
-			stroke={isSelected ? '#f97316' : isAlways ? '#3b82f6' : 'black'}
-			strokeWidth={isSelected ? 3 : previewMode ? 2 : 1}
-			strokeOpacity={isSelected ? 1 : isAlways ? 0.4 : 0.15}
-			listening={true}
-			onclick={() => handleHexClick(hex)}
-			onmouseenter={() => {
-				if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
-					const key = `${hex.col}-${hex.row}`;
-					if (lastPaintedTile !== key) {
-						onHexRevealed?.({ hex });
-						lastPaintedTile = key;
-					}
-				} else {
-					handleMouseEnter({ x: hex.col, y: hex.row });
+	<RegularPolygon
+		x={hex.centerX}
+		y={hex.centerY}
+		radius={hexRadius}
+		sides={6}
+		rotation={90}
+		fill={isSelected
+			? 'rgb(249, 115, 22)'
+			: isAlways
+				? 'rgb(59, 130, 246)'
+				: isRevealed
+					? '#bfd5fc'
+					: 'rgb(253, 250, 240)'}
+		opacity={isSelected ? 0.6 : isDM ? tileTransparency : 1}
+		stroke={isSelected ? '#f97316' : isAlways ? '#3b82f6' : 'black'}
+		strokeWidth={isSelected ? 3 : previewMode ? 2 : 1}
+		strokeOpacity={isSelected ? 1 : isAlways ? 0.4 : 0.15}
+		listening={true}
+		onclick={() => handleHexClick(hex)}
+		onmouseenter={() => {
+			if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
+				const key = `${hex.col}-${hex.row}`;
+				if (lastPaintedTile !== key) {
+					onHexRevealed?.({ hex });
+					lastPaintedTile = key;
 				}
-			}}
-			onmouseleave={handleMouseLeave}
-			cursor={cursorMode === 'pan' ? 'grab' : 'pointer'}
+			} else {
+				handleMouseEnter({ x: hex.col, y: hex.row });
+			}
+		}}
+		onmouseleave={handleMouseLeave}
+		cursor={cursorMode === 'pan' ? 'grab' : 'pointer'}
+	/>
+	{#if hex.row > 0 && showCoords !== 'never'}
+		<Text
+			staticConfig={true}
+			listening={false}
+			x={hex.centerX - (hex.col === hexesPerCol - 1 ? 0 : textXOffset)}
+			y={hex.centerY + textYOffset}
+			text="{(hex.col - 1).toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}"
+			fill="#000000"
+			{fontSize}
 		/>
-		{#if hex.row > 0 && showCoords !== 'never'}
-			<Text
-				staticConfig={true}
-				listening={false}
-				x={hex.centerX - (hex.col === hexesPerCol - 1 ? 0 : textXOffset)}
-				y={hex.centerY + textYOffset}
-				text="{(hex.col - 1).toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}"
-				fill="#000000"
-				{fontSize}
-			/>
-		{/if}
-		<!-- {#if hex.row > 0 && showCoords !== 'never'} -->
-		<!-- {@render indicators(hex)} -->
-		<!-- {/if} -->
 	{/if}
+	<!-- {#if hex.row > 0 && showCoords !== 'never'} -->
+	<!-- {@render indicators(hex)} -->
+	<!-- {/if} -->
 {/snippet}
 
 <svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
@@ -302,7 +301,12 @@
 		</Layer>
 
 		<!-- Layer 2: Fog-of-war - Only cull for DM when fog is visible -->
-		<Layer x={xOffset} y={yOffset} listening={cursorMode !== 'pan'}>
+		<Layer
+			x={xOffset}
+			y={yOffset}
+			listening={cursorMode !== 'pan'}
+			visible={showUnrevealed && tileTransparency !== 0}
+		>
 			{#each unrevealedTiles as hex (hex.id)}
 				<!--  ^^^^^^^^ Players: render ALL fog tiles (no culling) -->
 				<!--            DMs: can cull with large buffer (5x radius) -->
@@ -314,24 +318,30 @@
 
 		{#if isDM}
 			<!-- Layer 3: Revealed tiles -->
-			{#if showRevealed}
-				<Layer x={xOffset} y={yOffset} listening={cursorMode !== 'pan'}>
-					{#each revealedTiles as hex (hex.id)}
-						{#if hex.row >= 0}
-							{@render tile(hex, true, false)}
-						{/if}
-					{/each}
-				</Layer>
-			{/if}
+			<Layer
+				x={xOffset}
+				y={yOffset}
+				listening={cursorMode !== 'pan'}
+				visible={showRevealed && tileTransparency !== 0}
+			>
+				{#each revealedTiles as hex (hex.id)}
+					{#if hex.row >= 0}
+						{@render tile(hex, true, false)}
+					{/if}
+				{/each}
+			</Layer>
 
 			<!-- Layer 4: Always-revealed markers - SAFE to cull -->
-			{#if showAlwaysRevealed}
-				<Layer x={xOffset} y={yOffset} listening={cursorMode !== 'pan'}>
-					{#each alwaysRevealedTiles as hex (hex.id)}
-						{@render tile(hex, false, true)}
-					{/each}
-				</Layer>
-			{/if}
+			<Layer
+				x={xOffset}
+				y={yOffset}
+				listening={cursorMode !== 'pan'}
+				visible={showAlwaysRevealed && tileTransparency !== 0}
+			>
+				{#each alwaysRevealedTiles as hex (hex.id)}
+					{@render tile(hex, false, true)}
+				{/each}
+			</Layer>
 		{/if}
 	</Stage>
 {/if}

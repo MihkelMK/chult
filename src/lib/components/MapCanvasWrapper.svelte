@@ -12,6 +12,7 @@
 		previewMode = false,
 		showAlwaysRevealed = false,
 		showRevealed = false,
+		showUnrevealed = true,
 		tileTransparency = 0.75,
 		hexesPerRow = 72,
 		hexesPerCol = 86,
@@ -251,6 +252,7 @@
 			{showCoords}
 			{showAnimations}
 			{showAlwaysRevealed}
+			{showUnrevealed}
 			{showRevealed}
 			{previewMode}
 			{isDM}

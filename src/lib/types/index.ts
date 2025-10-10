@@ -62,6 +62,7 @@ interface MapCanvasSharedProps {
 	showAnimations: boolean;
 	showAlwaysRevealed?: boolean;
 	showRevealed?: boolean;
+	showUnrevealed?: boolean;
 	showCoords: 'never' | 'always' | 'hover';
 	cursorMode: 'interact' | 'pan' | 'select' | 'paint';
 	onHexRevealed: (event: HexRevealedEvent) => void;
