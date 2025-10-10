@@ -13,6 +13,8 @@ export const campaigns = pgTable('campaigns', {
 	hexesPerCol: integer('hexes_per_col').notNull().default(20),
 	hexOffsetX: integer('hex_offset_x').notNull().default(70),
 	hexOffsetY: integer('hex_offset_y').notNull().default(58),
+	imageWidth: integer('image_width').notNull().default(0),
+	imageHeight: integer('image_height').notNull().default(0),
 	createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 });

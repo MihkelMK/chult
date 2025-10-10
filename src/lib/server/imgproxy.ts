@@ -1,5 +1,5 @@
 import { IMGPROXY_KEY, IMGPROXY_SALT, IMGPROXY_URL } from '$env/static/private';
-import type { ImageOptions, ImageVariants, MapUrlsResponse, ResponsiveImageData } from '$lib/types';
+import type { ImageOptions, ImageVariants, MapUrlsResponse } from '$lib/types';
 import crypto from 'crypto';
 
 function sign(target: string): string {
@@ -142,43 +142,36 @@ export function generateMarkerImageUrl(
 
 export function generateMapVariants(campaignSlug: string): ImageVariants {
 	return {
-		thumbnail: generateMapUrl(campaignSlug, { preset: 'thumbnail' }),
-		small: generateMapUrl(campaignSlug, { preset: 'small' }),
-		medium: generateMapUrl(campaignSlug, { preset: 'medium' }),
-		large: generateMapUrl(campaignSlug, { preset: 'large' }),
+		large: { url: generateMapUrl(campaignSlug, { preset: 'large' }), width: 1920 },
 
 		// Custom sizes for specific D&D use cases
-		hexGrid: generateMapUrl(campaignSlug, {
-			width: 1920,
-			height: 1920,
-			quality: 90,
-			format: 'webp'
-		}),
-		overview: generateMapUrl(campaignSlug, {
-			width: 800,
-			quality: 75,
-			format: 'webp'
-		}),
-		detail: generateMapUrl(campaignSlug, {
-			width: 2560,
-			quality: 95,
-			format: 'webp'
-		}),
-
-		// Mobile optimized
-		mobile: generateMapUrl(campaignSlug, {
-			width: 800,
-			quality: 70,
-			format: 'webp'
-		}),
+		overview: {
+			url: generateMapUrl(campaignSlug, {
+				width: 800,
+				quality: 75,
+				format: 'webp'
+			}),
+			width: 800
+		},
+		detail: {
+			url: generateMapUrl(campaignSlug, {
+				width: 2560,
+				quality: 95,
+				format: 'webp'
+			}),
+			width: 2560
+		},
 
 		// Retina displays
-		retina: generateMapUrl(campaignSlug, {
-			width: 1920,
-			dpr: 2,
-			quality: 85,
-			format: 'webp'
-		})
+		retina: {
+			url: generateMapUrl(campaignSlug, {
+				width: 1920,
+				dpr: 2,
+				quality: 85,
+				format: 'webp'
+			}),
+			width: 1920
+		}
 	};
 }
 
@@ -217,34 +210,10 @@ export async function hasMarkerImage(campaignSlug: string, markerId: number): Pr
 	return existsSync(markerPath);
 }
 
-// Generate a responsive srcset for the map
-export function generateMapSrcSet(campaignSlug: string): ResponsiveImageData {
-	const variants = generateMapVariants(campaignSlug);
-
-	return {
-		src: variants.medium, // Default fallback
-		srcset: [
-			`${variants.small} 800w`,
-			`${variants.medium} 1280w`,
-			`${variants.large} 1920w`,
-			`${variants.detail} 2560w`
-		].join(', '),
-		sizes:
-			'(max-width: 768px) 800px, (max-width: 1200px) 1280px, (max-width: 1600px) 1920px, 2560px'
-	};
-}
-
 export function getMapUrls(slug: string): MapUrlsResponse | undefined {
 	if (!hasMapImage(slug)) {
 		return undefined;
 	}
 
-	const variants = generateMapVariants(slug);
-	const srcSet = generateMapSrcSet(slug);
-
-	return {
-		variants,
-		responsive: srcSet,
-		timestamp: Date.now() // For cache busting
-	};
+	return { variants: generateMapVariants(slug) };
 }

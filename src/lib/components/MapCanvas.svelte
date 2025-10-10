@@ -263,91 +263,90 @@
 
 <svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
 
-{#if image}
-	<Stage
-		width={canvasWidth}
-		height={canvasHeight}
-		bind:x={position.x}
-		bind:y={position.y}
-		scaleX={scale}
-		scaleY={scale}
-		draggable={cursorMode === 'pan'}
-		dragBoundFunc={(pos) => {
-			const clampedX = Math.max(Math.min(maxXPos, pos.x), minXPos);
-			const clampedY = Math.max(Math.min(maxYPos, pos.y), minYPos);
+<Stage
+	visible={!!image}
+	width={canvasWidth}
+	height={canvasHeight}
+	bind:x={position.x}
+	bind:y={position.y}
+	scaleX={scale}
+	scaleY={scale}
+	draggable={cursorMode === 'pan'}
+	dragBoundFunc={(pos) => {
+		const clampedX = Math.max(Math.min(maxXPos, pos.x), minXPos);
+		const clampedY = Math.max(Math.min(maxYPos, pos.y), minYPos);
 
-			return { x: clampedX, y: clampedY };
-		}}
-		onmousedown={() => {
-			if (cursorMode === 'paint' || cursorMode === 'select') {
-				isDragging = true;
-			}
-		}}
-		onmouseup={() => {
-			isDragging = false;
-			lastPaintedTile = null;
-		}}
-		onmouseleave={() => {
-			isDragging = false;
-			lastPaintedTile = null;
-		}}
+		return { x: clampedX, y: clampedY };
+	}}
+	onmousedown={() => {
+		if (cursorMode === 'paint' || cursorMode === 'select') {
+			isDragging = true;
+		}
+	}}
+	onmouseup={() => {
+		isDragging = false;
+		lastPaintedTile = null;
+	}}
+	onmouseleave={() => {
+		isDragging = false;
+		lastPaintedTile = null;
+	}}
+>
+	<!-- Layer 1: Background - never cull -->
+	<Layer staticConfig={true} listening={false}>
+		<Image
+			x={0}
+			y={0}
+			{image}
+			cornerRadius={24}
+			shadowColor="black"
+			shadowBlur={25}
+			shadowOffset={{ x: 0, y: 20 }}
+			shadowOpacity={0.1}
+		></Image>
+	</Layer>
+
+	<!-- Layer 2: Fog-of-war - Only cull for DM when fog is visible -->
+	<Layer
+		x={xOffset}
+		y={yOffset}
+		listening={cursorMode !== 'pan'}
+		visible={showUnrevealed && tileTransparency !== 0}
 	>
-		<!-- Layer 1: Background - never cull -->
-		<Layer staticConfig={true} listening={false}>
-			<Image
-				x={0}
-				y={0}
-				{image}
-				cornerRadius={24}
-				shadowColor="black"
-				shadowBlur={25}
-				shadowOffset={{ x: 0, y: 20 }}
-				shadowOpacity={0.1}
-			></Image>
-		</Layer>
+		{#each unrevealedTiles as hex (hex.id)}
+			<!--  ^^^^^^^^ Players: render ALL fog tiles (no culling) -->
+			<!--            DMs: can cull with large buffer (5x radius) -->
+			{#if hex.row >= 0}
+				{@render tile(hex, false, false)}
+			{/if}
+		{/each}
+	</Layer>
 
-		<!-- Layer 2: Fog-of-war - Only cull for DM when fog is visible -->
+	{#if isDM}
+		<!-- Layer 3: Revealed tiles -->
 		<Layer
 			x={xOffset}
 			y={yOffset}
 			listening={cursorMode !== 'pan'}
-			visible={showUnrevealed && tileTransparency !== 0}
+			visible={showRevealed && tileTransparency !== 0}
 		>
-			{#each unrevealedTiles as hex (hex.id)}
-				<!--  ^^^^^^^^ Players: render ALL fog tiles (no culling) -->
-				<!--            DMs: can cull with large buffer (5x radius) -->
+			{#each revealedTiles as hex (hex.id)}
 				{#if hex.row >= 0}
-					{@render tile(hex, false, false)}
+					{@render tile(hex, true, false)}
 				{/if}
 			{/each}
 		</Layer>
 
-		{#if isDM}
-			<!-- Layer 3: Revealed tiles -->
-			<Layer
-				x={xOffset}
-				y={yOffset}
-				listening={cursorMode !== 'pan'}
-				visible={showRevealed && tileTransparency !== 0}
-			>
-				{#each revealedTiles as hex (hex.id)}
-					{#if hex.row >= 0}
-						{@render tile(hex, true, false)}
-					{/if}
-				{/each}
-			</Layer>
-
-			<!-- Layer 4: Always-revealed markers - SAFE to cull -->
-			<Layer
-				x={xOffset}
-				y={yOffset}
-				listening={cursorMode !== 'pan'}
-				visible={showAlwaysRevealed && tileTransparency !== 0}
-			>
-				{#each alwaysRevealedTiles as hex (hex.id)}
-					{@render tile(hex, false, true)}
-				{/each}
-			</Layer>
-		{/if}
-	</Stage>
-{/if}
+		<!-- Layer 4: Always-revealed markers - SAFE to cull -->
+		<Layer
+			x={xOffset}
+			y={yOffset}
+			listening={cursorMode !== 'pan'}
+			visible={showAlwaysRevealed && tileTransparency !== 0}
+		>
+			{#each alwaysRevealedTiles as hex (hex.id)}
+				{@render tile(hex, false, true)}
+			{/each}
+		</Layer>
+	{/if}
+</Stage>

@@ -19,12 +19,14 @@
 		hexesPerCol = 86,
 		xOffset = 70,
 		yOffset = 58,
+		imageHeight,
+		imageWidth,
 		cursorMode,
 		zoom,
 		showAnimations = true,
 		showCoords = 'hover',
 		initiallyRevealed = [],
-		selectedTiles = [], // Add this line
+		selectedTiles = [],
 		onHexRevealed = () => {},
 		onHexHover = () => {},
 		onMapLoad = () => {},
@@ -34,13 +36,13 @@
 		isPlayerPosition = () => false
 	}: MapCanvasWrapperProps = $props();
 
-	let canvasWidth = $state(0);
-	let canvasHeight = $state(0);
-	let hexGrid: Hex[] = $state([]);
-
-	function generateHexGrid(): void {
+	function generateHexGrid(
+		hexesPerCol: number,
+		hexesPerRow: number,
+		horizontalSpacing: number,
+		verticalSpacing: number
+	): readonly Hex[] {
 		const newHexGrid: Hex[] = [];
-
 		for (let row = 0; row < hexesPerCol; row++) {
 			for (let col = 0; col < hexesPerRow; col++) {
 				// Perfect tessellation for flat-top hexagons: odd columns offset vertically
@@ -49,16 +51,18 @@
 				const centerX = col * horizontalSpacing + hexRadius;
 				const centerY = row * verticalSpacing + offsetY + hexHeight / 2;
 
-				newHexGrid.push({
-					id: `hex-${row}-${col}`,
-					row,
-					col,
-					centerX,
-					centerY
-				});
+				newHexGrid.push(
+					Object.freeze({
+						id: `hex-${row}-${col}`,
+						row,
+						col,
+						centerX,
+						centerY
+					})
+				);
 			}
 		}
-		hexGrid = newHexGrid;
+		return Object.freeze(newHexGrid);
 	}
 
 	const MapCanvasLoader: Promise<Component<MapCanvasProps>> = browser
@@ -66,33 +70,28 @@
 		: new Promise(() => {});
 
 	// Get the correct URL based on variant
-	let mapUrl = $derived(mapUrls.variants[variant]);
+	let { url: mapUrl, width: variantWidth } = $derived(mapUrls.variants[variant]);
+	let variantScale = $derived(imageWidth / variantWidth);
+	let variantHeight = $derived(imageHeight / variantScale);
 
 	let mapImageLoader = $derived(useImage(mapUrl));
 	let { image, status } = $derived(mapImageLoader());
-
-	// let hoveredHex: TileCoords | null = $state(null);
-	// let hoverTimeout: ReturnType<typeof setTimeout> | undefined = $state();
 
 	let revealedSet = new SvelteSet<string>();
 	let alwaysRevealedSet = new SvelteSet<string>();
 	let selectedSet = new SvelteSet<string>();
 
 	// Calculate hex dimensions based on usable width and hexes per row
-	let hexRadius: number = $derived(
-		image ? (image.width - xOffset * 2) / (hexesPerRow * 1.5 + 0.5) : 0
-	);
-	let hexHeight: number = $derived(image ? (image.height - yOffset * 2) / hexesPerCol : 0);
+	let hexRadius: number = $derived((variantWidth - xOffset * 2) / (hexesPerRow * 1.5 + 0.5));
+	let hexHeight: number = $derived((variantHeight - yOffset * 2) / hexesPerCol);
 
 	// Spacing for perfect tessellation of flat-top hexagons
 	let horizontalSpacing: number = $derived(hexRadius * 1.5); // Hexes overlap by 1/4 of their width
 	let verticalSpacing: number = $derived(hexHeight); // Full height spacing between rows
 
-	$effect(() => {
-		if (status === 'loaded' && image) {
-			generateHexGrid();
-		}
-	});
+	let hexGrid = $derived(
+		generateHexGrid(hexesPerCol, hexesPerRow, horizontalSpacing, verticalSpacing)
+	);
 
 	// Sync revealedSet incrementally
 	$effect(() => {
@@ -184,6 +183,8 @@
 		{cursorMode}
 		{xOffset}
 		{yOffset}
+		{imageHeight}
+		{imageWidth}
 		{hexesPerCol}
 		{hexesPerRow}
 		{showCoords}

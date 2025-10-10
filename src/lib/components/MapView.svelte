@@ -662,6 +662,8 @@
 							hexesPerCol={data.campaign?.hexesPerCol ?? 20}
 							xOffset={data.campaign?.hexOffsetX ?? 70}
 							yOffset={data.campaign?.hexOffsetY ?? 58}
+							imageHeight={data.campaign?.imageHeight}
+							imageWidth={data.campaign?.imageWidth}
 							initiallyRevealed={currentRevealedTiles}
 							selectedTiles={mode === 'dm' ? selectedTiles : undefined}
 							showCoords={mode === 'dm' ? 'always' : 'hover'}

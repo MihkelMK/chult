@@ -191,7 +191,9 @@ export async function getCampaignData(
 			hexOffsetX: campaign.hexOffsetX,
 			hexOffsetY: campaign.hexOffsetY,
 			hexesPerCol: campaign.hexesPerCol,
-			hexesPerRow: campaign.hexesPerRow
+			hexesPerRow: campaign.hexesPerRow,
+			imageHeight: campaign.imageHeight,
+			imageWidth: campaign.imageWidth
 		},
 		revealedTiles: revealed,
 		mapMarkers: markers,

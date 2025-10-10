@@ -1,5 +1,5 @@
 import type { RevealedTileResponse } from '$lib/types/database';
-import type { MapUrlsResponse } from '$lib/types/imgproxy';
+import type { ImageVariant, MapUrlsResponse } from '$lib/types/imgproxy';
 import type { SvelteSet } from 'svelte/reactivity';
 
 export * from '$lib/types/database';
@@ -58,6 +58,8 @@ interface MapCanvasSharedProps {
 	hexesPerCol: number; // Number of hexagons per column on the actual map
 	xOffset: number; // Horizontal offset in pixels from left edge to where grid starts
 	yOffset: number; // Vertical offset in pixels from top edge to where grid starts
+	imageHeight: number;
+	imageWidth: number;
 	zoom: number;
 	tileTransparency?: number;
 	showAnimations: boolean;
@@ -77,14 +79,14 @@ interface MapCanvasSharedProps {
 
 export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 	mapUrls: MapUrlsResponse;
-	variant?: 'thumbnail' | 'small' | 'medium' | 'large' | 'hexGrid' | 'overview' | 'detail';
+	variant?: ImageVariant;
 	initiallyRevealed?: RevealedTileResponse[];
 	selectedTiles?: TileCoords[]; // Add this line
 }
 
 export interface MapCanvasProps extends MapCanvasSharedProps {
 	image: HTMLImageElement | undefined;
-	hexGrid: Hex[];
+	hexGrid: readonly Hex[];
 	hexRadius: number;
 	selectedSet: SvelteSet<string>;
 	revealedSet: SvelteSet<string>;

@@ -1,28 +1,20 @@
-export interface ImageVariants {
-	thumbnail: string;
-	small: string;
-	medium: string;
-	large: string;
-	hexGrid: string;
-	overview: string;
-	detail: string;
-	mobile: string;
-	retina: string;
+export interface ImageVariantData {
+	url: string;
+	width: number;
 }
 
-export interface ResponsiveImageData {
-	src: string;
-	srcset: string;
-	sizes: string;
+export interface ImageVariants {
+	overview: ImageVariantData;
+	large: ImageVariantData;
+	detail: ImageVariantData;
+	retina: ImageVariantData;
 }
+
+export type ImageVariant = keyof ImageVariants;
 
 export interface MapUrlsResponse {
 	variants: ImageVariants;
-	responsive: ResponsiveImageData;
-	timestamp: number;
 }
-
-export type ImageVariant = keyof ImageVariants | 'responsive';
 
 export interface ImageOptions {
 	width?: number;

@@ -73,7 +73,15 @@ export type CampaignDataResponse = {
 export interface PlayerCampaignDataResponse {
 	campaign: Pick<
 		Campaign,
-		'id' | 'name' | 'slug' | 'hexesPerRow' | 'hexesPerCol' | 'hexOffsetX' | 'hexOffsetY'
+		| 'id'
+		| 'name'
+		| 'slug'
+		| 'hexesPerRow'
+		| 'hexesPerCol'
+		| 'hexOffsetX'
+		| 'hexOffsetY'
+		| 'imageHeight'
+		| 'imageWidth'
 	>;
 	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
 	mapMarkers: PlayerMapMarkerResponse[];
