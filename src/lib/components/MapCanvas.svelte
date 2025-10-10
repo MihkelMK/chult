@@ -64,14 +64,12 @@
 	function handleMouseEnter(coords: { x: number; y: number }) {
 		clearTimeout(hoverTimeout);
 		hoverTimeout = setTimeout(() => {
-			hoveredTile = coords;
 			onHexHover?.(coords);
 		}, 150);
 	}
 
 	function handleMouseLeave() {
 		clearTimeout(hoverTimeout);
-		hoveredTile = null;
 		onHexHover?.(null);
 	}
 
@@ -96,7 +94,6 @@
 	const textXOffset = $derived(fontSize);
 	const textYOffset = $derived(-fontSize / lineHeight);
 
-	let hoveredTile = $state<{ x: number; y: number } | null>(null);
 	let hoverTimeout: ReturnType<typeof setTimeout>;
 	let isDragging = $state(false);
 	let lastPaintedTile = $state<string | null>(null);
