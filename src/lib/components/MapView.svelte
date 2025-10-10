@@ -649,9 +649,9 @@
 					role="application"
 					aria-label="Interactive map"
 				>
-					{#if data.hasMapImage}
+					{#if data.mapUrls}
 						<MapCanvasWrapper
-							campaignSlug={mode === 'dm' ? data.session?.campaignSlug : data.campaign?.slug}
+							mapUrls={data.mapUrls}
 							variant="detail"
 							isDM={mode === 'dm'}
 							showAlwaysRevealed={mode === 'dm' ? showAlwaysRevealed : false}

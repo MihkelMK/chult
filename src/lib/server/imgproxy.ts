@@ -1,5 +1,5 @@
 import { IMGPROXY_KEY, IMGPROXY_SALT, IMGPROXY_URL } from '$env/static/private';
-import type { ImageOptions, ImageVariants, ResponsiveImageData } from '$lib/types';
+import type { ImageOptions, ImageVariants, MapUrlsResponse, ResponsiveImageData } from '$lib/types';
 import crypto from 'crypto';
 
 function sign(target: string): string {
@@ -231,5 +231,20 @@ export function generateMapSrcSet(campaignSlug: string): ResponsiveImageData {
 		].join(', '),
 		sizes:
 			'(max-width: 768px) 800px, (max-width: 1200px) 1280px, (max-width: 1600px) 1920px, 2560px'
+	};
+}
+
+export function getMapUrls(slug: string): MapUrlsResponse | undefined {
+	if (!hasMapImage(slug)) {
+		return undefined;
+	}
+
+	const variants = generateMapVariants(slug);
+	const srcSet = generateMapSrcSet(slug);
+
+	return {
+		variants,
+		responsive: srcSet,
+		timestamp: Date.now() // For cache busting
 	};
 }

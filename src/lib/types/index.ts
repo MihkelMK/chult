@@ -1,4 +1,5 @@
 import type { RevealedTileResponse } from '$lib/types/database';
+import type { MapUrlsResponse } from '$lib/types/imgproxy';
 import type { SvelteSet } from 'svelte/reactivity';
 
 export * from '$lib/types/database';
@@ -75,7 +76,7 @@ interface MapCanvasSharedProps {
 }
 
 export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
-	campaignSlug: string;
+	mapUrls: MapUrlsResponse;
 	variant?: 'thumbnail' | 'small' | 'medium' | 'large' | 'hexGrid' | 'overview' | 'detail';
 	initiallyRevealed?: RevealedTileResponse[];
 	selectedTiles?: TileCoords[]; // Add this line
