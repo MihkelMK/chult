@@ -315,32 +315,6 @@
 		}
 	}
 
-	// TODO: Remove this slow array parsing
-	// Move over the mappings from MapCanvas
-	function selectRevealed() {
-		if (mode !== 'dm') return;
-		loading = true;
-		selectedTool = 'select';
-		selectedTiles = [
-			...currentRevealedTiles.filter(
-				(tile: TileCoords | RevealedTile) => 'alwaysRevealed' in tile && !tile.alwaysRevealed
-			)
-		];
-		loading = false;
-	}
-
-	function selectAlwaysRevealed() {
-		if (mode !== 'dm') return;
-		loading = true;
-		selectedTool = 'select';
-		selectedTiles = [
-			...currentRevealedTiles.filter(
-				(tile: TileCoords | RevealedTile) => 'alwaysRevealed' in tile && tile.alwaysRevealed
-			)
-		];
-		loading = false;
-	}
-
 	function clearSelection() {
 		selectedTiles = [];
 	}
@@ -366,12 +340,7 @@
 	}
 </script>
 
-{#snippet layerControl(
-	name: string,
-	visibleState: boolean,
-	onToggle: () => void,
-	onSelect?: () => void
-)}
+{#snippet layerControl(name: string, visibleState: boolean, onToggle: () => void)}
 	<div class="flex justify-between gap-6 {visibleState ? '' : 'text-muted-foreground'}">
 		<div class="flex items-center">
 			<Tooltip.Root>
@@ -390,25 +359,6 @@
 			</Tooltip.Root>
 			<p class="font-mono text-xs mt-[0.175em]">{name}</p>
 		</div>
-
-		{#if onSelect}
-			<Tooltip.Root>
-				<Tooltip.Trigger>
-					<Button
-						disabled={!visibleState}
-						variant="ghost"
-						size="icon"
-						class="m-0 !p-0"
-						onclick={() => onSelect()}
-					>
-						<Square class="w-4 h-4" />
-					</Button>
-				</Tooltip.Trigger>
-				<Tooltip.Content>
-					{visibleState ? `Select all ${name.toLowerCase()} tiles` : "Can't select hidden tiles"}
-				</Tooltip.Content>
-			</Tooltip.Root>
-		{/if}
 	</div>
 {/snippet}
 
@@ -818,7 +768,7 @@
 			{#if mode === 'dm'}
 				<div class="absolute right-4 bottom-4 z-20">
 					<Collapsible.Root
-						class="px-1 w-56 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
+						class="px-1 w-52 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 						bind:open={layerVisibilityOpen}
 					>
 						<div class="flex justify-between items-center py-1 pl-2">
@@ -835,19 +785,17 @@
 							</Collapsible.Trigger>
 						</div>
 						<Collapsible.Content>
-							<div class="flex flex-col pb-1 bg-accent">
+							<div class="flex flex-col py-1 bg-accent">
 								{@render layerControl(
 									'Always Revealed',
 									showAlwaysRevealed,
-									() => (showAlwaysRevealed = !showAlwaysRevealed),
-									() => selectAlwaysRevealed()
+									() => (showAlwaysRevealed = !showAlwaysRevealed)
 								)}
 
 								{@render layerControl(
 									'Revealed',
 									showRevealed,
-									() => (showRevealed = !showRevealed),
-									() => selectRevealed()
+									() => (showRevealed = !showRevealed)
 								)}
 
 								{@render layerControl(
