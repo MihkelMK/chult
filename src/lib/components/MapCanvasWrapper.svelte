@@ -14,7 +14,9 @@
 		showAlwaysRevealed = false,
 		showRevealed = false,
 		showUnrevealed = true,
-		tileTransparency = 0.75,
+		tileTransparency = 1,
+		canvasHeight,
+		canvasWidth,
 		hexesPerRow = 72,
 		hexesPerCol = 86,
 		xOffset = 70,
@@ -46,7 +48,7 @@
 		for (let row = 0; row < hexesPerCol; row++) {
 			for (let col = 0; col < hexesPerRow; col++) {
 				// Perfect tessellation for flat-top hexagons: odd columns offset vertically
-				const offsetY = (col % 2) * (verticalSpacing * -0.5);
+				const offsetY = (col % 2) * (verticalSpacing * 0.5);
 				// Apply the xOffset and yOffset to position the grid correctly
 				const centerX = col * horizontalSpacing + hexRadius;
 				const centerY = row * verticalSpacing + offsetY + hexHeight / 2;
@@ -124,6 +126,8 @@
 	{/if}
 	<MapCanvas
 		{hexGrid}
+		{canvasWidth}
+		{canvasHeight}
 		revealedSet={campaignState.revealedTilesSet}
 		alwaysRevealedSet={campaignState.alwaysRevealedTilesSet}
 		{selectedSet}

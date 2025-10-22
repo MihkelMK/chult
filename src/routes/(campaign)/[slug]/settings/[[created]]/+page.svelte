@@ -11,7 +11,6 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Badge } from '$lib/components/ui/badge';
 	import MapUpload from '$lib/components/MapUpload.svelte';
-	import Map from '$lib/components/Map.svelte';
 	import {
 		Eye,
 		EyeOff,
@@ -27,13 +26,14 @@
 	} from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
-	import MapImage from '$lib/components/MapImage.svelte';
 	import MapCanvasWrapper from '$lib/components/MapCanvasWrapper.svelte';
+	import { getCampaignState } from '$lib/contexts/campaignContext';
 
 	let { data }: { data: PageData } = $props();
 
 	// Welcome message state
 	const isNewCampaign = page.params.created === 'created';
+	const campaignState = getCampaignState();
 
 	// Token visibility state
 	let showDmToken = $state(false);
@@ -42,11 +42,13 @@
 	let playerTokenCopied = $state(false);
 
 	// Map configuration state - initialize from database values
+	let canvasWidth = $state(0);
+	let canvasHeight = $state(0);
+	let aspectRatio = $derived(Math.fround(data.campaign.imageHeight / data.campaign.imageWidth));
 	let tilesPerColumn = $state(data.campaign?.hexesPerCol ?? 20);
 	let tilesPerRow = $state(data.campaign?.hexesPerRow ?? 20);
 	let offsetX = $state(data.campaign?.hexOffsetX ?? 70);
 	let offsetY = $state(data.campaign?.hexOffsetY ?? 58);
-	let showHexPreview = $state(false);
 	let previewZoom = $state(1);
 
 	// Track if settings have changed
@@ -381,82 +383,71 @@
 				<CardContent>
 					<MapUpload
 						campaignSlug={data.campaign?.slug}
-						hasMapImage={data.hasMapImage}
+						mapUrls={data.mapUrls}
 						onMapUploaded={handleMapUploaded}
 					/>
 				</CardContent>
 			</Card>
 
 			<!-- Map Preview Section -->
-			{#if data.hasMapImage}
+			{#if data.mapUrls}
 				<Card>
 					<CardHeader>
 						<CardTitle>Map Preview</CardTitle>
 						<CardDescription>Preview your map with hex grid overlay</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div class="overflow-hidden relative rounded-lg min-h-80">
-							{#if showHexPreview}
-								<MapCanvasWrapper
-									campaignSlug={data.campaign?.slug}
-									variant="hexGrid"
-									hexesPerRow={tilesPerRow}
-									hexesPerCol={tilesPerColumn}
-									xOffset={offsetX}
-									yOffset={offsetY}
-									previewMode={true}
-									showAnimations={false}
-									showCoords="never"
-									tileTransparency={0.75}
-									zoom={previewZoom}
-									cursorMode="pan"
-									onHexRevealed={() => {}}
-									onHexHover={() => {}}
-									hasPoI={() => false}
-									hasNotes={() => false}
-									isPlayerPosition={() => false}
-								/>
-							{:else}
-								<div class="relative">
-									<MapImage
-										campaignSlug={data.campaign?.slug}
-										variant="medium"
-										class="absolute inset-0 w-full h-full rounded-lg shadow-xl select-none"
-										loading="eager"
-									/>
-								</div>
-							{/if}
+						<div
+							class="overflow-hidden relative rounded-lg min-h-80"
+							bind:clientHeight={canvasHeight}
+							bind:clientWidth={canvasWidth}
+							style="aspect-ratio: 1/{aspectRatio};"
+						>
+							<MapCanvasWrapper
+								mapUrls={data.mapUrls}
+								previewMode={true}
+								{campaignState}
+								{canvasHeight}
+								{canvasWidth}
+								variant="detail"
+								hexesPerRow={tilesPerRow}
+								hexesPerCol={tilesPerColumn}
+								xOffset={offsetX}
+								yOffset={offsetY}
+								imageHeight={data.campaign.imageHeight}
+								imageWidth={data.campaign.imageWidth}
+								showAnimations={false}
+								showCoords="never"
+								zoom={previewZoom}
+								cursorMode="pan"
+								onHexRevealed={() => {}}
+								onHexHover={() => {}}
+								hasPoI={() => false}
+								hasNotes={() => false}
+								isPlayerPosition={() => false}
+								showAlwaysRevealed={true}
+								showRevealed={true}
+								isDM={true}
+							/>
 
 							<!-- Overlay Controls -->
 							<div class="flex absolute top-2 right-2 gap-1">
 								<!-- Zoom Toggle -->
-								{#if showHexPreview}
-									<Button
-										variant="outline"
-										size="sm"
-										onclick={() => (previewZoom = previewZoom === 1 ? 6 : 1)}
-										class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
-									>
-										{#if previewZoom === 1}
-											<ZoomIn class="w-3 h-3" />
-										{:else}
-											<ZoomOut class="w-3 h-3" />
-										{/if}
-									</Button>
-								{/if}
-
-								<!-- Preview Toggle -->
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => (showHexPreview = !showHexPreview)}
+									onclick={() => ((previewZoom = Math.min(previewZoom + 2)), 10)}
 									class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
 								>
-									{#if showHexPreview}
-										<EyeOff class="w-3 h-3" />
-									{:else}
-										<Eye class="w-3 h-3" />
-									{/if}
+									<ZoomIn class="w-3 h-3" />
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={() => (previewZoom = Math.max(previewZoom - 2, 1))}
+									class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
+								>
+									<ZoomOut class="w-3 h-3" />
 								</Button>
 							</div>
 						</div>

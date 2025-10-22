@@ -12,6 +12,7 @@
 		xOffset = 0,
 		yOffset = 0,
 		hexesPerCol,
+		hexesPerRow,
 		hexRadius,
 		zoom,
 		cursorMode,
@@ -27,7 +28,9 @@
 		onHexHover,
 		hasNotes,
 		hasPoI,
-		isPlayerPosition
+		isPlayerPosition,
+		canvasHeight,
+		canvasWidth
 	}: MapCanvasProps = $props();
 
 	const calculatePanBounds = (
@@ -75,8 +78,6 @@
 		onHexHover?.(null);
 	}
 
-	let canvasWidth = $state(0);
-	let canvasHeight = $state(0);
 	let dragBoundPaddingPX = $derived(canvasWidth * 0.1);
 
 	let imageAspectRatio = $derived(imageHeight / imageWidth);
@@ -94,10 +95,19 @@
 	let scaledImageWidth = $derived(imageWidth * scale);
 	let scaledImageHeight = $derived(imageHeight * scale);
 
-	const fontSize = $derived(Math.round(hexRadius * 0.4));
-	const lineHeight = $state(1.6);
+	// As we render the hexes with a 90 deg rotation, we need to flip these values
+	let rotatedHexesPerCol = $derived(hexesPerRow);
+	let rotatedHexesPerRow = $derived(hexesPerCol);
+
+	const fontSize = $derived(Math.round(hexRadius * 0.35));
+	const lineHeight = $state(1.7);
 	const textXOffset = $derived(fontSize);
 	const textYOffset = $derived(-fontSize / lineHeight);
+
+	let gridClipX = $derived(hexRadius * 0.75);
+	let gridClipY = $derived(hexRadius - 1);
+	let gridWidth = $derived(imageWidth - 2 * xOffset - gridClipX * 2);
+	let gridHeight = $derived(imageHeight - 2 * yOffset - gridClipY * 2);
 
 	let hoverTimeout: ReturnType<typeof setTimeout>;
 	let isDragging = $state(false);
@@ -192,6 +202,8 @@
 			previousZoom = zoom;
 		}
 	});
+
+	$inspect(hexesPerCol, hexesPerRow);
 </script>
 
 {#snippet indicators(hex: HexRendered)}
@@ -251,11 +263,10 @@
 		radius={hexRadius}
 		sides={6}
 		rotation={90}
-		fill={isAlways ? '#faa16a' : isRevealed ? '#bfd5fc' : 'rgb(253, 250, 240)'}
+		fill={previewMode ? '' : isAlways ? '#faa16a' : isRevealed ? '#bfd5fc' : 'rgb(253, 250, 240)'}
 		opacity={isDM ? tileTransparency : 1}
 		stroke={isAlways ? '#f97316' : 'black'}
-		strokeWidth={previewMode ? 2 : 1}
-		listening={true}
+		listening={!previewMode}
 		onclick={() => handleHexClick(hex)}
 		onmouseenter={() => {
 			if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
@@ -271,13 +282,16 @@
 		onmouseleave={handleMouseLeave}
 		cursor={cursorMode === 'pan' ? 'grab' : 'pointer'}
 	/>
-	{#if hex.row > 0 && showCoords !== 'never'}
+	{@const isTopMost = hex.row === 0 && hex.row % 2 === 1}
+	{@const isBottomMost = hex.row === rotatedHexesPerRow - 1 && hex.row % 2 === 0}
+	{@const isLeftMost = hex.col === 0}
+	{#if showCoords !== 'never' && !isTopMost && !isLeftMost && !isBottomMost}
 		<Text
 			staticConfig={true}
 			listening={false}
-			x={hex.centerX - (hex.col === hexesPerCol - 1 ? 0 : textXOffset)}
+			x={hex.centerX - textXOffset * (hex.col === rotatedHexesPerCol - 1 ? 1.75 : 1)}
 			y={hex.centerY + textYOffset}
-			text="{(hex.col - 1).toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}"
+			text="{hex.col.toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}"
 			fill="#000000"
 			{fontSize}
 		/>
@@ -300,8 +314,6 @@
 		strokeWidth={5}
 	/>
 {/snippet}
-
-<svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
 
 <Stage
 	visible={!!image}
@@ -332,7 +344,7 @@
 		lastPaintedTile = null;
 	}}
 >
-	<!-- Layer 1: Background - never cull -->
+	<!-- Layer 1: Background -->
 	<Layer staticConfig={true} listening={false} bind:handle={backgroundLayerRef}>
 		<Image
 			x={0}
@@ -350,6 +362,10 @@
 	<Layer
 		x={xOffset}
 		y={yOffset}
+		clipX={gridClipX}
+		clipY={gridClipY}
+		clipHeight={gridHeight}
+		clipWidth={gridWidth}
 		listening={showUnrevealed && cursorMode !== 'pan'}
 		visible={showUnrevealed && tileTransparency !== 0}
 		bind:handle={fogLayerRef}
@@ -366,6 +382,10 @@
 		<Layer
 			x={xOffset}
 			y={yOffset}
+			clipX={gridClipX}
+			clipY={gridClipY}
+			clipHeight={gridHeight}
+			clipWidth={gridWidth}
 			listening={showRevealed && cursorMode !== 'pan'}
 			visible={showRevealed && tileTransparency !== 0}
 		>
@@ -380,6 +400,10 @@
 		<Layer
 			x={xOffset}
 			y={yOffset}
+			clipX={gridClipX}
+			clipY={gridClipY}
+			clipHeight={gridHeight}
+			clipWidth={gridWidth}
 			listening={showAlwaysRevealed && cursorMode !== 'pan'}
 			visible={showAlwaysRevealed && tileTransparency !== 0}
 			bind:handle={alwaysRevealedLayerRef}
@@ -393,6 +417,10 @@
 		<Layer
 			x={xOffset}
 			y={yOffset}
+			clipX={gridClipX}
+			clipY={gridClipY}
+			clipHeight={gridHeight}
+			clipWidth={gridWidth}
 			listening={false}
 			visible={selectedTiles.length > 0}
 			bind:handle={selectionLayerRef}

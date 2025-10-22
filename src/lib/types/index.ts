@@ -1,3 +1,4 @@
+import type { CampaignState } from '$lib/stores/campaignState.svelte';
 import type { RevealedTileResponse } from '$lib/types/database';
 import type { ImageVariant, MapUrlsResponse } from '$lib/types/imgproxy';
 import type { SvelteSet } from 'svelte/reactivity';
@@ -54,12 +55,14 @@ export interface CanvasImage {
 interface MapCanvasSharedProps {
 	isDM?: boolean;
 	previewMode: boolean;
+	canvasHeight: number;
+	canvasWidth: number;
+	imageHeight: number;
+	imageWidth: number;
 	hexesPerRow: number; // Number of hexagons per row on the actual map
 	hexesPerCol: number; // Number of hexagons per column on the actual map
 	xOffset: number; // Horizontal offset in pixels from left edge to where grid starts
 	yOffset: number; // Vertical offset in pixels from top edge to where grid starts
-	imageHeight: number;
-	imageWidth: number;
 	zoom: number;
 	tileTransparency?: number;
 	showAnimations: boolean;

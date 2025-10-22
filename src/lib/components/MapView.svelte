@@ -16,7 +16,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as ToggleGroup from '$lib/components/ui/toggle-group/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import type { HexRevealedEvent, RevealedTile, TileCoords } from '$lib/types';
+	import type { HexRevealedEvent, TileCoords } from '$lib/types';
 	import { getCampaignState } from '$lib/contexts/campaignContext';
 	import {
 		Menu,
@@ -91,6 +91,8 @@
 	let tileTransparency = $state('1'); // 0 = transparent, 1 = opaque
 	let layerVisibilityOpen = $state(false);
 
+	let canvasWidth = $state(0);
+	let canvasHeight = $state(0);
 	let zoomIndex = $state(0);
 	let zoom = $derived(zoomSteps[zoomIndex]);
 
@@ -362,6 +364,8 @@
 	</div>
 {/snippet}
 
+<svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
+
 <!-- Full screen layout -->
 <Tooltip.Provider>
 	<div class="flex fixed inset-0 bg-background">
@@ -610,6 +614,8 @@
 				>
 					{#if data.mapUrls}
 						<MapCanvasWrapper
+							{canvasHeight}
+							{canvasWidth}
 							mapUrls={data.mapUrls}
 							variant="detail"
 							isDM={mode === 'dm'}
@@ -620,7 +626,7 @@
 							hexesPerRow={data.campaign?.hexesPerRow ?? 20}
 							hexesPerCol={data.campaign?.hexesPerCol ?? 20}
 							xOffset={data.campaign?.hexOffsetX ?? 70}
-							yOffset={data.campaign?.hexOffsetY ?? 58}
+							yOffset={(data.campaign?.hexOffsetY ?? 58) - 2}
 							imageHeight={data.campaign?.imageHeight}
 							imageWidth={data.campaign?.imageWidth}
 							{campaignState}
