@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { PressedKeys } from 'runed';
-	import TileDetails from './TileDetails.svelte';
 	import TileContentModal from './TileContentModal.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import {
@@ -16,7 +15,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as ToggleGroup from '$lib/components/ui/toggle-group/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import type { HexRevealedEvent, TileCoords } from '$lib/types';
+	import type { HexTriggerEvent, TileCoords } from '$lib/types';
 	import { getCampaignState } from '$lib/contexts/campaignContext';
 	import {
 		Menu,
@@ -40,24 +39,16 @@
 	import type { TileState } from '$lib/stores/tileManager.svelte';
 	import MapCanvasWrapper from './MapCanvasWrapper.svelte';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Props {
 		data: PageData;
 		mode: 'player' | 'dm';
 		tileState: PlayerTileState | TileState;
 		tileManager: any;
-		onMultiSelect?: (coords: TileCoords) => void;
-		selectedTiles?: TileCoords[];
 	}
 
-	let {
-		data,
-		mode,
-		tileState,
-		tileManager,
-		onMultiSelect,
-		selectedTiles = $bindable([])
-	}: Props = $props();
+	let { data, mode, tileState, tileManager }: Props = $props();
 
 	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
 
@@ -69,16 +60,18 @@
 
 	// UI State
 	let sidebarOpen = $state(false);
-	let selectedTile = $state<TileCoords | null>(null);
-	let showTileDetails = $state(false);
+
 	// Use campaign state for hover management
 	const campaignState = getCampaignState();
 
-	let selectedTool = $state<'interact' | 'pan' | 'select' | 'paint'>('interact');
-	let activeTool = $derived(shiftHeld ? 'pan' : selectedTool);
-	let selectedSelectMode = $state<'add' | 'remove'>('add');
+	// Internal state to track what tool was selected
+	let _selectedTool = $state<'interact' | 'pan' | 'select' | 'paint'>('interact');
+	let _selectedSelectMode = $state<'add' | 'remove'>('add');
+
+	// Use these values to determine actual expected action
+	let activeTool = $derived(shiftHeld ? 'pan' : _selectedTool);
 	let activeSelectMode = $derived<'add' | 'remove'>(
-		!ctrlHeld ? selectedSelectMode : selectedSelectMode === 'add' ? 'remove' : 'add'
+		!ctrlHeld ? _selectedSelectMode : _selectedSelectMode === 'add' ? 'remove' : 'add'
 	);
 
 	let loading = $state(false);
@@ -105,6 +98,8 @@
 				: tileState.revealed
 	);
 
+	let selectedSet = new SvelteSet<string>();
+
 	let hasPendingOperations = $derived(
 		mode === 'dm' && tileState.pending && tileState.pending.length > 0
 	);
@@ -115,20 +110,17 @@
 
 	// Helper functions for tile content (using campaign state)
 
-	function getBrushTiles(centerCoords: TileCoords): TileCoords[] {
-		const tiles: TileCoords[] = [];
+	function getBrushTiles(centerCoords: TileCoords): string[] {
+		const tileKeys: string[] = [];
 		const radius = brushSize - 1; // Convert size to radius (size 1 = radius 0, size 5 = radius 4)
 
 		for (let dx = -radius; dx <= radius; dx++) {
 			for (let dy = -radius; dy <= radius; dy++) {
-				tiles.push({
-					x: centerCoords.x + dx,
-					y: centerCoords.y + dy
-				});
+				tileKeys.push(`${centerCoords.x + dx}-${centerCoords.y + dy}`);
 			}
 		}
 
-		return tiles;
+		return tileKeys;
 	}
 
 	function hasPoI(coords: TileCoords) {
@@ -149,9 +141,42 @@
 		);
 	}
 
+	function clearSelection() {
+		selectedSet.clear();
+	}
+
+	function handleSelect(key: string) {
+		const isRevealed = campaignState.revealedTilesSet.has(key);
+		const isAlwaysRevealed = campaignState.alwaysRevealedTilesSet.has(key);
+		const isUnrevealed = !isRevealed && !isAlwaysRevealed;
+
+		// Only select tiles from visible layers
+		const canSelect =
+			(isUnrevealed && showUnrevealed) ||
+			(isRevealed && showRevealed) ||
+			(isAlwaysRevealed && showAlwaysRevealed);
+
+		if (!canSelect) {
+			return;
+		}
+
+		// Return if tile selected and we want to add or if tile not selected and we want to remove
+		if (selectedSet.has(key) === (activeSelectMode === 'add')) {
+			return;
+		}
+
+		if (activeSelectMode === 'add') {
+			selectedSet.add(key);
+		} else {
+			selectedSet.delete(key);
+		}
+	}
+
 	// Event handlers based on cursor mode
-	function handleTileClick(event: HexRevealedEvent) {
-		const coords: TileCoords = { x: event.hex.col, y: event.hex.row };
+	function handleTileTrigger(event: HexTriggerEvent) {
+		const clickedKey = event.key;
+		const [x, y] = clickedKey.split('-');
+		const coords = { x: Number(x), y: Number(y) };
 
 		switch (activeTool) {
 			case 'interact':
@@ -161,44 +186,14 @@
 			case 'select':
 				// Multi-select mode - toggle selection
 				if (mode === 'dm') {
-					const key = `${coords.x}-${coords.y}`;
-					const isRevealed = campaignState.revealedTilesSet.has(key);
-					const isAlwaysRevealed = campaignState.alwaysRevealedTilesSet.has(key);
-					const isUnrevealed = !isRevealed && !isAlwaysRevealed;
-					const alreadySelected = selectedTiles.some((t) => t.x === coords.x && t.y === coords.y);
-
-					// Only select tiles from visible layers
-					const canSelect =
-						(isUnrevealed && showUnrevealed) ||
-						(isRevealed && showRevealed) ||
-						(isAlwaysRevealed && showAlwaysRevealed);
-
-					if (canSelect && !alreadySelected) {
-						onMultiSelect?.(coords);
-					}
+					handleSelect(clickedKey);
 				}
 				break;
 			case 'paint':
 				// Paint mode - paint multiple tiles based on brush size
 				if (mode === 'dm') {
 					const tilesToPaint = getBrushTiles(coords);
-					tilesToPaint.forEach((tile) => {
-						const key = `${tile.x}-${tile.y}`;
-						const isRevealed = campaignState.revealedTilesSet.has(key);
-						const isAlwaysRevealed = campaignState.alwaysRevealedTilesSet.has(key);
-						const isUnrevealed = !isRevealed && !isAlwaysRevealed;
-						const alreadySelected = selectedTiles.some((t) => t.x === tile.x && t.y === tile.y);
-
-						// Only select tiles from visible layers
-						const canSelect =
-							(isUnrevealed && showUnrevealed) ||
-							(isRevealed && showRevealed) ||
-							(isAlwaysRevealed && showAlwaysRevealed);
-
-						if (canSelect && !alreadySelected) {
-							onMultiSelect?.(tile);
-						}
-					});
+					tilesToPaint.forEach((key) => handleSelect(key));
 				}
 				break;
 			case 'pan':
@@ -207,23 +202,13 @@
 		}
 	}
 
-	function closeTileDetails() {
-		showTileDetails = false;
-		selectedTile = null;
+	function getCoordsFromKey(key: string): TileCoords {
+		const [x, y] = key.split('-').map(Number);
+		return { x, y };
 	}
 
-	function handleHexHover(coords: TileCoords | null) {
-		// Only show hover in interact mode and if tile has content
-		if (activeTool === 'interact' && coords) {
-			const markers = campaignState.getTileMarkers(coords, mode);
-			if (markers.length > 0) {
-				campaignState.setHoveredTile(coords);
-			} else {
-				campaignState.setHoveredTile(null);
-			}
-		} else {
-			campaignState.setHoveredTile(null);
-		}
+	function getSelectedTileCoordsFromSet(selectedKeys: SvelteSet<string>): TileCoords[] {
+		return Array.from(selectedKeys).map((key) => getCoordsFromKey(key));
 	}
 
 	function zoomIn() {
@@ -256,10 +241,10 @@
 		switch (event.code) {
 			case 'Escape':
 				event.preventDefault();
-				if (selectedTiles.length > 0) {
+				if (selectedSet.size > 0) {
 					clearSelection();
-				} else if (selectedTool !== 'interact') {
-					selectedTool = 'interact';
+				} else if (_selectedTool !== 'interact') {
+					_selectedTool = 'interact';
 				}
 				break;
 
@@ -300,38 +285,27 @@
 		}
 	}
 
-	// Add global event listeners
-	$effect(() => {
-		document.addEventListener('keydown', handleKeyDown);
-
-		return () => {
-			document.removeEventListener('keydown', handleKeyDown);
-		};
-	});
-
 	// Cursor mode functions
 	function setSelectedTool(mode: 'interact' | 'pan' | 'select' | 'paint') {
-		selectedTool = mode;
+		_selectedTool = mode;
 		if (mode !== 'select' && mode !== 'paint') {
-			selectedTiles = [];
+			clearSelection();
 		}
-	}
-
-	function clearSelection() {
-		selectedTiles = [];
 	}
 
 	function revealSelectedTiles() {
 		if (mode === 'dm' && tileManager?.revealTiles) {
-			tileManager.revealTiles(selectedTiles, alwaysRevealMode);
-			selectedTiles = [];
+			const selectedCoords = getSelectedTileCoordsFromSet(selectedSet);
+			tileManager.revealTiles(selectedCoords, alwaysRevealMode);
+			clearSelection();
 		}
 	}
 
 	function hideSelectedTiles() {
 		if (mode === 'dm' && tileManager?.hideTiles) {
-			tileManager.hideTiles(selectedTiles);
-			selectedTiles = [];
+			const selectedCoords = getSelectedTileCoordsFromSet(selectedSet);
+			tileManager.hideTiles(selectedCoords);
+			clearSelection();
 		}
 	}
 
@@ -340,6 +314,15 @@
 			tileManager.flush();
 		}
 	}
+
+	// Add global event listeners
+	$effect(() => {
+		document.addEventListener('keydown', handleKeyDown);
+
+		return () => {
+			document.removeEventListener('keydown', handleKeyDown);
+		};
+	});
 </script>
 
 {#snippet layerControl(name: string, visibleState: boolean, onToggle: () => void)}
@@ -407,16 +390,16 @@
 									{tileState.error}
 								</Badge>
 							{/if}
-							{#if selectedTool === 'select' || selectedTool === 'paint'}
+							{#if _selectedTool === 'select' || _selectedTool === 'paint'}
 								<Badge variant="secondary" class="justify-self-end text-xs">
-									{selectedTiles.length} selected
+									{selectedSet.size} selected
 								</Badge>
 							{/if}
 						</div>
 					</div>
 
 					<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
-					{#if mode === 'dm' && (selectedTool === 'select' || selectedTool === 'paint')}
+					{#if mode === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
 						<div
 							class="flex flex-col gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 						>
@@ -467,12 +450,12 @@
 									<Tooltip.Content>Remove from selection</Tooltip.Content>
 								</Tooltip.Root>
 
-								{#if selectedTool === 'select' || selectedTool === 'paint'}
+								{#if _selectedTool === 'select' || _selectedTool === 'paint'}
 									<Separator orientation="vertical" class="!h-6" />
 									<Tooltip.Root>
 										<Tooltip.Trigger>
 											<Button
-												disabled={selectedTiles.length === 0}
+												disabled={selectedSet.size === 0}
 												variant="ghost"
 												size="sm"
 												onclick={revealSelectedTiles}
@@ -486,7 +469,7 @@
 									<Tooltip.Root>
 										<Tooltip.Trigger>
 											<Button
-												disabled={selectedTiles.length === 0}
+												disabled={selectedSet.size === 0}
 												variant="ghost"
 												size="sm"
 												onclick={hideSelectedTiles}
@@ -500,7 +483,7 @@
 									<Tooltip.Root>
 										<Tooltip.Trigger>
 											<Button
-												disabled={selectedTiles.length === 0}
+												disabled={selectedSet.size === 0}
 												variant="ghost"
 												size="sm"
 												onclick={clearSelection}
@@ -630,10 +613,9 @@
 							imageHeight={data.campaign?.imageHeight}
 							imageWidth={data.campaign?.imageWidth}
 							{campaignState}
-							selectedTiles={mode === 'dm' ? selectedTiles : undefined}
+							{selectedSet}
 							showCoords={mode === 'dm' ? 'always' : 'hover'}
-							onHexRevealed={handleTileClick}
-							onHexHover={handleHexHover}
+							onHexTriggered={handleTileTrigger}
 							{hasPoI}
 							{hasNotes}
 							{isPlayerPosition}
@@ -959,11 +941,6 @@
 		</Sheet>
 	</div>
 </Tooltip.Provider>
-
-<!-- Tile Details Modal (Old) -->
-{#if showTileDetails && selectedTile}
-	<TileDetails {selectedTile} role={mode} onClose={closeTileDetails} />
-{/if}
 
 <!-- New Tile Content Modal -->
 {#if campaignState.modalTile}

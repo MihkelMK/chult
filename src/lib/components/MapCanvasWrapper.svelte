@@ -2,8 +2,7 @@
 	import { browser } from '$app/environment';
 	import useImage from '$lib/hooks/useImage.svelte';
 	import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
-	import { untrack, type Component } from 'svelte';
-	import { SvelteSet } from 'svelte/reactivity';
+	import { type Component } from 'svelte';
 	import LoadingBar from './LoadingBar.svelte';
 
 	let {
@@ -28,9 +27,8 @@
 		showAnimations = true,
 		showCoords = 'hover',
 		campaignState,
-		selectedTiles = [],
-		onHexRevealed = () => {},
-		onHexHover = () => {},
+		selectedSet,
+		onHexTriggered = () => {},
 		onMapLoad = () => {},
 		onMapError = () => {},
 		hasPoI = () => false,
@@ -79,9 +77,6 @@
 	let mapImageLoader = $derived(useImage(mapUrl));
 	let { image, status } = $derived(mapImageLoader());
 
-	// svelte-ignore non_reactive_update
-	let selectedSet = new SvelteSet<string>();
-
 	// Calculate hex dimensions based on usable width and hexes per row
 	let hexRadius: number = $derived((variantWidth - xOffset * 2) / (hexesPerRow * 1.5 + 0.5));
 	let hexHeight: number = $derived((variantHeight - yOffset * 2) / hexesPerCol);
@@ -93,29 +88,6 @@
 	let hexGrid = $derived(
 		generateHexGrid(hexesPerCol, hexesPerRow, horizontalSpacing, verticalSpacing)
 	);
-
-	// Sync selectedSet incrementally (only UI-specific Set we manage)
-	$effect(() => {
-		const newKeys = new Set(selectedTiles.map((t) => `${t.x}-${t.y}`));
-
-		untrack(() => {
-			newKeys.forEach((key) => {
-				if (!selectedSet.has(key)) {
-					selectedSet.add(key);
-				}
-			});
-
-			const toRemove: string[] = [];
-			selectedSet.forEach((key) => {
-				if (!newKeys.has(key)) {
-					toRemove.push(key);
-				}
-			});
-			toRemove.forEach((key) => selectedSet.delete(key));
-		});
-
-		selectedSet = selectedSet;
-	});
 </script>
 
 {#await MapCanvasLoader}
@@ -148,8 +120,7 @@
 		{previewMode}
 		{isDM}
 		{tileTransparency}
-		{onHexRevealed}
-		{onHexHover}
+		{onHexTriggered}
 		{onMapLoad}
 		{onMapError}
 		{hasPoI}

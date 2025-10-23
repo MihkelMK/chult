@@ -1,7 +1,6 @@
 <script lang="ts">
 	import MapView from '$lib/components/MapView.svelte';
 	import type { PageData } from './$types';
-	import type { TileCoords } from '$lib/types';
 	import {
 		createPlayerTileManager,
 		type PlayerTileState
@@ -54,7 +53,6 @@
 
 	// State for DM mode
 	let dmTileState = $state<TileState>({ revealed: [], pending: [], errors: [] });
-	let selectedTiles = $state<TileCoords[]>([]);
 
 	// Subscribe to the appropriate manager
 	const unsubscribe = isDM
@@ -84,17 +82,6 @@
 	// 	}
 	// }
 
-	function onMultiSelect(coords: TileCoords) {
-		if (!isDM) return;
-		// Multi-select toggle
-		const index = selectedTiles.findIndex((tile) => tile.x === coords.x && tile.y === coords.y);
-		if (index > -1) {
-			selectedTiles = selectedTiles.filter((_, i) => i !== index);
-		} else {
-			selectedTiles = [...selectedTiles, coords];
-		}
-	}
-
 	// Clear error after 5 seconds (player mode)
 	$effect(() => {
 		if (!isDM && playerTileState.error) {
@@ -116,6 +103,4 @@
 	mode={isDM ? 'dm' : 'player'}
 	tileState={isDM ? dmTileState : playerTileState}
 	tileManager={isDM ? dmTileManager : playerTileManager}
-	bind:selectedTiles
-	{onMultiSelect}
 />

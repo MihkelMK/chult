@@ -24,8 +24,7 @@
 		showCoords,
 		imageHeight,
 		imageWidth,
-		onHexRevealed,
-		onHexHover,
+		onHexTriggered,
 		hasNotes,
 		hasPoI,
 		isPlayerPosition,
@@ -61,21 +60,9 @@
 		return { max: centered + padding, min: centered - padding };
 	};
 
-	function handleHexClick(hex: Hex) {
+	function handleHexTrigger(key: string) {
 		if (cursorMode === 'pan') return;
-		onHexRevealed?.({ hex });
-	}
-
-	function handleMouseEnter(coords: { x: number; y: number }) {
-		clearTimeout(hoverTimeout);
-		hoverTimeout = setTimeout(() => {
-			onHexHover?.(coords);
-		}, 150);
-	}
-
-	function handleMouseLeave() {
-		clearTimeout(hoverTimeout);
-		onHexHover?.(null);
+		onHexTriggered?.({ key });
 	}
 
 	let dragBoundPaddingPX = $derived(canvasWidth * 0.1);
@@ -109,7 +96,6 @@
 	let gridWidth = $derived(imageWidth - 2 * xOffset - gridClipX * 2);
 	let gridHeight = $derived(imageHeight - 2 * yOffset - gridClipY * 2);
 
-	let hoverTimeout: ReturnType<typeof setTimeout>;
 	let isDragging = $state(false);
 	let lastPaintedTile = $state<string | null>(null);
 
@@ -202,8 +188,6 @@
 			previousZoom = zoom;
 		}
 	});
-
-	$inspect(hexesPerCol, hexesPerRow);
 </script>
 
 {#snippet indicators(hex: HexRendered)}
@@ -257,9 +241,11 @@
 {/snippet}
 
 {#snippet tile(hex: Hex, isRevealed: boolean, isAlways: boolean)}
+	{@const key = `${hex.col}-${hex.row}`}
 	<RegularPolygon
 		x={hex.centerX}
 		y={hex.centerY}
+		tileKey={key}
 		radius={hexRadius}
 		sides={6}
 		rotation={90}
@@ -267,20 +253,7 @@
 		opacity={isDM ? tileTransparency : 1}
 		stroke={isAlways ? '#f97316' : 'black'}
 		listening={!previewMode}
-		onclick={() => handleHexClick(hex)}
-		onmouseenter={() => {
-			if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
-				const key = `${hex.col}-${hex.row}`;
-				if (lastPaintedTile !== key) {
-					onHexRevealed?.({ hex });
-					lastPaintedTile = key;
-				}
-			} else {
-				handleMouseEnter({ x: hex.col, y: hex.row });
-			}
-		}}
-		onmouseleave={handleMouseLeave}
-		cursor={cursorMode === 'pan' ? 'grab' : 'pointer'}
+		onclick={() => handleHexTrigger(key)}
 	/>
 	{@const isTopMost = hex.row === 0 && hex.row % 2 === 1}
 	{@const isBottomMost = hex.row === rotatedHexesPerRow - 1 && hex.row % 2 === 0}
@@ -339,9 +312,24 @@
 		isDragging = false;
 		lastPaintedTile = null;
 	}}
-	onmouseleave={() => {
-		isDragging = false;
-		lastPaintedTile = null;
+	onmousemove={(e) => {
+		if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
+			const stage = e.target.getStage();
+			const pointerPos = stage?.getPointerPosition();
+
+			if (!pointerPos) return;
+
+			const shape = stage?.getIntersection(pointerPos);
+
+			if (shape && shape.attrs.tileKey) {
+				const key = shape.attrs.tileKey;
+
+				if (lastPaintedTile !== key) {
+					handleHexTrigger(key);
+					lastPaintedTile = key;
+				}
+			}
+		}
 	}}
 >
 	<!-- Layer 1: Background -->

@@ -31,8 +31,8 @@ export interface Hex {
 	centerY: number;
 }
 
-export interface HexRevealedEvent {
-	hex: Hex;
+export interface HexTriggerEvent {
+	key: string;
 }
 
 export interface HexRendered extends Hex {
@@ -64,6 +64,7 @@ interface MapCanvasSharedProps {
 	xOffset: number; // Horizontal offset in pixels from left edge to where grid starts
 	yOffset: number; // Vertical offset in pixels from top edge to where grid starts
 	zoom: number;
+	selectedSet: SvelteSet<string>;
 	tileTransparency?: number;
 	showAnimations: boolean;
 	showAlwaysRevealed?: boolean;
@@ -71,8 +72,7 @@ interface MapCanvasSharedProps {
 	showUnrevealed?: boolean;
 	showCoords: 'never' | 'always' | 'hover';
 	cursorMode: 'interact' | 'pan' | 'select' | 'paint';
-	onHexRevealed: (event: HexRevealedEvent) => void;
-	onHexHover: (coords: TileCoords | null) => void;
+	onHexTriggered: (event: HexTriggerEvent) => void;
 	onMapLoad?: (dimensions: { width: number; height: number }) => void;
 	onMapError?: () => void;
 	hasPoI: (coords: TileCoords) => boolean;
@@ -84,7 +84,6 @@ export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 	mapUrls: MapUrlsResponse;
 	variant?: ImageVariant;
 	initiallyRevealed?: RevealedTileResponse[];
-	selectedTiles?: TileCoords[];
 	campaignState: CampaignState;
 }
 
@@ -92,7 +91,6 @@ export interface MapCanvasProps extends MapCanvasSharedProps {
 	image: HTMLImageElement | undefined;
 	hexGrid: readonly Hex[];
 	hexRadius: number;
-	selectedSet: SvelteSet<string>;
 	revealedSet: SvelteSet<string>;
 	alwaysRevealedSet: SvelteSet<string>;
 }
