@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Hex, HexRendered, MapCanvasProps } from '$lib/types';
-	import { Stage, Layer, Image, RegularPolygon, Text } from 'svelte-konva';
+	import { Image, Layer, RegularPolygon, Stage, Text } from 'svelte-konva';
 
 	let {
 		image,

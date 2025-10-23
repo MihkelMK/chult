@@ -3,8 +3,8 @@
 	import useImage from '$lib/hooks/useImage.svelte';
 	import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
 	import { type Component } from 'svelte';
-	import LoadingBar from './LoadingBar.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
+	import LoadingBar from '../general/LoadingBar.svelte';
 
 	let {
 		mapUrls,

@@ -10,7 +10,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Badge } from '$lib/components/ui/badge';
-	import MapUpload from '$lib/components/MapUpload.svelte';
+	import MapUpload from '$lib/components/map/MapUpload.svelte';
 	import {
 		Eye,
 		EyeOff,
@@ -26,7 +26,7 @@
 	} from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
-	import MapCanvasWrapper from '$lib/components/MapCanvasWrapper.svelte';
+	import MapCanvasWrapper from '$lib/components/map/MapCanvasWrapper.svelte';
 	import { getLocalState } from '$lib/contexts/campaignContext';
 	import { SvelteSet } from 'svelte/reactivity';
 

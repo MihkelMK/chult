@@ -1,42 +1,21 @@
 <script lang="ts">
-	import { PressedKeys, Previous } from 'runed';
-	import { Button, buttonVariants } from '$lib/components/ui/button';
-	import {
-		Sheet,
-		SheetContent,
-		SheetHeader,
-		SheetTitle,
-		SheetTrigger
-	} from '$lib/components/ui/sheet';
 	import { Badge } from '$lib/components/ui/badge';
+	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
+	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { Slider } from '$lib/components/ui/slider';
-	import * as ToggleGroup from '$lib/components/ui/toggle-group/index.js';
-	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import type { HexTriggerEvent, TileCoords } from '$lib/types';
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
-	import {
-		Menu,
-		Plus,
-		Minus,
-		Square,
-		Eye,
-		EyeOff,
-		Trash2,
-		MapPin,
-		User,
-		Users,
-		Hand,
-		MousePointer,
-		Paintbrush,
-		CircleDot,
-		ChevronDownIcon,
-		ChevronUpIcon
-	} from '@lucide/svelte';
-	import MapCanvasWrapper from './MapCanvasWrapper.svelte';
-	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
+	import type { HexTriggerEvent, TileCoords } from '$lib/types';
+	import { MapPin, User, Users } from '@lucide/svelte';
+	import { PressedKeys, Previous } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
+	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
+	import MapCanvasWrapper from './map/MapCanvasWrapper.svelte';
+	import LayerControls from './map/overlays/LayerControls.svelte';
+	import MainToolbar from './map/overlays/MainToolbar.svelte';
+	import SelectionToolbar from './map/overlays/SelectionToolbar.svelte';
+	import ToolModeButtons from './map/overlays/ToolModeButtons.svelte';
+	import ZoomControls from './map/overlays/ZoomControls.svelte';
 
 	interface Props {
 		data: PageData;
@@ -137,15 +116,6 @@
 		}
 	}
 
-	// Computed values
-	// let currentRevealedTiles = $derived(
-	// 	mode === 'player' && localState.pending
-	// 		? [...localState.revealed, localState.pending.map((tile) => tile.coords)]
-	// 		: localState?.getRevealedTiles
-	// 			? localSeate.getRevealedTiles(tileState)
-	// 			: remoteState.revealed
-	// );
-
 	let hasPendingOperations = $derived(
 		mode === 'dm' && remoteState.pending && remoteState.pending.length > 0
 	);
@@ -153,8 +123,6 @@
 	let hasErrors = $derived(
 		mode === 'dm' && 'errors' in remoteState && remoteState.errors && remoteState.errors.length > 0
 	);
-
-	// Helper functions for tile content (using campaign state)
 
 	function getBrushTiles(centerCoords: TileCoords): string[] {
 		const tileKeys: string[] = [];
@@ -448,28 +416,6 @@
 	});
 </script>
 
-{#snippet layerControl(name: string, visibleState: boolean, onToggle: () => void)}
-	<div class="flex justify-between gap-6 {visibleState ? '' : 'text-muted-foreground'}">
-		<div class="flex items-center">
-			<Tooltip.Root>
-				<Tooltip.Trigger>
-					<Button variant="ghost" size="sm" onclick={() => onToggle()}>
-						{#if visibleState}
-							<Eye class="w-4 h-4" />
-						{:else}
-							<EyeOff class="w-4 h-4" />
-						{/if}
-					</Button>
-				</Tooltip.Trigger>
-				<Tooltip.Content>
-					{visibleState ? `Hide ${name}` : `Show ${name}`}
-				</Tooltip.Content>
-			</Tooltip.Root>
-			<p class="font-mono text-xs mt-[0.175em]">{name}</p>
-		</div>
-	</div>
-{/snippet}
-
 <svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
 
 <!-- Full screen layout -->
@@ -480,204 +426,38 @@
 			<div class="flex relative flex-col flex-1">
 				<!-- Floating Toolbars -->
 				<div class="flex absolute top-4 left-4 z-20 flex-col gap-2">
-					<!-- Main toolbar -->
-					<div
-						class="flex justify-between items-center p-2 rounded-lg border min-w-80 bg-background/95 shadow-xs backdrop-blur-sm"
-					>
-						<div class="flex gap-2 items-center">
-							<SheetTrigger>
-								{#snippet child({ props })}
-									<Button {...props} variant="ghost" size="sm">
-										<Menu class="w-4 h-4" />
-									</Button>
-								{/snippet}
-							</SheetTrigger>
-
-							<div class="flex gap-2 items-center">
-								<div class="text-sm font-medium">
-									{data.campaign?.name || data.session?.campaignSlug}
-								</div>
-								<Badge variant="secondary" class="text-xs">
-									{mode === 'dm' ? 'DM' : 'Player'}
-								</Badge>
-							</div>
-						</div>
-
-						<div class="flex gap-2 items-center">
-							{#if hasErrors}
-								<Badge variant="destructive" class="text-xs">Error</Badge>
-							{/if}
-
-							{#if mode === 'player' && 'error' in remoteState && remoteState.error}
-								<Badge variant="destructive" class="text-xs">
-									{remoteState.error}
-								</Badge>
-							{/if}
-							{#if _selectedTool === 'select' || _selectedTool === 'paint'}
-								<Badge variant="secondary" class="justify-self-end text-xs">
-									{selectedSet.size} selected
-								</Badge>
-							{/if}
-						</div>
-					</div>
+					<MainToolbar
+						campaignName={data.campaign?.name || data.session?.campaignSlug}
+						{mode}
+						{hasErrors}
+						errorMessage={mode === 'player' && 'error' in remoteState
+							? remoteState.error
+							: undefined}
+						selectedCount={selectedSet.size}
+						showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
+					/>
 
 					<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
 					{#if mode === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
-						<div
-							class="flex flex-col gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
-						>
-							<div class="flex gap-2 items-center">
-								<!-- Always-Reveal Toggle -->
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button
-											variant={alwaysRevealMode ? 'default' : 'ghost'}
-											size="sm"
-											onclick={() => (alwaysRevealMode = !alwaysRevealMode)}
-										>
-											<CircleDot class="w-4 h-4" />
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										{alwaysRevealMode ? 'Always Reveal: ON' : 'Always Reveal: OFF'}
-									</Tooltip.Content>
-								</Tooltip.Root>
-
-								<!-- Select Mode Controls -->
-								<Separator orientation="vertical" class="!h-6" />
-
-								<!-- Add/Remove Mode Toggle -->
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button
-											variant={activeSelectMode === 'add' ? 'default' : 'ghost'}
-											size="sm"
-											onclick={() => (activeSelectMode = 'add')}
-										>
-											<Plus class="w-4 h-4" />
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>Add to selection</Tooltip.Content>
-								</Tooltip.Root>
-
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button
-											variant={activeSelectMode === 'remove' ? 'default' : 'ghost'}
-											size="sm"
-											onclick={() => (activeSelectMode = 'remove')}
-										>
-											<Minus class="w-4 h-4" />
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>Remove from selection</Tooltip.Content>
-								</Tooltip.Root>
-
-								{#if _selectedTool === 'select' || _selectedTool === 'paint'}
-									<Separator orientation="vertical" class="!h-6" />
-									<Tooltip.Root>
-										<Tooltip.Trigger>
-											<Button
-												disabled={selectedSet.size === 0}
-												variant="ghost"
-												size="sm"
-												onclick={revealSelectedTiles}
-											>
-												<Eye class="w-4 h-4" />
-											</Button>
-										</Tooltip.Trigger>
-										<Tooltip.Content>Reveal Selected</Tooltip.Content>
-									</Tooltip.Root>
-
-									<Tooltip.Root>
-										<Tooltip.Trigger>
-											<Button
-												disabled={selectedSet.size === 0}
-												variant="ghost"
-												size="sm"
-												onclick={hideSelectedTiles}
-											>
-												<EyeOff class="w-4 h-4" />
-											</Button>
-										</Tooltip.Trigger>
-										<Tooltip.Content>Hide Selected</Tooltip.Content>
-									</Tooltip.Root>
-
-									<Tooltip.Root>
-										<Tooltip.Trigger>
-											<Button
-												disabled={selectedSet.size === 0}
-												variant="ghost"
-												size="sm"
-												onclick={() => clearSelection()}
-											>
-												<Trash2 class="w-4 h-4" />
-											</Button>
-										</Tooltip.Trigger>
-										<Tooltip.Content>Clear Selection</Tooltip.Content>
-									</Tooltip.Root>
-								{/if}
-							</div>
-							<!-- Brush Size Slider -->
-							{#if activeTool === 'paint'}
-								<div class="flex gap-2 items-center">
-									<div class="flex gap-2 items-center px-2">
-										<span class="text-xs text-muted-foreground">Brush Size:</span>
-										<div class="w-20">
-											<Slider
-												type="single"
-												bind:value={brushSize}
-												min={1}
-												max={5}
-												step={1}
-												class="w-full"
-											/>
-										</div>
-										<span class="w-6 font-mono text-xs text-center">{brushSize}</span>
-									</div>
-								</div>
-							{/if}
-						</div>
+						<SelectionToolbar
+							{alwaysRevealMode}
+							{activeSelectMode}
+							selectedCount={selectedSet.size}
+							showBrushSize={activeTool === 'paint'}
+							{brushSize}
+							onToggleAlwaysReveal={() => (alwaysRevealMode = !alwaysRevealMode)}
+							onSetSelectMode={(mode) => (_selectedSelectMode = mode)}
+							onReveal={revealSelectedTiles}
+							onHide={hideSelectedTiles}
+							onClear={() => clearSelection()}
+							onBrushSizeChange={(size) => (brushSize = size)}
+						/>
 					{/if}
 				</div>
 
 				<!-- Zoom Controls -->
 				<div class="absolute bottom-4 left-4 z-20">
-					<div
-						class="flex flex-col gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
-					>
-						<Tooltip.Root>
-							<Tooltip.Trigger>
-								<Button variant="ghost" size="sm" onclick={zoomIn}>
-									<Plus class="w-4 h-4" />
-								</Button>
-							</Tooltip.Trigger>
-							<Tooltip.Content side="right">Zoom In</Tooltip.Content>
-						</Tooltip.Root>
-
-						<Tooltip.Root>
-							<Tooltip.Trigger>
-								<Button
-									variant="ghost"
-									size="sm"
-									onclick={resetZoom}
-									class={zoom === 1 ? 'bg-accent' : ''}
-								>
-									<span class="font-mono text-xs">{zoom * 100}%</span>
-								</Button>
-							</Tooltip.Trigger>
-							<Tooltip.Content side="right">Reset Zoom • Scroll to pan</Tooltip.Content>
-						</Tooltip.Root>
-
-						<Tooltip.Root>
-							<Tooltip.Trigger>
-								<Button variant="ghost" size="sm" onclick={zoomOut}>
-									<Minus class="w-4 h-4" />
-								</Button>
-							</Tooltip.Trigger>
-							<Tooltip.Content side="right">Zoom Out</Tooltip.Content>
-						</Tooltip.Root>
-					</div>
+					<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
 				</div>
 
 				<!-- Navigation Links -->
@@ -772,186 +552,31 @@
 
 				<!-- Bottom Toolbar with Cursor Modes -->
 				<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-					<div class="flex gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm">
-						<Tooltip.Root>
-							<Tooltip.Trigger>
-								{#snippet child({ props })}
-									<Button
-										{...props}
-										variant={activeTool === 'interact' ? 'default' : 'ghost'}
-										size="sm"
-										onclick={() => setSelectedTool('interact')}
-									>
-										<MousePointer class="w-4 h-4" />
-									</Button>
-								{/snippet}
-							</Tooltip.Trigger>
-							<Tooltip.Content side="top">Default Cursor - Interact with hexes</Tooltip.Content>
-						</Tooltip.Root>
-
-						<Tooltip.Root>
-							<Tooltip.Trigger>
-								{#snippet child({ props })}
-									<Button
-										{...props}
-										variant={activeTool === 'pan' ? 'default' : 'ghost'}
-										size="sm"
-										onclick={() => setSelectedTool('pan')}
-									>
-										<Hand class="w-4 h-4" />
-									</Button>
-								{/snippet}
-							</Tooltip.Trigger>
-							<Tooltip.Content side="top">Pan Mode - Drag or scroll to pan</Tooltip.Content>
-						</Tooltip.Root>
-
-						{#if mode === 'dm'}
-							<Tooltip.Root>
-								<Tooltip.Trigger>
-									{#snippet child({ props })}
-										<Button
-											{...props}
-											variant={activeTool === 'select' ? 'default' : 'ghost'}
-											size="sm"
-											onclick={() => setSelectedTool('select')}
-											class="relative"
-										>
-											<Square class="w-4 h-4" />
-											{#if activeTool === 'select'}
-												<span
-													class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full text-xs {activeSelectMode ===
-													'add'
-														? 'bg-green-500'
-														: 'bg-red-500'}"
-												>
-													{#if activeSelectMode === 'add'}
-														<Plus class="w-2 h-2 text-white" />
-													{:else}
-														<Minus class="w-2 h-2 text-white" />
-													{/if}
-												</span>
-											{/if}
-										</Button>
-									{/snippet}
-								</Tooltip.Trigger>
-								<Tooltip.Content side="top"
-									>Multi-select - Select hexes for bulk operations</Tooltip.Content
-								>
-							</Tooltip.Root>
-
-							<Tooltip.Root>
-								<Tooltip.Trigger>
-									{#snippet child({ props })}
-										<Button
-											{...props}
-											variant={activeTool === 'paint' ? 'default' : 'ghost'}
-											size="sm"
-											onclick={() => setSelectedTool('paint')}
-											class="relative"
-										>
-											<Paintbrush class="w-4 h-4" />
-											{#if activeTool === 'paint'}
-												<span
-													class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full text-xs {activeSelectMode ===
-													'add'
-														? 'bg-green-500'
-														: 'bg-red-500'}"
-												>
-													{#if activeSelectMode === 'add'}
-														<Plus class="w-2 h-2 text-white" />
-													{:else}
-														<Minus class="w-2 h-2 text-white" />
-													{/if}
-												</span>
-											{/if}
-										</Button>
-									{/snippet}
-								</Tooltip.Trigger>
-								<Tooltip.Content side="top">
-									Paint Mode - {activeSelectMode === 'add' ? 'Add' : 'Remove'} tiles (size {brushSize})
-								</Tooltip.Content>
-							</Tooltip.Root>
-						{/if}
-					</div>
+					<ToolModeButtons
+						{activeTool}
+						{activeSelectMode}
+						{brushSize}
+						showDMTools={mode === 'dm'}
+						onSelectTool={setSelectedTool}
+					/>
 				</div>
 			</div>
 
 			<!-- Layer Controls -->
 			{#if mode === 'dm'}
 				<div class="absolute right-4 bottom-4 z-20">
-					<Collapsible.Root
-						class="px-1 w-52 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
-						bind:open={layerVisibilityOpen}
-					>
-						<div class="flex justify-between items-center py-1 pl-2">
-							<h4 class="text-sm font-semibold">Layers</h4>
-							<Collapsible.Trigger
-								class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-9 p-0' })}
-							>
-								{#if layerVisibilityOpen}
-									<ChevronDownIcon />
-								{:else}
-									<ChevronUpIcon />
-								{/if}
-								<span class="sr-only">Toggle</span>
-							</Collapsible.Trigger>
-						</div>
-						<Collapsible.Content>
-							<div class="flex flex-col py-1 bg-accent">
-								{@render layerControl(
-									'Always Revealed',
-									showAlwaysRevealed,
-									() => (showAlwaysRevealed = !showAlwaysRevealed)
-								)}
-
-								{@render layerControl(
-									'Revealed',
-									showRevealed,
-									() => (showRevealed = !showRevealed)
-								)}
-
-								{@render layerControl(
-									'Unrevealed',
-									showUnrevealed,
-									() => (showUnrevealed = !showUnrevealed)
-								)}
-							</div>
-
-							<!-- Tile Transparency Control -->
-							<div class="flex gap-2 justify-between items-center py-1 pl-2">
-								<span class="text-xs">Opacity</span>
-
-								<ToggleGroup.Root
-									size="sm"
-									variant="text"
-									type="single"
-									bind:value={tileTransparency}
-								>
-									<ToggleGroup.Item
-										value="0"
-										disabled={tileTransparency === '0'}
-										aria-label="Make tiles transparent"
-									>
-										<span class="w-6 font-mono text-xs text-center">0</span>
-									</ToggleGroup.Item>
-									<ToggleGroup.Item
-										value="0.5"
-										disabled={tileTransparency === '0.5'}
-										aria-label="Make tiles half transparent"
-									>
-										<span class="w-6 font-mono text-xs text-center">0.5</span>
-									</ToggleGroup.Item>
-									<ToggleGroup.Item
-										value="1"
-										disabled={tileTransparency === '1'}
-										aria-label="Make tiles opaque"
-									>
-										<span class="w-6 font-mono text-xs text-center">1</span>
-									</ToggleGroup.Item>
-								</ToggleGroup.Root>
-							</div>
-						</Collapsible.Content>
-					</Collapsible.Root>
+					<LayerControls
+						{showAlwaysRevealed}
+						{showRevealed}
+						{showUnrevealed}
+						{tileTransparency}
+						isOpen={layerVisibilityOpen}
+						onToggleAlwaysRevealed={() => (showAlwaysRevealed = !showAlwaysRevealed)}
+						onToggleRevealed={() => (showRevealed = !showRevealed)}
+						onToggleUnrevealed={() => (showUnrevealed = !showUnrevealed)}
+						onTransparencyChange={(value) => (tileTransparency = value)}
+						onToggleOpen={(open) => (layerVisibilityOpen = open)}
+					/>
 				</div>
 			{/if}
 
@@ -968,10 +593,14 @@
 					<div>
 						<h3 class="mb-3 text-sm font-medium">Statistics</h3>
 						<div class="space-y-2">
-							<!-- 	<div class="flex justify-between text-sm"> -->
-							<!-- 		<span class="text-muted-foreground">Revealed Tiles</span> -->
-							<!-- 		<span class="font-medium">{currentRevealedTiles.length}</span> -->
-							<!-- 	</div> -->
+							<div class="flex justify-between text-sm">
+								<span class="text-muted-foreground">Revealed Tiles</span>
+								<span class="font-medium">{localState.revealedTilesSet.size}</span>
+							</div>
+							<div class="flex justify-between text-sm">
+								<span class="text-muted-foreground">Always Revealed Tiles</span>
+								<span class="font-medium">{localState.alwaysRevealedTilesSet.size}</span>
+							</div>
 							<div class="flex justify-between text-sm">
 								<span class="text-muted-foreground">Points of Interest</span>
 								<span class="font-medium">
