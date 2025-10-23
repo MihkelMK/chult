@@ -17,7 +17,7 @@ export const load: LayoutServerLoad = async ({ locals, params, depends }) => {
 	const campaignData = (await getCampaignData(
 		locals.session.campaignId,
 		true
-	)) as PlayerCampaignDataResponse & { hasMapImage: boolean };
+	)) as PlayerCampaignDataResponse;
 
 	if (!campaignData) {
 		throw error(404, 'Campaign not found');

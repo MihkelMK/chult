@@ -3,14 +3,15 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Upload, Image, Trash2, Loader2, CheckCircle, AlertCircle } from '@lucide/svelte';
 	import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
+	import type { MapUrlsResponse } from '$lib/types';
 
 	interface Props {
-		hasMapImage?: boolean;
+		mapUrls?: MapUrlsResponse;
 		campaignSlug: string;
 		onMapUploaded?: () => void;
 	}
 
-	let { hasMapImage, campaignSlug, onMapUploaded }: Props = $props();
+	let { mapUrls, campaignSlug, onMapUploaded }: Props = $props();
 
 	// Upload state
 	let fileInput: HTMLInputElement;
@@ -19,8 +20,8 @@
 	let uploadError = $state('');
 	let uploadSuccess = $state('');
 	let previewUrl = $state('');
-	let showUploadInterface = $state(!hasMapImage);
-	let mapExists = $state(hasMapImage || false);
+	let showUploadInterface = $state(!mapUrls);
+	let mapExists = $state(mapUrls || false);
 
 	function handleFileSelect(file: File) {
 		if (!file) return;

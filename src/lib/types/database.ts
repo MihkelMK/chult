@@ -7,6 +7,7 @@ import {
 	uploadedImages,
 	gameSessions
 } from '$lib/server/db/schema';
+import type { MapUrlsResponse } from './imgproxy';
 
 // Full model types
 export type Campaign = InferSelectModel<typeof campaigns>;
@@ -72,12 +73,20 @@ export type CampaignDataResponse = {
 export interface PlayerCampaignDataResponse {
 	campaign: Pick<
 		Campaign,
-		'id' | 'name' | 'slug' | 'hexesPerRow' | 'hexesPerCol' | 'hexOffsetX' | 'hexOffsetY'
+		| 'id'
+		| 'name'
+		| 'slug'
+		| 'hexesPerRow'
+		| 'hexesPerCol'
+		| 'hexOffsetX'
+		| 'hexOffsetY'
+		| 'imageHeight'
+		| 'imageWidth'
 	>;
-	hasMapImage: boolean;
 	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
 	mapMarkers: PlayerMapMarkerResponse[];
 	gameSessions: never[]; // Players don't get game sessions
+	mapUrls: MapUrlsResponse | undefined;
 }
 
 export interface CampaignTokenResponse {

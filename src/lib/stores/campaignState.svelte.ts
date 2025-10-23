@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import type { CampaignDataResponse, PlayerCampaignDataResponse, TileCoords } from '$lib/types';
 import EventEmitter from 'eventemitter3';
+import { SvelteSet } from 'svelte/reactivity';
 
 // Define a type for the event listener to ensure type safety
 type EventListener<T> = (data: T) => void;
@@ -14,6 +15,10 @@ export class CampaignState extends EventEmitter {
 	public hoveredTile = $state<TileCoords | null>(null);
 	public showTileModal = $state(false);
 	public modalTile = $state<TileCoords | null>(null);
+
+	// Empty sets for typescript
+	public revealedTilesSet = new SvelteSet<string>();
+	public alwaysRevealedTilesSet = new SvelteSet<string>();
 
 	constructor(
 		initialData: CampaignDataResponse | PlayerCampaignDataResponse,

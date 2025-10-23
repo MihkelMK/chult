@@ -36,6 +36,13 @@
       "when": 1756749706990,
       "tag": "0004_wise_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1760069842922,
+      "tag": "0005_glossy_speed_demon",
+      "breakpoints": true
     }
   ]
 }

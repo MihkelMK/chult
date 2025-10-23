@@ -1,10 +1,29 @@
 import { CampaignState } from './campaignState.svelte';
 import type { CampaignDataResponse, MapMarkerResponse, RevealedTileResponse } from '$lib/types';
-import { SvelteDate, SvelteMap } from 'svelte/reactivity';
+import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 export class DMCampaignState extends CampaignState {
+	// Public reactive Sets - UI source of truth
+	public revealedTilesSet = new SvelteSet<string>();
+	public alwaysRevealedTilesSet = new SvelteSet<string>();
+
+	// Private markers map for O(1) lookups
+	private markersMap = new SvelteMap<number, MapMarkerResponse>();
+
 	constructor(initialData: CampaignDataResponse, campaignSlug: string) {
 		super(initialData, campaignSlug);
+
+		// Initialize Sets from initial data
+		initialData.revealedTiles.forEach((tile) => {
+			const key = `${tile.x}-${tile.y}`;
+			if (tile.alwaysRevealed) {
+				this.alwaysRevealedTilesSet.add(key);
+			} else {
+				this.revealedTilesSet.add(key);
+			}
+		});
+
+		this.markersMap = new SvelteMap(initialData.mapMarkers.map((m) => [m.id, m]));
 
 		// Event listeners for synchronization
 		this.addEventListener('tile-revealed', (tile) =>
@@ -28,8 +47,22 @@ export class DMCampaignState extends CampaignState {
 
 	async revealTiles(tiles: { x: number; y: number }[], alwaysRevealed: boolean = false) {
 		const originalRevealedTiles = [...(this.campaign as CampaignDataResponse).revealedTiles];
+		const addedKeys: string[] = [];
 
-		// Optimistic update
+		// Optimistic Set updates
+		tiles.forEach((tile) => {
+			const key = `${tile.x}-${tile.y}`;
+			if (!this.revealedTilesSet.has(key) && !this.alwaysRevealedTilesSet.has(key)) {
+				if (alwaysRevealed) {
+					this.alwaysRevealedTilesSet.add(key);
+				} else {
+					this.revealedTilesSet.add(key);
+				}
+				addedKeys.push(key);
+			}
+		});
+
+		// Keep array in sync for serialization
 		(this.campaign as CampaignDataResponse).revealedTiles.push(
 			...tiles.map((t) => ({ ...t, alwaysRevealed, revealedAt: new SvelteDate() }))
 		);
@@ -37,7 +70,11 @@ export class DMCampaignState extends CampaignState {
 		try {
 			await this.makeApiRequest('tiles/batch', 'POST', { type: 'reveal', tiles, alwaysRevealed });
 		} catch (error) {
-			// Rollback
+			// Rollback both Sets and array
+			addedKeys.forEach((key) => {
+				this.revealedTilesSet.delete(key);
+				this.alwaysRevealedTilesSet.delete(key);
+			});
 			(this.campaign as CampaignDataResponse).revealedTiles = originalRevealedTiles;
 			console.error('Failed to reveal tiles:', error);
 		}
@@ -45,8 +82,33 @@ export class DMCampaignState extends CampaignState {
 
 	async toggleAlwaysRevealed(tiles: { x: number; y: number }[], alwaysRevealed: boolean) {
 		const originalRevealedTiles = [...(this.campaign as CampaignDataResponse).revealedTiles];
+		const movedKeys: Array<{ key: string; fromSet: 'revealed' | 'alwaysRevealed' | 'none' }> = [];
 
-		// Optimistic update - update existing tiles and add new ones if needed
+		// Optimistic Set updates - move tiles between Sets
+		tiles.forEach((tile) => {
+			const key = `${tile.x}-${tile.y}`;
+
+			if (alwaysRevealed) {
+				// Moving to alwaysRevealed
+				if (this.revealedTilesSet.has(key)) {
+					this.revealedTilesSet.delete(key);
+					this.alwaysRevealedTilesSet.add(key);
+					movedKeys.push({ key, fromSet: 'revealed' });
+				} else if (!this.alwaysRevealedTilesSet.has(key)) {
+					this.alwaysRevealedTilesSet.add(key);
+					movedKeys.push({ key, fromSet: 'none' });
+				}
+			} else {
+				// Moving to revealed (removing always-revealed flag)
+				if (this.alwaysRevealedTilesSet.has(key)) {
+					this.alwaysRevealedTilesSet.delete(key);
+					this.revealedTilesSet.add(key);
+					movedKeys.push({ key, fromSet: 'alwaysRevealed' });
+				}
+			}
+		});
+
+		// Update array to match Sets
 		const existingTileMap = new SvelteMap(
 			(this.campaign as CampaignDataResponse).revealedTiles.map((t) => [`${t.x},${t.y}`, t])
 		);
@@ -74,7 +136,19 @@ export class DMCampaignState extends CampaignState {
 				alwaysRevealed
 			});
 		} catch (error) {
-			// Rollback
+			// Rollback Sets and array
+			movedKeys.forEach(({ key, fromSet }) => {
+				if (fromSet === 'revealed') {
+					this.alwaysRevealedTilesSet.delete(key);
+					this.revealedTilesSet.add(key);
+				} else if (fromSet === 'alwaysRevealed') {
+					this.revealedTilesSet.delete(key);
+					this.alwaysRevealedTilesSet.add(key);
+				} else {
+					this.alwaysRevealedTilesSet.delete(key);
+					this.revealedTilesSet.delete(key);
+				}
+			});
 			(this.campaign as CampaignDataResponse).revealedTiles = originalRevealedTiles;
 			console.error('Failed to toggle always-revealed tiles:', error);
 		}
@@ -114,51 +188,87 @@ export class DMCampaignState extends CampaignState {
 
 	private handleTileRevealed(tile: RevealedTileResponse) {
 		if (this.campaign && 'revealedTiles' in this.campaign) {
-			(this.campaign as CampaignDataResponse).revealedTiles.push({
-				...tile,
-				revealedAt: new SvelteDate(tile.revealedAt)
-			});
+			const key = `${tile.x}-${tile.y}`;
+
+			// O(1) duplicate check using Sets
+			if (!this.revealedTilesSet.has(key) && !this.alwaysRevealedTilesSet.has(key)) {
+				// Update appropriate Set
+				if (tile.alwaysRevealed) {
+					this.alwaysRevealedTilesSet.add(key);
+				} else {
+					this.revealedTilesSet.add(key);
+				}
+
+				// Keep array in sync for serialization
+				(this.campaign as CampaignDataResponse).revealedTiles.push({
+					...tile,
+					revealedAt: new SvelteDate(tile.revealedAt)
+				});
+			}
 		}
 	}
 
 	private handleMarkerCreated(marker: MapMarkerResponse) {
 		if (this.campaign && 'mapMarkers' in this.campaign) {
-			(this.campaign as CampaignDataResponse).mapMarkers.push({
-				...marker,
-				createdAt: new SvelteDate(marker.createdAt),
-				updatedAt: new SvelteDate(marker.updatedAt)
-			});
+			// Check Map first for O(1) duplicate detection
+			if (!this.markersMap.has(marker.id)) {
+				const newMarker = {
+					...marker,
+					createdAt: new SvelteDate(marker.createdAt),
+					updatedAt: new SvelteDate(marker.updatedAt)
+				};
+				this.markersMap.set(marker.id, newMarker);
+				(this.campaign as CampaignDataResponse).mapMarkers.push(newMarker);
+			}
 		}
 	}
 
 	private handleMarkerUpdated(marker: MapMarkerResponse) {
 		if (this.campaign && 'mapMarkers' in this.campaign) {
-			const index = (this.campaign as CampaignDataResponse).mapMarkers.findIndex(
-				(m) => m.id === marker.id
-			);
-			if (index !== -1) {
-				(this.campaign as CampaignDataResponse).mapMarkers[index] = {
-					...marker,
-					createdAt: new SvelteDate(marker.createdAt),
-					updatedAt: new SvelteDate(marker.updatedAt)
-				};
+			// O(1) lookup in Map
+			if (this.markersMap.has(marker.id)) {
+				const index = (this.campaign as CampaignDataResponse).mapMarkers.findIndex(
+					(m) => m.id === marker.id
+				);
+				if (index !== -1) {
+					const updatedMarker = {
+						...marker,
+						createdAt: new SvelteDate(marker.createdAt),
+						updatedAt: new SvelteDate(marker.updatedAt)
+					};
+					this.markersMap.set(marker.id, updatedMarker);
+					(this.campaign as CampaignDataResponse).mapMarkers[index] = updatedMarker;
+				}
 			}
 		}
 	}
 
 	private handleTileHidden(tile: Pick<RevealedTileResponse, 'x' | 'y'>) {
 		if (this.campaign && 'revealedTiles' in this.campaign) {
-			(this.campaign as CampaignDataResponse).revealedTiles = (
-				this.campaign as CampaignDataResponse
-			).revealedTiles.filter((t) => !(t.x === tile.x && t.y === tile.y));
+			const key = `${tile.x}-${tile.y}`;
+
+			// Remove from both Sets (O(1))
+			const wasRevealed = this.revealedTilesSet.delete(key);
+			const wasAlwaysRevealed = this.alwaysRevealedTilesSet.delete(key);
+
+			// Only filter array if tile was actually revealed
+			if (wasRevealed || wasAlwaysRevealed) {
+				(this.campaign as CampaignDataResponse).revealedTiles = (
+					this.campaign as CampaignDataResponse
+				).revealedTiles.filter((t) => !(t.x === tile.x && t.y === tile.y));
+			}
 		}
 	}
 
 	private handleMarkerDeleted(id: number) {
 		if (this.campaign && 'mapMarkers' in this.campaign) {
-			(this.campaign as CampaignDataResponse).mapMarkers = (
-				this.campaign as CampaignDataResponse
-			).mapMarkers.filter((m) => m.id !== id);
+			// O(1) check and delete from Map
+			if (this.markersMap.delete(id)) {
+				// Only filter array if marker existed
+				(this.campaign as CampaignDataResponse).mapMarkers = (
+					this.campaign as CampaignDataResponse
+				).mapMarkers.filter((m) => m.id !== id);
+			}
 		}
 	}
 }

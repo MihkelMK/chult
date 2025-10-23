@@ -12,8 +12,7 @@ RUN pnpm i
 
 COPY . .
 
-RUN pnpm build
-
+RUN pnpm db:migrate && pnpm build
 
 FROM node:20
 
