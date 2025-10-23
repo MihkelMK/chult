@@ -11,7 +11,6 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Badge } from '$lib/components/ui/badge';
 	import MapUpload from '$lib/components/MapUpload.svelte';
-	import Map from '$lib/components/Map.svelte';
 	import {
 		Eye,
 		EyeOff,
@@ -27,12 +26,15 @@
 	} from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
-	import MapImage from '$lib/components/MapImage.svelte';
+	import MapCanvasWrapper from '$lib/components/MapCanvasWrapper.svelte';
+	import { getLocalState } from '$lib/contexts/campaignContext';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data }: { data: PageData } = $props();
 
 	// Welcome message state
 	const isNewCampaign = page.params.created === 'created';
+	const localState = getLocalState();
 
 	// Token visibility state
 	let showDmToken = $state(false);
@@ -41,11 +43,13 @@
 	let playerTokenCopied = $state(false);
 
 	// Map configuration state - initialize from database values
+	let canvasWidth = $state(0);
+	let canvasHeight = $state(0);
+	let aspectRatio = $derived(Math.fround(data.campaign.imageHeight / data.campaign.imageWidth));
 	let tilesPerColumn = $state(data.campaign?.hexesPerCol ?? 20);
 	let tilesPerRow = $state(data.campaign?.hexesPerRow ?? 20);
 	let offsetX = $state(data.campaign?.hexOffsetX ?? 70);
 	let offsetY = $state(data.campaign?.hexOffsetY ?? 58);
-	let showHexPreview = $state(false);
 	let previewZoom = $state(1);
 
 	// Track if settings have changed
@@ -136,13 +140,13 @@
 	<title>Settings - {data.campaign?.name}</title>
 </svelte:head>
 
-<div class="container mx-auto max-w-4xl space-y-8 p-6">
+<div class="container p-6 mx-auto space-y-8 max-w-4xl">
 	<!-- Welcome Message for New Campaigns -->
 	{#if isNewCampaign}
-		<Card class="border-green-200 bg-green-50">
+		<Card class="bg-green-50 border-green-200">
 			<CardHeader>
-				<div class="flex items-center gap-2">
-					<Crown class="h-5 w-5 text-green-600" />
+				<div class="flex gap-2 items-center">
+					<Crown class="w-5 h-5 text-green-600" />
 					<CardTitle class="text-green-800">Welcome, Dungeon Master!</CardTitle>
 				</div>
 				<CardDescription class="text-green-700">
@@ -155,18 +159,18 @@
 
 	<!-- Page Header -->
 	<div class="flex justify-between">
-		<div class="flex items-center gap-3">
-			<Settings class="h-6 w-6 text-muted-foreground" />
+		<div class="flex gap-3 items-center">
+			<Settings class="w-6 h-6 text-muted-foreground" />
 			<div>
 				<h1 class="text-2xl font-bold">Campaign Settings</h1>
 				<p class="text-muted-foreground">Configure your campaign map and access tokens</p>
 			</div>
 		</div>
 		<div
-			class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+			class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 		>
 			<Button href="/{data.campaign.slug}" variant="link" size="sm" type="submit">
-				<MapIcon class="mr-2 h-4 w-4" />
+				<MapIcon class="mr-2 w-4 h-4" />
 				Back
 			</Button>
 		</div>
@@ -186,22 +190,22 @@
 				<CardContent class="space-y-4">
 					<!-- DM Token -->
 					<div class="space-y-2">
-						<div class="flex items-center gap-2">
-							<Crown class="h-4 w-4 text-amber-600" />
+						<div class="flex gap-2 items-center">
+							<Crown class="w-4 h-4 text-amber-600" />
 							<!-- svelte-ignore a11y_label_has_associated_control -->
 							<label class="text-sm font-medium">Dungeon Master Access</label>
 							<Badge variant="secondary">DM</Badge>
 						</div>
 
 						<div class="flex gap-2">
-							<div class="flex-1 rounded-md bg-muted p-3 font-mono text-sm">
+							<div class="flex-1 p-3 font-mono text-sm rounded-md bg-muted">
 								{showDmToken ? data.dmToken : '****************'}
 							</div>
 							<Button variant="outline" size="sm" onclick={() => (showDmToken = !showDmToken)}>
 								{#if showDmToken}
-									<EyeOff class="h-4 w-4" />
+									<EyeOff class="w-4 h-4" />
 								{:else}
-									<Eye class="h-4 w-4" />
+									<Eye class="w-4 h-4" />
 								{/if}
 							</Button>
 							<Button
@@ -210,9 +214,9 @@
 								onclick={() => copyToken(data.dmToken || '', 'dm')}
 							>
 								{#if dmTokenCopied}
-									<Check class="h-4 w-4 text-green-600" />
+									<Check class="w-4 h-4 text-green-600" />
 								{:else}
-									<Copy class="h-4 w-4" />
+									<Copy class="w-4 h-4" />
 								{/if}
 							</Button>
 						</div>
@@ -222,15 +226,15 @@
 
 					<!-- Player Token -->
 					<div class="space-y-2">
-						<div class="flex items-center gap-2">
-							<Users class="h-4 w-4 text-blue-600" />
+						<div class="flex gap-2 items-center">
+							<Users class="w-4 h-4 text-blue-600" />
 							<!-- svelte-ignore a11y_label_has_associated_control -->
 							<label class="text-sm font-medium">Player Access</label>
 							<Badge variant="outline">Player</Badge>
 						</div>
 
 						<div class="flex gap-2">
-							<div class="flex-1 rounded-md bg-muted p-3 font-mono text-sm">
+							<div class="flex-1 p-3 font-mono text-sm rounded-md bg-muted">
 								{showPlayerToken ? data.playerToken : '****************'}
 							</div>
 							<Button
@@ -239,9 +243,9 @@
 								onclick={() => (showPlayerToken = !showPlayerToken)}
 							>
 								{#if showPlayerToken}
-									<EyeOff class="h-4 w-4" />
+									<EyeOff class="w-4 h-4" />
 								{:else}
-									<Eye class="h-4 w-4" />
+									<Eye class="w-4 h-4" />
 								{/if}
 							</Button>
 							<Button
@@ -250,9 +254,9 @@
 								onclick={() => copyToken(data.playerToken || '', 'player')}
 							>
 								{#if playerTokenCopied}
-									<Check class="h-4 w-4 text-green-600" />
+									<Check class="w-4 h-4 text-green-600" />
 								{:else}
-									<Copy class="h-4 w-4" />
+									<Copy class="w-4 h-4" />
 								{/if}
 							</Button>
 						</div>
@@ -269,7 +273,7 @@
 					<!-- Grid Size Controls -->
 					<div class="space-y-4">
 						<div>
-							<label class="mb-2 block text-sm font-medium" for="tilesPerColumnSlider">
+							<label class="block mb-2 text-sm font-medium" for="tilesPerColumnSlider">
 								Tiles per Column: {tilesPerColumn}
 							</label>
 							<Slider
@@ -284,7 +288,7 @@
 						</div>
 
 						<div>
-							<label class="mb-2 block text-sm font-medium" for="tilesPerRowSlider">
+							<label class="block mb-2 text-sm font-medium" for="tilesPerRowSlider">
 								Tiles per Row: {tilesPerRow}
 							</label>
 							<Slider
@@ -304,7 +308,7 @@
 					<!-- Offset Controls -->
 					<div class="space-y-4">
 						<div>
-							<label class="mb-2 block text-sm font-medium" for="offsetXSlider">
+							<label class="block mb-2 text-sm font-medium" for="offsetXSlider">
 								Horizontal Offset: {offsetX}px
 							</label>
 							<Slider
@@ -319,7 +323,7 @@
 						</div>
 
 						<div>
-							<label class="mb-2 block text-sm font-medium" for="offsetYSlider">
+							<label class="block mb-2 text-sm font-medium" for="offsetYSlider">
 								Vertical Offset: {offsetY}px
 							</label>
 							<Slider
@@ -337,16 +341,16 @@
 					<!-- Save Status and Button -->
 					{#if saveError}
 						<div
-							class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+							class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive"
 						>
-							<AlertCircle class="h-4 w-4" />
+							<AlertCircle class="w-4 h-4" />
 							<span>{saveError}</span>
 						</div>
 					{/if}
 
 					{#if saveSuccess}
-						<div class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800">
-							<Check class="h-4 w-4" />
+						<div class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
+							<Check class="w-4 h-4" />
 							<span>Hex grid configuration saved successfully!</span>
 						</div>
 					{/if}
@@ -380,76 +384,72 @@
 				<CardContent>
 					<MapUpload
 						campaignSlug={data.campaign?.slug}
-						hasMapImage={data.hasMapImage}
+						mapUrls={data.mapUrls}
 						onMapUploaded={handleMapUploaded}
 					/>
 				</CardContent>
 			</Card>
 
 			<!-- Map Preview Section -->
-			{#if data.hasMapImage}
+			{#if data.mapUrls}
 				<Card>
 					<CardHeader>
 						<CardTitle>Map Preview</CardTitle>
 						<CardDescription>Preview your map with hex grid overlay</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div class="relative min-h-80 overflow-hidden rounded-lg">
-							{#if showHexPreview}
-								<Map
-									campaignSlug={data.campaign?.slug}
-									variant="hexGrid"
-									hexesPerRow={tilesPerRow}
-									hexesPerCol={tilesPerColumn}
-									xOffset={offsetX}
-									yOffset={offsetY}
-									previewMode={true}
-									showAnimations={false}
-									showCoords="never"
-									tileTransparency={0.75}
-									zoom={previewZoom}
-								/>
-							{:else}
-								<div class="relative">
-									<MapImage
-										campaignSlug={data.campaign?.slug}
-										variant="medium"
-										class="absolute inset-0 h-full w-full rounded-lg shadow-xl select-none"
-										loading="eager"
-									/>
-								</div>
-							{/if}
+						<div
+							class="overflow-hidden relative rounded-lg min-h-80"
+							bind:clientHeight={canvasHeight}
+							bind:clientWidth={canvasWidth}
+							style="aspect-ratio: 1/{aspectRatio};"
+						>
+							<MapCanvasWrapper
+								mapUrls={data.mapUrls}
+								previewMode={true}
+								{localState}
+								{canvasHeight}
+								{canvasWidth}
+								variant="detail"
+								hexesPerRow={tilesPerRow}
+								hexesPerCol={tilesPerColumn}
+								xOffset={offsetX}
+								yOffset={offsetY}
+								imageHeight={data.campaign.imageHeight}
+								imageWidth={data.campaign.imageWidth}
+								showAnimations={false}
+								showCoords="never"
+								zoom={previewZoom}
+								cursorMode="pan"
+								hasPoI={() => false}
+								hasNotes={() => false}
+								isPlayerPosition={() => false}
+								onHexTriggered={() => {}}
+								selectedSet={new SvelteSet<string>()}
+								showAlwaysRevealed={true}
+								showRevealed={true}
+								isDM={true}
+								isDragging={false}
+							/>
 
 							<!-- Overlay Controls -->
-							<div class="absolute top-2 right-2 flex gap-1">
+							<div class="flex absolute top-2 right-2 gap-1">
 								<!-- Zoom Toggle -->
-								{#if showHexPreview}
-									<Button
-										variant="outline"
-										size="sm"
-										onclick={() => (previewZoom = previewZoom === 1 ? 6 : 1)}
-										class="h-8 w-8 bg-background/90 p-0 backdrop-blur-sm"
-									>
-										{#if previewZoom === 1}
-											<ZoomIn class="h-3 w-3" />
-										{:else}
-											<ZoomOut class="h-3 w-3" />
-										{/if}
-									</Button>
-								{/if}
-
-								<!-- Preview Toggle -->
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => (showHexPreview = !showHexPreview)}
-									class="h-8 w-8 bg-background/90 p-0 backdrop-blur-sm"
+									onclick={() => ((previewZoom = Math.min(previewZoom + 2)), 10)}
+									class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
 								>
-									{#if showHexPreview}
-										<EyeOff class="h-3 w-3" />
-									{:else}
-										<Eye class="h-3 w-3" />
-									{/if}
+									<ZoomIn class="w-3 h-3" />
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={() => (previewZoom = Math.max(previewZoom - 2, 1))}
+									class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
+								>
+									<ZoomOut class="w-3 h-3" />
 								</Button>
 							</div>
 						</div>

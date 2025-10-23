@@ -13,7 +13,7 @@ import type {
 	CampaignStatsResponse,
 	PlayerCampaignDataResponse
 } from '$lib/types';
-import { hasMapImage } from './imgproxy';
+import { getMapUrls } from './imgproxy';
 
 function generateSlug(name: string): string {
 	return name
@@ -133,7 +133,7 @@ export async function getCampaignData(
 	const campaign = await getCampaignById(campaignId);
 	if (!campaign) return null;
 
-	const mapImageExistsPromise = hasMapImage(campaign.slug);
+	const mapUrlsPromise = getMapUrls(campaign.slug);
 
 	// Get revealed tiles
 	const revealedPromise = db
@@ -176,8 +176,8 @@ export async function getCampaignData(
 				.orderBy(desc(gameSessionsSchema.startTime))
 				.limit(10);
 
-	const [mapImageExists, revealed, markers, gameSessions] = await Promise.all([
-		mapImageExistsPromise,
+	const [mapUrls, revealed, markers, gameSessions] = await Promise.all([
+		mapUrlsPromise,
 		revealedPromise,
 		markersPromise,
 		gameSessionsPromise
@@ -188,16 +188,18 @@ export async function getCampaignData(
 			id: campaign.id,
 			name: campaign.name,
 			slug: campaign.slug,
+			createdAt: campaign.createdAt,
 			hexOffsetX: campaign.hexOffsetX,
 			hexOffsetY: campaign.hexOffsetY,
 			hexesPerCol: campaign.hexesPerCol,
 			hexesPerRow: campaign.hexesPerRow,
-			createdAt: campaign.createdAt
+			imageHeight: campaign.imageHeight,
+			imageWidth: campaign.imageWidth
 		},
 		revealedTiles: revealed,
 		mapMarkers: markers,
 		gameSessions: gameSessions,
-		hasMapImage: mapImageExists
+		mapUrls: mapUrls
 	};
 }
 

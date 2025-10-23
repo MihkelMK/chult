@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { DIContainer, setDIContainer } from '$lib/contexts/diContext';
-	import { DMCampaignState } from '$lib/stores/dmCampaignState.svelte';
-	import { PlayerCampaignState } from '$lib/stores/playerCampaignState.svelte';
+	import { LocalStateDM } from '$lib/stores/localStateDM.svelte';
+	import { LocalStatePlayer } from '$lib/stores/localStatePlayer.svelte';
 
 	const container = new DIContainer();
-	container.register(Symbol.for('DMCampaignState'), DMCampaignState);
-	container.register(Symbol.for('PlayerCampaignState'), PlayerCampaignState);
+	container.register(Symbol.for('LocalStateDM'), LocalStateDM);
+	container.register(Symbol.for('LocalStatePlayer'), LocalStatePlayer);
 	setDIContainer(container);
 
 	let { children } = $props();

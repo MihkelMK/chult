@@ -55,8 +55,8 @@ export const POST: RequestHandler = async (event) => {
 					);
 					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
 						event: 'tile-revealed',
-						data: newTiles,
-						role: 'player'
+						data: newTiles.map((tile) => ({ ...tile, alwaysRevealed })),
+						role: 'all' // Send to both DM and players
 					});
 				}
 
@@ -72,20 +72,14 @@ export const POST: RequestHandler = async (event) => {
 
 				const deletedTiles = await tx
 					.delete(revealedTiles)
-					.where(
-						and(
-							eq(revealedTiles.campaignId, session.campaignId),
-							eq(revealedTiles.alwaysRevealed, false), // Only delete non-always-revealed tiles
-							or(...coordinateConditions)
-						)
-					)
+					.where(and(eq(revealedTiles.campaignId, session.campaignId), or(...coordinateConditions)))
 					.returning({ x: revealedTiles.x, y: revealedTiles.y });
 
 				if (deletedTiles.length > 0) {
 					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
 						event: 'tile-hidden',
 						data: deletedTiles,
-						role: 'player'
+						role: 'all' // Send to both DM and players
 					});
 				}
 
@@ -133,7 +127,7 @@ export const POST: RequestHandler = async (event) => {
 				eventEmitter.emit(`campaign-${session.campaignSlug}`, {
 					event: 'tiles-always-revealed-updated',
 					data: { updated: updatedTiles, created: newAlwaysTiles },
-					role: 'player'
+					role: 'all' // Send to both DM and players
 				});
 
 				return { updated: updatedTiles.length, created: newAlwaysTiles.length };

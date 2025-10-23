@@ -1,18 +1,22 @@
 <script lang="ts">
 	import { getDIContainer } from '$lib/contexts/diContext';
-	import { setCampaignState } from '$lib/contexts/campaignContext';
+	import { setLocalState } from '$lib/contexts/campaignContext';
 	import type { LayoutProps } from './$types';
-	import { PlayerCampaignState } from '$lib/stores/playerCampaignState.svelte';
+	import { LocalStatePlayer } from '$lib/stores/localStatePlayer.svelte';
+	import { LocalStateDM } from '$lib/stores/localStateDM.svelte';
+	import type { LocalState } from '$lib/stores/localState.svelte';
 
 	let { data, children }: LayoutProps = $props();
 
+	// Determine effective role from session
+	const effectiveRole = data.session ? data.session.viewAs || data.session.role : 'player';
+	const isDM = effectiveRole === 'dm';
+
 	const container = getDIContainer();
-	const campaignState = container.resolve(
-		Symbol.for('PlayerCampaignState'),
-		data,
-		data.campaign.slug
-	) as PlayerCampaignState;
-	setCampaignState(campaignState);
+	const localState = isDM
+		? (container.resolve(Symbol.for('LocalStateDM'), data, data.campaign.slug) as LocalStateDM)
+		: (container.resolve(Symbol.for('LocalStatePlayer'), data, data.campaign.slug) as LocalStatePlayer);
+	setLocalState(localState as LocalState);
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">

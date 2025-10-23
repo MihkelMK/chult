@@ -2,6 +2,9 @@ import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/session';
 import { saveMapImage, type UploadResult } from '$lib/server/uploads';
+import { db } from '$lib/server/db';
+import { campaigns } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 
 export const POST: RequestHandler = async (event) => {
 	const session = requireAuth(event, 'dm');
@@ -26,6 +29,24 @@ export const POST: RequestHandler = async (event) => {
 
 		if (!result.success) {
 			return error(400, result.error || 'Upload failed');
+		}
+
+		// Update the campaign in database
+		const dbResult = await db
+			.update(campaigns)
+			.set({
+				imageHeight: result.originalDimensions?.height,
+				imageWidth: result.originalDimensions?.width,
+				updatedAt: new Date()
+			})
+			.where(eq(campaigns.slug, session.campaignSlug))
+			.returning({
+				imageHeight: campaigns.imageHeight,
+				imageWidth: campaigns.imageWidth
+			});
+
+		if (dbResult.length === 0) {
+			throw error(404, 'Campaign not found');
 		}
 
 		const response: UploadResult = {
