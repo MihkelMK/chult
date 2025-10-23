@@ -1,7 +1,13 @@
 import { browser } from '$app/environment';
-import type { CampaignDataResponse, PlayerCampaignDataResponse, TileCoords } from '$lib/types';
+import type {
+	CampaignDataResponse,
+	PlayerCampaignDataResponse,
+	TileCoords,
+	MapMarkerResponse,
+	RevealedTile
+} from '$lib/types';
 import EventEmitter from 'eventemitter3';
-import { SvelteSet } from 'svelte/reactivity';
+import { SvelteSet, SvelteMap, SvelteDate } from 'svelte/reactivity';
 
 // Define a type for the event listener to ensure type safety
 type EventListener<T> = (data: T) => void;
@@ -17,6 +23,9 @@ export class LocalState extends EventEmitter {
 	// Empty sets for typescript (overridden in subclasses)
 	public revealedTilesSet = new SvelteSet<string>();
 	public alwaysRevealedTilesSet = new SvelteSet<string>();
+
+	// Protected markers map for O(1) lookups (shared between DM and Player)
+	protected markersMap = new SvelteMap<number, MapMarkerResponse>();
 
 	// Hex grid configuration (reactive so we can update if settings change)
 	protected hexesPerRow = $state(0);
@@ -191,6 +200,89 @@ export class LocalState extends EventEmitter {
 				// Player markers don't have visibleToPlayers field, they're always visible to players
 				return !('visibleToPlayers' in m) || m.visibleToPlayers;
 			});
+		}
+	}
+
+	// Protected shared initialization methods
+	protected initializeRevealedTileSets(
+		tiles: (RevealedTile | Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>)[]
+	) {
+		tiles.forEach((tile) => {
+			const key = `${tile.x}-${tile.y}`;
+			if (tile.alwaysRevealed) {
+				this.alwaysRevealedTilesSet.add(key);
+			} else {
+				this.revealedTilesSet.add(key);
+			}
+		});
+	}
+
+	protected initializeMarkersMap(markers: MapMarkerResponse[]) {
+		this.markersMap = new SvelteMap(markers.map((m) => [m.id, m]));
+	}
+
+	// Protected shared event handlers
+	protected handleMarkerCreated(marker: MapMarkerResponse) {
+		if (this.campaign && 'mapMarkers' in this.campaign) {
+			// Check Map first for O(1) duplicate detection
+			if (!this.markersMap.has(marker.id)) {
+				const newMarker = {
+					...marker,
+					createdAt: new SvelteDate(marker.createdAt),
+					updatedAt: new SvelteDate(marker.updatedAt)
+				} as MapMarkerResponse;
+				this.markersMap.set(marker.id, newMarker);
+				this.campaign.mapMarkers.push(newMarker);
+			}
+		}
+	}
+
+	protected handleMarkerUpdated(marker: MapMarkerResponse) {
+		if (this.campaign && 'mapMarkers' in this.campaign) {
+			// O(1) lookup in Map
+			if (this.markersMap.has(marker.id)) {
+				const index = this.campaign.mapMarkers.findIndex(
+					(m: MapMarkerResponse) => m.id === marker.id
+				);
+				if (index !== -1) {
+					const updatedMarker = {
+						...marker,
+						createdAt: new SvelteDate(marker.createdAt),
+						updatedAt: new SvelteDate(marker.updatedAt)
+					} as MapMarkerResponse;
+					this.markersMap.set(marker.id, updatedMarker);
+					this.campaign.mapMarkers[index] = updatedMarker;
+				}
+			}
+		}
+	}
+
+	protected handleMarkerDeleted(id: number) {
+		if (this.campaign && 'mapMarkers' in this.campaign) {
+			// O(1) check and delete from Map
+			if (this.markersMap.delete(id)) {
+				// Only filter array if marker existed
+				this.campaign.mapMarkers = this.campaign.mapMarkers.filter(
+					(m: MapMarkerResponse) => m.id !== id
+				);
+			}
+		}
+	}
+
+	protected handleTileHidden(tile: Pick<TileCoords, 'x' | 'y'>) {
+		if (this.campaign && 'revealedTiles' in this.campaign) {
+			const key = `${tile.x}-${tile.y}`;
+
+			// Remove from both Sets (O(1))
+			const wasRevealed = this.revealedTilesSet.delete(key);
+			const wasAlwaysRevealed = this.alwaysRevealedTilesSet.delete(key);
+
+			// Only filter array if tile was actually revealed
+			if (wasRevealed || wasAlwaysRevealed) {
+				this.campaign.revealedTiles = this.campaign.revealedTiles.filter(
+					(t: TileCoords) => !(t.x === tile.x && t.y === tile.y)
+				);
+			}
 		}
 	}
 }

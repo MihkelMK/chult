@@ -8,39 +8,28 @@ export class LocalStateDM extends LocalState {
 	public revealedTilesSet = $state(new SvelteSet<string>());
 	public alwaysRevealedTilesSet = $state(new SvelteSet<string>());
 
-	// Private markers map for O(1) lookups
-	private markersMap = new SvelteMap<number, MapMarkerResponse>();
-
 	constructor(initialData: CampaignDataResponse, campaignSlug: string) {
 		super(initialData, campaignSlug);
 
-		// Initialize Sets from initial data
-		initialData.revealedTiles.forEach((tile) => {
-			const key = `${tile.x}-${tile.y}`;
-			if (tile.alwaysRevealed) {
-				this.alwaysRevealedTilesSet.add(key);
-			} else {
-				this.revealedTilesSet.add(key);
-			}
-		});
-
-		this.markersMap = new SvelteMap(initialData.mapMarkers.map((m) => [m.id, m]));
+		// Initialize Sets and markers map using base class methods
+		this.initializeRevealedTileSets(initialData.revealedTiles);
+		this.initializeMarkersMap(initialData.mapMarkers);
 
 		// Event listeners for synchronization
 		this.addEventListener('tiles-revealed-batch', (tiles) =>
 			this.handleTilesRevealedBatch(tiles as RevealedTileResponse[])
 		);
 		this.addEventListener('tile-hidden', (tile) =>
-			this.handleTileHidden(tile as Pick<RevealedTileResponse, 'x' | 'y'>)
+			super.handleTileHidden(tile as Pick<RevealedTileResponse, 'x' | 'y'>)
 		);
 		this.addEventListener('marker-created', (marker) =>
-			this.handleMarkerCreated(marker as MapMarkerResponse)
+			super.handleMarkerCreated(marker as MapMarkerResponse)
 		);
 		this.addEventListener('marker-updated', (marker) =>
-			this.handleMarkerUpdated(marker as MapMarkerResponse)
+			super.handleMarkerUpdated(marker as MapMarkerResponse)
 		);
 		this.addEventListener('marker-deleted', (data) =>
-			this.handleMarkerDeleted((data as { id: number }).id)
+			super.handleMarkerDeleted((data as { id: number }).id)
 		);
 	}
 
@@ -166,7 +155,8 @@ export class LocalStateDM extends LocalState {
 			...marker,
 			id: tempId,
 			createdAt: new SvelteDate(),
-			updatedAt: new SvelteDate()
+			updatedAt: new SvelteDate(),
+			authorRole: 'dm'
 		};
 
 		// Optimistic update
@@ -220,58 +210,6 @@ export class LocalStateDM extends LocalState {
 		}
 		if (alwaysTiles.length > 0) {
 			this.updateRevealedTiles(alwaysTiles, true);
-		}
-	}
-
-	private handleMarkerCreated(marker: MapMarkerResponse) {
-		if (this.campaign && 'mapMarkers' in this.campaign) {
-			// Check Map first for O(1) duplicate detection
-			if (!this.markersMap.has(marker.id)) {
-				const newMarker = {
-					...marker,
-					createdAt: new SvelteDate(marker.createdAt),
-					updatedAt: new SvelteDate(marker.updatedAt)
-				};
-				this.markersMap.set(marker.id, newMarker);
-				(this.campaign as CampaignDataResponse).mapMarkers.push(newMarker);
-			}
-		}
-	}
-
-	private handleMarkerUpdated(marker: MapMarkerResponse) {
-		if (this.campaign && 'mapMarkers' in this.campaign) {
-			// O(1) lookup in Map
-			if (this.markersMap.has(marker.id)) {
-				const index = (this.campaign as CampaignDataResponse).mapMarkers.findIndex(
-					(m) => m.id === marker.id
-				);
-				if (index !== -1) {
-					const updatedMarker = {
-						...marker,
-						createdAt: new SvelteDate(marker.createdAt),
-						updatedAt: new SvelteDate(marker.updatedAt)
-					};
-					this.markersMap.set(marker.id, updatedMarker);
-					(this.campaign as CampaignDataResponse).mapMarkers[index] = updatedMarker;
-				}
-			}
-		}
-	}
-
-	private handleTileHidden(tile: Pick<RevealedTileResponse, 'x' | 'y'>) {
-		// Use the batched update method (even for single tile from SSE)
-		this.updateHiddenTiles([{ x: tile.x, y: tile.y }]);
-	}
-
-	private handleMarkerDeleted(id: number) {
-		if (this.campaign && 'mapMarkers' in this.campaign) {
-			// O(1) check and delete from Map
-			if (this.markersMap.delete(id)) {
-				// Only filter array if marker existed
-				(this.campaign as CampaignDataResponse).mapMarkers = (
-					this.campaign as CampaignDataResponse
-				).mapMarkers.filter((m) => m.id !== id);
-			}
 		}
 	}
 }

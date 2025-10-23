@@ -62,9 +62,6 @@ export type GameSessionResponse = Pick<
 	'id' | 'name' | 'startTime' | 'endTime' | 'createdAt'
 >;
 
-// Player-filtered marker (omits sensitive fields)
-export type PlayerMapMarkerResponse = Omit<MapMarkerResponse, 'visibleToPlayers' | 'authorRole'>;
-
 // Session data type
 export type SessionData = {
 	campaignId: number;
@@ -96,7 +93,7 @@ export interface PlayerCampaignDataResponse {
 		| 'imageWidth'
 	>;
 	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
-	mapMarkers: PlayerMapMarkerResponse[];
+	mapMarkers: MapMarkerResponse[];
 	gameSessions: never[]; // Players don't get game sessions
 	mapUrls: MapUrlsResponse | undefined;
 }
