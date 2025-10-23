@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { PressedKeys, Previous } from 'runed';
-	import TileContentModal from './TileContentModal.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import {
 		Sheet,
@@ -16,7 +15,7 @@
 	import * as ToggleGroup from '$lib/components/ui/toggle-group/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { HexTriggerEvent, TileCoords } from '$lib/types';
-	import { getCampaignState } from '$lib/contexts/campaignContext';
+	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
 	import {
 		Menu,
 		Plus,
@@ -35,8 +34,6 @@
 		ChevronDownIcon,
 		ChevronUpIcon
 	} from '@lucide/svelte';
-	import type { PlayerTileState } from '$lib/stores/playerTileManager.svelte';
-	import type { TileState } from '$lib/stores/tileManager.svelte';
 	import MapCanvasWrapper from './MapCanvasWrapper.svelte';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -44,11 +41,9 @@
 	interface Props {
 		data: PageData;
 		mode: 'player' | 'dm';
-		tileState: PlayerTileState | TileState;
-		tileManager: any;
 	}
 
-	let { data, mode, tileState, tileManager }: Props = $props();
+	let { data, mode }: Props = $props();
 
 	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
 
@@ -61,8 +56,9 @@
 	// UI State
 	let sidebarOpen = $state(false);
 
-	// Use campaign state for hover management
-	const campaignState = getCampaignState();
+	// Get states from context
+	const localState = getLocalState();
+	const remoteState = getRemoteState();
 
 	// Internal state to track what tool was selected
 	let _selectedTool = $state<'interact' | 'pan' | 'select' | 'paint'>('interact');
@@ -142,20 +138,20 @@
 	}
 
 	// Computed values
-	let currentRevealedTiles = $derived(
-		mode === 'player' && tileState.pending
-			? [...tileState.revealed, tileState.pending.map((tile) => tile.coords)]
-			: tileManager?.getRevealedTiles
-				? tileManager.getRevealedTiles(tileState)
-				: tileState.revealed
-	);
+	// let currentRevealedTiles = $derived(
+	// 	mode === 'player' && localState.pending
+	// 		? [...localState.revealed, localState.pending.map((tile) => tile.coords)]
+	// 		: localState?.getRevealedTiles
+	// 			? localSeate.getRevealedTiles(tileState)
+	// 			: remoteState.revealed
+	// );
 
 	let hasPendingOperations = $derived(
-		mode === 'dm' && tileState.pending && tileState.pending.length > 0
+		mode === 'dm' && remoteState.pending && remoteState.pending.length > 0
 	);
 
 	let hasErrors = $derived(
-		mode === 'dm' && 'errors' in tileState && tileState.errors && tileState.errors.length > 0
+		mode === 'dm' && 'errors' in remoteState && remoteState.errors && remoteState.errors.length > 0
 	);
 
 	// Helper functions for tile content (using campaign state)
@@ -201,20 +197,20 @@
 	}
 
 	function hasPoI(coords: TileCoords) {
-		return campaignState.getTileMarkers(coords, mode).some((m) => m.type === 'poi');
+		return localState.getTileMarkers(coords, mode).some((m) => m.type === 'poi');
 	}
 
 	function hasNotes(coords: TileCoords) {
-		return campaignState.getTileMarkers(coords, mode).some((m) => m.type === 'note');
+		return localState.getTileMarkers(coords, mode).some((m) => m.type === 'note');
 	}
 
 	function isPlayerPosition(coords: TileCoords) {
 		return !!(
 			mode === 'player' &&
-			'currentPosition' in tileState &&
-			tileState.currentPosition &&
-			tileState.currentPosition.x === coords.x &&
-			tileState.currentPosition.y === coords.y
+			'currentPosition' in remoteState &&
+			remoteState.currentPosition &&
+			remoteState.currentPosition.x === coords.x &&
+			remoteState.currentPosition.y === coords.y
 		);
 	}
 
@@ -230,8 +226,8 @@
 	}
 
 	function handleSelect(key: string) {
-		const isRevealed = campaignState.revealedTilesSet.has(key);
-		const isAlwaysRevealed = campaignState.alwaysRevealedTilesSet.has(key);
+		const isRevealed = localState.revealedTilesSet.has(key);
+		const isAlwaysRevealed = localState.alwaysRevealedTilesSet.has(key);
 		const isUnrevealed = !isRevealed && !isAlwaysRevealed;
 
 		// Only select tiles from visible layers
@@ -264,8 +260,8 @@
 
 		switch (activeTool) {
 			case 'interact':
-				// Default action: open new tile content modal
-				campaignState.openTileModal(coords);
+				// TODO: open tile content modal
+				// TODO: maybe add a context menu
 				break;
 			case 'select':
 				// Multi-select mode - toggle selection
@@ -279,8 +275,8 @@
 					const tilesToPaint = getBrushTiles(coords);
 					// Batch updates to the set for better performance
 					for (const key of tilesToPaint) {
-						const isRevealed = campaignState.revealedTilesSet.has(key);
-						const isAlwaysRevealed = campaignState.alwaysRevealedTilesSet.has(key);
+						const isRevealed = localState.revealedTilesSet.has(key);
+						const isAlwaysRevealed = localState.alwaysRevealedTilesSet.has(key);
 						const isUnrevealed = !isRevealed && !isAlwaysRevealed;
 
 						// Only select tiles from visible layers
@@ -414,24 +410,24 @@
 	}
 
 	function revealSelectedTiles() {
-		if (mode === 'dm' && tileManager?.revealTiles) {
+		if (mode === 'dm' && 'revealTiles' in remoteState) {
 			const selectedCoords = getSelectedTileCoordsFromSet(selectedSet);
-			tileManager.revealTiles(selectedCoords, alwaysRevealMode);
+			remoteState.revealTiles(selectedCoords, alwaysRevealMode);
 			clearSelection();
 		}
 	}
 
 	function hideSelectedTiles() {
-		if (mode === 'dm' && tileManager?.hideTiles) {
+		if (mode === 'dm' && 'hideTiles' in remoteState) {
 			const selectedCoords = getSelectedTileCoordsFromSet(selectedSet);
-			tileManager.hideTiles(selectedCoords);
+			remoteState.hideTiles(selectedCoords);
 			clearSelection();
 		}
 	}
 
 	function flushPendingOperations() {
-		if (mode === 'dm' && tileManager?.flush) {
-			tileManager.flush();
+		if (mode === 'dm' && 'flush' in remoteState) {
+			remoteState.flush();
 		}
 	}
 
@@ -512,9 +508,9 @@
 								<Badge variant="destructive" class="text-xs">Error</Badge>
 							{/if}
 
-							{#if mode === 'player' && 'error' in tileState && tileState.error}
+							{#if mode === 'player' && 'error' in remoteState && remoteState.error}
 								<Badge variant="destructive" class="text-xs">
-									{tileState.error}
+									{remoteState.error}
 								</Badge>
 							{/if}
 							{#if _selectedTool === 'select' || _selectedTool === 'paint'}
@@ -740,7 +736,7 @@
 							yOffset={(data.campaign?.hexOffsetY ?? 58) - 2}
 							imageHeight={data.campaign?.imageHeight}
 							imageWidth={data.campaign?.imageWidth}
-							{campaignState}
+							{localState}
 							{selectedSet}
 							showCoords={mode === 'dm' ? 'always' : 'hover'}
 							onHexTriggered={handleTileTrigger}
@@ -972,10 +968,10 @@
 					<div>
 						<h3 class="mb-3 text-sm font-medium">Statistics</h3>
 						<div class="space-y-2">
-							<div class="flex justify-between text-sm">
-								<span class="text-muted-foreground">Revealed Tiles</span>
-								<span class="font-medium">{currentRevealedTiles.length}</span>
-							</div>
+							<!-- 	<div class="flex justify-between text-sm"> -->
+							<!-- 		<span class="text-muted-foreground">Revealed Tiles</span> -->
+							<!-- 		<span class="font-medium">{currentRevealedTiles.length}</span> -->
+							<!-- 	</div> -->
 							<div class="flex justify-between text-sm">
 								<span class="text-muted-foreground">Points of Interest</span>
 								<span class="font-medium">
@@ -991,7 +987,7 @@
 							{#if hasPendingOperations}
 								<div class="flex justify-between text-sm">
 									<span class="text-orange-600">Pending Changes</span>
-									<Badge variant="secondary">{tileState.pending?.length}</Badge>
+									<Badge variant="secondary">{remoteState.pending?.length}</Badge>
 								</div>
 							{/if}
 						</div>
@@ -1016,7 +1012,7 @@
 										class="w-full"
 										onclick={flushPendingOperations}
 									>
-										Save {tileState.pending?.length} Changes Now
+										Save {remoteState.pending?.length} Changes Now
 									</Button>
 								{/if}
 							</div>
@@ -1033,7 +1029,7 @@
 							</div>
 						</div>
 
-						{#if 'currentPosition' in tileState && tileState.currentPosition}
+						{#if 'currentPosition' in remoteState && remoteState.currentPosition}
 							<div>
 								<h3 class="mb-3 text-sm font-medium">Current Position</h3>
 								<div
@@ -1041,7 +1037,7 @@
 								>
 									<User class="w-4 h-4 text-green-600" />
 									<span class="text-sm">
-										{tileState.currentPosition.x + 1}, {tileState.currentPosition.y + 1}
+										{remoteState.currentPosition.x + 1}, {remoteState.currentPosition.y + 1}
 									</span>
 								</div>
 							</div>
@@ -1069,17 +1065,3 @@
 		</Sheet>
 	</div>
 </Tooltip.Provider>
-
-<!-- New Tile Content Modal -->
-{#if campaignState.modalTile}
-	<TileContentModal
-		coords={campaignState.modalTile}
-		role={mode}
-		bind:open={campaignState.showTileModal}
-		onOpenChange={(open) => {
-			if (!open) {
-				campaignState.closeTileModal();
-			}
-		}}
-	/>
-{/if}

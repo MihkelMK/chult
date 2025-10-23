@@ -188,6 +188,7 @@ export async function getCampaignData(
 			id: campaign.id,
 			name: campaign.name,
 			slug: campaign.slug,
+			createdAt: campaign.createdAt,
 			hexOffsetX: campaign.hexOffsetX,
 			hexOffsetY: campaign.hexOffsetY,
 			hexesPerCol: campaign.hexesPerCol,

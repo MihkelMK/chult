@@ -4,6 +4,7 @@
 	import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
 	import { type Component } from 'svelte';
 	import LoadingBar from './LoadingBar.svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	let {
 		mapUrls,
@@ -27,7 +28,7 @@
 		zoom,
 		showAnimations = true,
 		showCoords = 'hover',
-		campaignState,
+		localState,
 		selectedSet,
 		onHexTriggered = () => {},
 		onMapLoad = () => {},
@@ -89,6 +90,61 @@
 	let hexGrid = $derived(
 		generateHexGrid(hexesPerCol, hexesPerRow, horizontalSpacing, verticalSpacing)
 	);
+
+	// Create a Map for O(1) lookups from coordinates to Hex objects
+	let hexMap = $derived.by(() => {
+		const map = new SvelteMap<string, Hex>();
+		for (const hex of hexGrid) {
+			map.set(`${hex.col}-${hex.row}`, hex);
+		}
+		return map;
+	});
+
+	// Optimized filtered tile arrays - O(n) where n = size of Set, not size of hexGrid
+	// Track tilesVersion to ensure reactivity when Sets change
+	let revealedTiles = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		localState.tilesVersion; // Track version changes
+		const tiles: Hex[] = [];
+		for (const key of localState.revealedTilesSet) {
+			const hex = hexMap.get(key);
+			if (hex) tiles.push(hex);
+		}
+		return tiles;
+	});
+
+	let alwaysRevealedTiles = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		localState.tilesVersion; // Track version changes
+		const tiles: Hex[] = [];
+		for (const key of localState.alwaysRevealedTilesSet) {
+			const hex = hexMap.get(key);
+			if (hex) tiles.push(hex);
+		}
+		return tiles;
+	});
+
+	let unrevealedTiles = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		localState.tilesVersion; // Track version changes
+		const tiles: Hex[] = [];
+		for (const hex of hexGrid) {
+			const key = `${hex.col}-${hex.row}`;
+			if (!localState.revealedTilesSet.has(key) && !localState.alwaysRevealedTilesSet.has(key)) {
+				tiles.push(hex);
+			}
+		}
+		return tiles;
+	});
+
+	let selectedTiles = $derived.by(() => {
+		const tiles: Hex[] = [];
+		for (const key of selectedSet) {
+			const hex = hexMap.get(key);
+			if (hex) tiles.push(hex);
+		}
+		return tiles;
+	});
 </script>
 
 {#await MapCanvasLoader}
@@ -102,9 +158,10 @@
 		{hexGrid}
 		{canvasWidth}
 		{canvasHeight}
-		revealedSet={campaignState.revealedTilesSet}
-		alwaysRevealedSet={campaignState.alwaysRevealedTilesSet}
-		{selectedSet}
+		{revealedTiles}
+		{alwaysRevealedTiles}
+		{unrevealedTiles}
+		{selectedTiles}
 		{image}
 		{zoom}
 		{cursorMode}

@@ -26,7 +26,19 @@ export type NewNavigationPath = InferInsertModel<typeof navigationPaths>;
 export type NewUploadedImage = InferInsertModel<typeof uploadedImages>;
 
 // Response types that match your actual queries
-export type CampaignSummary = Pick<Campaign, 'id' | 'name' | 'slug' | 'createdAt'>;
+export type CampaignSummary = Pick<
+	Campaign,
+	| 'id'
+	| 'name'
+	| 'slug'
+	| 'createdAt'
+	| 'hexesPerRow'
+	| 'hexesPerCol'
+	| 'hexOffsetX'
+	| 'hexOffsetY'
+	| 'imageHeight'
+	| 'imageWidth'
+>;
 
 export type RevealedTileResponse = Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed' | 'revealedAt'>;
 
@@ -49,9 +61,6 @@ export type GameSessionResponse = Pick<
 	GameSession,
 	'id' | 'name' | 'startTime' | 'endTime' | 'createdAt'
 >;
-
-// Player-filtered marker (omits sensitive fields)
-export type PlayerMapMarkerResponse = Omit<MapMarkerResponse, 'visibleToPlayers' | 'authorRole'>;
 
 // Session data type
 export type SessionData = {
@@ -84,7 +93,7 @@ export interface PlayerCampaignDataResponse {
 		| 'imageWidth'
 	>;
 	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
-	mapMarkers: PlayerMapMarkerResponse[];
+	mapMarkers: MapMarkerResponse[];
 	gameSessions: never[]; // Players don't get game sessions
 	mapUrls: MapUrlsResponse | undefined;
 }

@@ -6,9 +6,7 @@ import { revealedTiles } from '$lib/server/db/schema';
 import eventEmitter from '$lib/server/events';
 
 export const POST: RequestHandler = async (event) => {
-	console.log(event);
 	const session = requireAuth(event, 'player');
-	console.log(session);
 
 	if (!session) {
 		return error(401, 'Unauthorized');
