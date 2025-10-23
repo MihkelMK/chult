@@ -1,9 +1,9 @@
-import type { Actions } from './$types';
-import { fail, redirect } from '@sveltejs/kit';
-import { createSession } from '$lib/server/session';
 import { PRIVATE_DM_TOKEN } from '$env/static/private';
 import { createCampaign } from '$lib/server/campaign';
+import { createSession } from '$lib/server/session';
 import type { Campaign } from '$lib/types';
+import { fail, redirect } from '@sveltejs/kit';
+import type { Actions } from './$types';
 
 export const actions: Actions = {
 	create: async (event) => {

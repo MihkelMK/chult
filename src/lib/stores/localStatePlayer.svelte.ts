@@ -1,4 +1,4 @@
-import type { PlayerCampaignDataResponse, RevealedTile, MapMarkerResponse } from '$lib/types';
+import type { MapMarkerResponse, PlayerCampaignDataResponse, RevealedTile } from '$lib/types';
 import { SvelteDate, SvelteSet } from 'svelte/reactivity';
 import { LocalState } from './localState.svelte';
 

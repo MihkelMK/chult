@@ -1,16 +1,15 @@
-import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import {
 	campaigns,
-	revealedTiles,
+	gameSessions,
 	mapMarkers,
 	navigationPaths,
-	uploadedImages,
-	gameSessions,
-	sessions,
 	paths,
+	revealedTiles,
+	sessions,
 	timeAuditLog,
-	type PathStep
+	uploadedImages
 } from '$lib/server/db/schema';
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type { MapUrlsResponse } from './imgproxy';
 
 // Export PathStep types from schema

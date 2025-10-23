@@ -1,15 +1,15 @@
 import { browser } from '$app/environment';
 import type {
 	CampaignDataResponse,
-	PlayerCampaignDataResponse,
-	TileCoords,
 	MapMarkerResponse,
+	PathResponse,
+	PlayerCampaignDataResponse,
 	RevealedTile,
 	SessionResponse,
-	PathResponse
+	TileCoords
 } from '$lib/types';
 import EventEmitter from 'eventemitter3';
-import { SvelteSet, SvelteMap, SvelteDate } from 'svelte/reactivity';
+import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 // Define a type for the event listener to ensure type safety
 type EventListener<T> = (data: T) => void;

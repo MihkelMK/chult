@@ -1,15 +1,15 @@
+import { relations } from 'drizzle-orm';
 import {
+	boolean,
+	doublePrecision,
+	index,
+	integer,
+	jsonb,
 	pgTable,
 	serial,
 	text,
-	integer,
-	timestamp,
-	boolean,
-	doublePrecision,
-	jsonb,
-	index
+	timestamp
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
 
 // Campaigns table - main campaign data
 export const campaigns = pgTable(

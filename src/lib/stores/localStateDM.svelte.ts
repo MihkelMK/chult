@@ -1,14 +1,14 @@
-import { LocalState } from './localState.svelte';
 import type {
 	CampaignDataResponse,
 	MapMarkerResponse,
-	RevealedTileResponse,
-	SessionResponse,
 	PathResponse,
-	PathStep
+	PathStep,
+	RevealedTileResponse,
+	SessionResponse
 } from '$lib/types';
-import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { untrack } from 'svelte';
+import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
+import { LocalState } from './localState.svelte';
 
 export class LocalStateDM extends LocalState {
 	// Public reactive Sets - UI source of truth

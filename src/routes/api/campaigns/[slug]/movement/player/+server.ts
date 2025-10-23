@@ -1,10 +1,10 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
-import { campaigns, sessions, paths, revealedTiles, timeAuditLog } from '$lib/server/db/schema';
-import type { PathStep } from '$lib/types';
-import { eq, and } from 'drizzle-orm';
+import { campaigns, paths, revealedTiles, sessions, timeAuditLog } from '$lib/server/db/schema';
 import { emitEvent } from '$lib/server/events';
+import type { PathStep } from '$lib/types';
+import { error, json } from '@sveltejs/kit';
+import { and, eq } from 'drizzle-orm';
+import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	// Both DM and players can make player moves

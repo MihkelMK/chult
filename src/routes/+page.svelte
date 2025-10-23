@@ -11,9 +11,9 @@
 	let isValid = $derived(campaignSlug.trim() && accessToken.trim());
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-100">
-	<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-md">
-		<h1 class="mb-6 text-center text-2xl font-bold">D&D Campaign Map</h1>
+<div class="flex justify-center items-center min-h-screen bg-gray-100">
+	<div class="p-6 w-full max-w-md bg-white rounded-lg shadow-md">
+		<h1 class="mb-6 text-2xl font-bold text-center">D&D Campaign Map</h1>
 
 		<form
 			method="POST"
@@ -36,7 +36,7 @@
 			}}
 		>
 			<div class="mb-4">
-				<label for="campaignSlug" class="mb-2 block text-sm font-medium text-gray-700">
+				<label for="campaignSlug" class="block mb-2 text-sm font-medium text-gray-700">
 					Campaign Code
 				</label>
 				<input
@@ -45,13 +45,13 @@
 					type="text"
 					required
 					bind:value={campaignSlug}
-					class="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+					class="py-2 px-3 w-full rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 					placeholder="Enter campaign code"
 				/>
 			</div>
 
 			<div class="mb-6">
-				<label for="accessToken" class="mb-2 block text-sm font-medium text-gray-700">
+				<label for="accessToken" class="block mb-2 text-sm font-medium text-gray-700">
 					Access Token
 				</label>
 				<input
@@ -60,13 +60,13 @@
 					type="password"
 					required
 					bind:value={accessToken}
-					class="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+					class="py-2 px-3 w-full rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 					placeholder="Enter access token"
 				/>
 			</div>
 
 			{#if error}
-				<div class="mb-4 rounded border border-red-400 bg-red-100 p-3 text-red-700">
+				<div class="p-3 mb-4 text-red-700 bg-red-100 rounded border border-red-400">
 					{error}
 				</div>
 			{/if}
@@ -74,7 +74,7 @@
 			<button
 				type="submit"
 				disabled={loading || !isValid}
-				class="w-full rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+				class="py-2 px-4 w-full text-white bg-blue-600 rounded-md transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
 			>
 				{loading ? 'Accessing...' : 'Access Campaign'}
 			</button>

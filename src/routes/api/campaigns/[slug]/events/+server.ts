@@ -1,7 +1,7 @@
-import { error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 import eventEmitter from '$lib/server/events';
 import { requireAuth } from '$lib/server/session';
+import { error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
 	const { params } = event;

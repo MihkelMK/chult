@@ -1,7 +1,7 @@
-import type { LayoutServerLoad } from './$types';
-import { error, redirect } from '@sveltejs/kit';
 import { getCampaignData } from '$lib/server/campaign';
 import type { PlayerCampaignDataResponse } from '$lib/types/database';
+import { error, redirect } from '@sveltejs/kit';
+import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, params, depends }) => {
 	if (!locals.session) {

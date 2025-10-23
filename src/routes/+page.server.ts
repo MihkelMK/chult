@@ -1,6 +1,6 @@
-import type { Actions } from './$types';
+import { createSession, validateCampaignAccess } from '$lib/server/session';
 import { fail, redirect } from '@sveltejs/kit';
-import { validateCampaignAccess, createSession } from '$lib/server/session';
+import type { Actions } from './$types';
 
 export const actions: Actions = {
 	access: async (event) => {

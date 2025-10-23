@@ -1,7 +1,7 @@
-import type { RequestHandler } from './$types';
-import { json, error } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/session';
 import { generateMarkerImageVariants, hasMarkerImage } from '$lib/server/imgproxy';
+import { requireAuth } from '$lib/server/session';
+import { error, json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
 	const session = requireAuth(event);

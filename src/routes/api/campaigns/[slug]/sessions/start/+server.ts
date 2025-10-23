@@ -1,9 +1,9 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
-import { campaigns, sessions, paths } from '$lib/server/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { campaigns, paths, sessions } from '$lib/server/db/schema';
 import { emitEvent } from '$lib/server/events';
+import { error, json } from '@sveltejs/kit';
+import { and, desc, eq } from 'drizzle-orm';
+import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals, params }) => {
 	if (!locals.session || locals.session.role !== 'dm') {

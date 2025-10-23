@@ -1,12 +1,12 @@
-import type { RequestHandler } from './$types';
-import { json, error } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/session';
 import { db } from '$lib/server/db';
 import { mapMarkers } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import eventEmitter from '$lib/server/events';
+import { requireAuth } from '$lib/server/session';
+import { error, json } from '@sveltejs/kit';
+import { and, eq } from 'drizzle-orm';
+import { mkdir, writeFile } from 'fs/promises';
+import path from 'path';
+import type { RequestHandler } from './$types';
 
 const UPLOADS_BASE = process.env.UPLOADS_DIR || '/tmp/uploads';
 

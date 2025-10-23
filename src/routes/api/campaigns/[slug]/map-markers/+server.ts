@@ -1,9 +1,9 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { mapMarkers } from '$lib/server/db/schema';
-import { requireAuth } from '$lib/server/session';
 import eventEmitter from '$lib/server/events';
+import { requireAuth } from '$lib/server/session';
+import { error, json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async (event) => {
 	const { request, params } = event;

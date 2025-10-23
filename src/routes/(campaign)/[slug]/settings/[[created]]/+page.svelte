@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import MapCanvasWrapper from '$lib/components/map/MapCanvasWrapper.svelte';
+	import MapUpload from '$lib/components/map/MapUpload.svelte';
+	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Card,
@@ -7,28 +11,24 @@
 		CardHeader,
 		CardTitle
 	} from '$lib/components/ui/card';
-	import { Slider } from '$lib/components/ui/slider';
 	import { Separator } from '$lib/components/ui/separator';
-	import { Badge } from '$lib/components/ui/badge';
-	import MapUpload from '$lib/components/map/MapUpload.svelte';
+	import { Slider } from '$lib/components/ui/slider';
+	import { getLocalState } from '$lib/contexts/campaignContext';
 	import {
+		AlertCircle,
+		Check,
+		Copy,
+		Crown,
 		Eye,
 		EyeOff,
-		Copy,
-		Check,
+		Map as MapIcon,
 		Settings,
 		Users,
-		Crown,
-		AlertCircle,
 		ZoomIn,
-		ZoomOut,
-		Map as MapIcon
+		ZoomOut
 	} from '@lucide/svelte';
-	import type { PageData } from './$types';
-	import { page } from '$app/state';
-	import MapCanvasWrapper from '$lib/components/map/MapCanvasWrapper.svelte';
-	import { getLocalState } from '$lib/contexts/campaignContext';
 	import { SvelteSet } from 'svelte/reactivity';
+	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 

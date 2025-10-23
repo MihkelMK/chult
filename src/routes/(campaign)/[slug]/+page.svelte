@@ -1,11 +1,11 @@
 <script lang="ts">
 	import MapView from '$lib/components/MapView.svelte';
-	import type { PageData } from './$types';
 	import { getLocalState, setRemoteState } from '$lib/contexts/campaignContext';
-	import { RemoteStatePlayer } from '$lib/stores/remoteStatePlayer.svelte';
+	import type { LocalStateDM } from '$lib/stores/localStateDM.svelte';
 	import type { LocalStatePlayer } from '$lib/stores/localStatePlayer.svelte';
 	import { RemoteStateDM } from '$lib/stores/remoteStateDM.svelte';
-	import type { LocalStateDM } from '$lib/stores/localStateDM.svelte';
+	import { RemoteStatePlayer } from '$lib/stores/remoteStatePlayer.svelte';
+	import type { PageData } from './$types';
 
 	interface Props {
 		data: PageData;

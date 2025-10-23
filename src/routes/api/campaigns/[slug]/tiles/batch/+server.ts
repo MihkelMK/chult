@@ -1,10 +1,10 @@
-import type { RequestHandler } from './$types';
-import { json, error } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/session';
 import { db } from '$lib/server/db';
-import { eq, and, or } from 'drizzle-orm';
 import { revealedTiles } from '$lib/server/db/schema';
 import eventEmitter from '$lib/server/events';
+import { requireAuth } from '$lib/server/session';
+import { error, json } from '@sveltejs/kit';
+import { and, eq, or } from 'drizzle-orm';
+import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async (event) => {
 	const session = requireAuth(event, 'dm');
