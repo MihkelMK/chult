@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PressedKeys } from 'runed';
+	import { PressedKeys, Previous } from 'runed';
 	import TileContentModal from './TileContentModal.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import {
@@ -76,7 +76,6 @@
 
 	let loading = $state(false);
 	let brushSize = $state<number>(3); // Brush radius (1-5)
-	let isDragging = $state(false);
 	let alwaysRevealMode = $state(false);
 	let showAlwaysRevealed = $state(false);
 	let showRevealed = $state(false);
@@ -89,6 +88,59 @@
 	let zoomIndex = $state(0);
 	let zoom = $derived(zoomSteps[zoomIndex]);
 
+	let isDragging = $state(false);
+	let previousIsDragging = new Previous(() => isDragging);
+
+	let selectedSet = new SvelteSet<string>();
+	let selectionHistory = $state<SvelteSet<string>[]>([new SvelteSet<string>()]);
+	let historyIndex = $state(0);
+
+	function areSetsEqual(a: SvelteSet<string>, b: SvelteSet<string>): boolean {
+		if (a.size !== b.size) return false;
+		for (const item of a) if (!b.has(item)) return false;
+		return true;
+	}
+
+	function saveSelectionState() {
+		// Only save if selection actually changed
+		const last = selectionHistory[historyIndex];
+
+		if (!last || !areSetsEqual(selectedSet, last)) {
+			const current = new SvelteSet(selectedSet);
+			selectionHistory = selectionHistory.slice(0, historyIndex + 1);
+			selectionHistory.push(current);
+			historyIndex++;
+
+			// Keep last 50 states
+			if (selectionHistory.length > 50) {
+				selectionHistory.shift();
+				historyIndex--;
+			}
+		}
+	}
+
+	function undoSelection() {
+		if (historyIndex > 0) {
+			historyIndex--;
+			const historicalSet = selectionHistory[historyIndex];
+			selectedSet.clear();
+			for (const item of historicalSet) {
+				selectedSet.add(item);
+			}
+		}
+	}
+
+	function redoSelection() {
+		if (historyIndex < selectionHistory.length - 1) {
+			historyIndex++;
+			const historicalSet = selectionHistory[historyIndex];
+			selectedSet.clear();
+			for (const item of historicalSet) {
+				selectedSet.add(item);
+			}
+		}
+	}
+
 	// Computed values
 	let currentRevealedTiles = $derived(
 		mode === 'player' && tileState.pending
@@ -97,8 +149,6 @@
 				? tileManager.getRevealedTiles(tileState)
 				: tileState.revealed
 	);
-
-	let selectedSet = new SvelteSet<string>();
 
 	let hasPendingOperations = $derived(
 		mode === 'dm' && tileState.pending && tileState.pending.length > 0
@@ -168,8 +218,15 @@
 		);
 	}
 
-	function clearSelection() {
+	function clearSelection(clearHistory: boolean = true) {
 		selectedSet.clear();
+
+		if (clearHistory) {
+			selectionHistory = [new SvelteSet<string>()];
+			historyIndex = 0;
+		} else {
+			saveSelectionState();
+		}
 	}
 
 	function handleSelect(key: string) {
@@ -220,7 +277,33 @@
 				// Paint mode - paint multiple tiles based on brush size
 				if (mode === 'dm') {
 					const tilesToPaint = getBrushTiles(coords);
-					tilesToPaint.forEach((key) => handleSelect(key));
+					// Batch updates to the set for better performance
+					for (const key of tilesToPaint) {
+						const isRevealed = campaignState.revealedTilesSet.has(key);
+						const isAlwaysRevealed = campaignState.alwaysRevealedTilesSet.has(key);
+						const isUnrevealed = !isRevealed && !isAlwaysRevealed;
+
+						// Only select tiles from visible layers
+						const canSelect =
+							(isUnrevealed && showUnrevealed) ||
+							(isRevealed && showRevealed) ||
+							(isAlwaysRevealed && showAlwaysRevealed);
+
+						if (!canSelect) {
+							continue;
+						}
+
+						// Return if tile selected and we want to add or if tile not selected and we want to remove
+						if (selectedSet.has(key) === (activeSelectMode === 'add')) {
+							continue;
+						}
+
+						if (activeSelectMode === 'add') {
+							selectedSet.add(key);
+						} else {
+							selectedSet.delete(key);
+						}
+					}
 				}
 				break;
 			case 'pan':
@@ -265,12 +348,22 @@
 			return;
 		}
 
+		if (event.code === 'KeyZ' && event.ctrlKey) {
+			if (event.shiftKey) {
+				redoSelection();
+			} else {
+				undoSelection();
+			}
+			return;
+		}
+
 		switch (event.code) {
 			case 'Escape':
 				event.preventDefault();
 				if (selectedSet.size > 0) {
-					clearSelection();
+					clearSelection(false);
 				} else if (_selectedTool !== 'interact') {
+					clearSelection(true);
 					_selectedTool = 'interact';
 				}
 				break;
@@ -349,6 +442,13 @@
 		return () => {
 			document.removeEventListener('keydown', handleKeyDown);
 		};
+	});
+
+	$effect(() => {
+		// Save state only when dragging has just finished
+		if (previousIsDragging.current && !isDragging) {
+			saveSelectionState();
+		}
 	});
 </script>
 
@@ -513,7 +613,7 @@
 												disabled={selectedSet.size === 0}
 												variant="ghost"
 												size="sm"
-												onclick={clearSelection}
+												onclick={() => clearSelection()}
 											>
 												<Trash2 class="w-4 h-4" />
 											</Button>
@@ -624,6 +724,7 @@
 				>
 					{#if data.mapUrls}
 						<MapCanvasWrapper
+							bind:isDragging
 							{canvasHeight}
 							{canvasWidth}
 							mapUrls={data.mapUrls}

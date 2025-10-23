@@ -6,6 +6,7 @@
 		image,
 		hexGrid,
 		isDM,
+		isDragging = $bindable(),
 		selectedSet,
 		revealedSet,
 		alwaysRevealedSet,
@@ -96,7 +97,6 @@
 	let gridWidth = $derived(imageWidth - 2 * xOffset - gridClipX * 2);
 	let gridHeight = $derived(imageHeight - 2 * yOffset - gridClipY * 2);
 
-	let isDragging = $state(false);
 	let lastPaintedTile = $state<string | null>(null);
 
 	let fogLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();

@@ -54,6 +54,7 @@ export interface CanvasImage {
 
 interface MapCanvasSharedProps {
 	isDM?: boolean;
+	isDragging: boolean;
 	previewMode: boolean;
 	canvasHeight: number;
 	canvasWidth: number;

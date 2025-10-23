@@ -9,6 +9,7 @@
 		mapUrls,
 		variant = 'detail',
 		isDM = false,
+		isDragging = $bindable(),
 		previewMode = false,
 		showAlwaysRevealed = false,
 		showRevealed = false,
@@ -97,6 +98,7 @@
 		<LoadingBar />
 	{/if}
 	<MapCanvas
+		bind:isDragging
 		{hexGrid}
 		{canvasWidth}
 		{canvasHeight}
