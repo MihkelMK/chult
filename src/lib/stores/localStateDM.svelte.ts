@@ -1,5 +1,12 @@
 import { LocalState } from './localState.svelte';
-import type { CampaignDataResponse, MapMarkerResponse, RevealedTileResponse } from '$lib/types';
+import type {
+	CampaignDataResponse,
+	MapMarkerResponse,
+	RevealedTileResponse,
+	SessionResponse,
+	PathResponse,
+	PathStep
+} from '$lib/types';
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { untrack } from 'svelte';
 
@@ -30,6 +37,20 @@ export class LocalStateDM extends LocalState {
 		);
 		this.addEventListener('marker-deleted', (data) =>
 			super.handleMarkerDeleted((data as { id: number }).id)
+		);
+
+		// Exploration event listeners (NEW)
+		this.addEventListener('session:started', (session) =>
+			this.handleSessionStarted(session as SessionResponse)
+		);
+		this.addEventListener('session:ended', (session) =>
+			this.handleSessionEnded(session as SessionResponse)
+		);
+		this.addEventListener('movement:step-added', (data) =>
+			this.handleMovementStepAdded(data as { sessionId: number; step: PathStep; tiles: string[] })
+		);
+		this.addEventListener('time:updated', (data) =>
+			this.handleTimeUpdated(data as { globalGameTime: number })
 		);
 	}
 
@@ -210,6 +231,130 @@ export class LocalStateDM extends LocalState {
 		}
 		if (alwaysTiles.length > 0) {
 			this.updateRevealedTiles(alwaysTiles, true);
+		}
+	}
+
+	// Exploration event handlers (NEW)
+
+	private handleSessionStarted(session: SessionResponse) {
+		console.log('[localStateDM] SSE session:started', session);
+
+		// Check if session already exists (from optimistic update)
+		const existingIndex = this.sessions.findIndex((s) => s.id === session.id);
+		if (existingIndex !== -1) {
+			// Update existing session
+			this.sessions[existingIndex] = session;
+		} else {
+			// Add new session
+			this.sessions.push(session);
+		}
+
+		// Create empty path for this session
+		const newPath: PathResponse = {
+			id: session.id, // Path ID matches session ID for simplicity
+			sessionId: session.id,
+			steps: [],
+			revealedTiles: []
+		};
+		this.pathsMap.set(session.id, newPath);
+	}
+
+	private handleSessionEnded(session: SessionResponse) {
+		console.log('[localStateDM] SSE session:ended', session);
+
+		// Update session in array
+		const index = this.sessions.findIndex((s) => s.id === session.id);
+		if (index !== -1) {
+			this.sessions[index] = session;
+		}
+	}
+
+	private handleMovementStepAdded(data: { sessionId: number; step: PathStep; tiles: string[] }) {
+		console.log('[localStateDM] SSE movement:step-added', data);
+
+		const path = this.pathsMap.get(data.sessionId);
+		if (!path) {
+			console.warn('[localStateDM] Path not found for session', data.sessionId);
+			return;
+		}
+
+		// Check if step already exists (from optimistic update)
+		const stepExists = path.steps.some((s) => this.stepsEqual(s, data.step));
+		if (stepExists) {
+			console.log('[localStateDM] Step already exists (optimistic)');
+			return;
+		}
+
+		// Add step to path
+		path.steps.push(data.step);
+
+		// Add revealed tiles to path
+		data.tiles.forEach((tileKey) => {
+			if (!path.revealedTiles.includes(tileKey)) {
+				path.revealedTiles.push(tileKey);
+			}
+		});
+
+		// Update party token position
+		const destination = this.getStepDestination(data.step);
+		if (destination) {
+			const [col, row] = destination.split('-').map(Number);
+			this.partyTokenPosition = { x: col, y: row };
+		}
+
+		// Update global game time from step
+		this.globalGameTime = data.step.gameTime;
+
+		// Force reactivity
+		this.pathsMap = new SvelteMap(this.pathsMap);
+	}
+
+	private handleTimeUpdated(data: { globalGameTime: number }) {
+		console.log('[localStateDM] SSE time:updated', data);
+		this.globalGameTime = data.globalGameTime;
+	}
+
+	// Helper methods
+
+	private stepsEqual(a: PathStep, b: PathStep): boolean {
+		if (a.type !== b.type) return false;
+
+		switch (a.type) {
+			case 'player_move':
+				return (
+					b.type === 'player_move' &&
+					a.tileKey === b.tileKey &&
+					Math.abs(a.gameTime - b.gameTime) < 0.001
+				);
+			case 'dm_teleport':
+				return (
+					b.type === 'dm_teleport' &&
+					a.fromTile === b.fromTile &&
+					a.toTile === b.toTile &&
+					Math.abs(a.gameTime - b.gameTime) < 0.001
+				);
+			case 'dm_path':
+				return (
+					b.type === 'dm_path' &&
+					a.tiles.length === b.tiles.length &&
+					a.tiles.every((t, i) => t === b.tiles[i]) &&
+					Math.abs(a.gameTime - b.gameTime) < 0.001
+				);
+			default:
+				return false;
+		}
+	}
+
+	private getStepDestination(step: PathStep): string | null {
+		switch (step.type) {
+			case 'player_move':
+				return step.tileKey;
+			case 'dm_teleport':
+				return step.toTile;
+			case 'dm_path':
+				return step.tiles[step.tiles.length - 1] || null;
+			default:
+				return null;
 		}
 	}
 }

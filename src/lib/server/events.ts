@@ -6,3 +6,8 @@ import { EventEmitter } from 'events';
 const eventEmitter = new EventEmitter();
 
 export default eventEmitter;
+
+// Helper function to emit events for a specific campaign
+export function emitEvent(campaignSlug: string, eventType: string, data: unknown) {
+	eventEmitter.emit(`${campaignSlug}:${eventType}`, data);
+}

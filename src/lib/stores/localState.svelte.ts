@@ -4,7 +4,9 @@ import type {
 	PlayerCampaignDataResponse,
 	TileCoords,
 	MapMarkerResponse,
-	RevealedTile
+	RevealedTile,
+	SessionResponse,
+	PathResponse
 } from '$lib/types';
 import EventEmitter from 'eventemitter3';
 import { SvelteSet, SvelteMap, SvelteDate } from 'svelte/reactivity';
@@ -27,6 +29,12 @@ export class LocalState extends EventEmitter {
 	// Protected markers map for O(1) lookups (shared between DM and Player)
 	protected markersMap = new SvelteMap<number, MapMarkerResponse>();
 
+	// Exploration state (NEW)
+	public globalGameTime = $state(0); // Days as float
+	public partyTokenPosition = $state<TileCoords | null>(null);
+	public sessions = $state<SessionResponse[]>([]);
+	protected pathsMap = new SvelteMap<number, PathResponse>(); // sessionId -> PathResponse
+
 	// Hex grid configuration (reactive so we can update if settings change)
 	protected hexesPerRow = $state(0);
 	protected hexesPerCol = $state(0);
@@ -47,6 +55,16 @@ export class LocalState extends EventEmitter {
 	protected horizontalSpacing = $derived(this.hexRadius * 1.5);
 	protected verticalSpacing = $derived(this.hexHeight);
 
+	// Derived exploration properties
+	public activeSession = $derived.by(() => {
+		return this.sessions.find((s) => s.isActive) ?? null;
+	});
+
+	public currentPath = $derived.by(() => {
+		if (!this.activeSession) return null;
+		return this.pathsMap.get(this.activeSession.id) ?? null;
+	});
+
 	// Version counter to force reactivity when Sets change
 	public tilesVersion = $state(0);
 
@@ -65,6 +83,17 @@ export class LocalState extends EventEmitter {
 		this.imageHeight = initialData.campaign.imageHeight;
 		this.xOffset = initialData.campaign.hexOffsetX;
 		this.yOffset = initialData.campaign.hexOffsetY + 50;
+
+		// Initialize exploration state (NEW)
+		this.globalGameTime = initialData.campaign.globalGameTime;
+		if (initialData.campaign.partyTokenX !== null && initialData.campaign.partyTokenY !== null) {
+			this.partyTokenPosition = {
+				x: initialData.campaign.partyTokenX,
+				y: initialData.campaign.partyTokenY
+			};
+		}
+		this.sessions = initialData.sessions || [];
+		this.initializePathsMap(initialData.paths || []);
 
 		if (browser) {
 			this.connect();
@@ -137,6 +166,52 @@ export class LocalState extends EventEmitter {
 				tilesArray.forEach((tile) => this.emit('tile-hidden', tile));
 			} catch (error) {
 				console.error('Failed to parse tile-hidden event:', error);
+			}
+		});
+
+		// Exploration SSE listeners (NEW)
+		this.eventSource.addEventListener('session:started', (event) => {
+			try {
+				const session = JSON.parse(event.data);
+				this.emit('session:started', session);
+			} catch (error) {
+				console.error('Failed to parse session:started event:', error);
+			}
+		});
+
+		this.eventSource.addEventListener('session:ended', (event) => {
+			try {
+				const session = JSON.parse(event.data);
+				this.emit('session:ended', session);
+			} catch (error) {
+				console.error('Failed to parse session:ended event:', error);
+			}
+		});
+
+		this.eventSource.addEventListener('movement:step-added', (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				this.emit('movement:step-added', data);
+			} catch (error) {
+				console.error('Failed to parse movement:step-added event:', error);
+			}
+		});
+
+		this.eventSource.addEventListener('movement:step-reverted', (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				this.emit('movement:step-reverted', data);
+			} catch (error) {
+				console.error('Failed to parse movement:step-reverted event:', error);
+			}
+		});
+
+		this.eventSource.addEventListener('time:updated', (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				this.emit('time:updated', data);
+			} catch (error) {
+				console.error('Failed to parse time:updated event:', error);
 			}
 		});
 	}
@@ -219,6 +294,10 @@ export class LocalState extends EventEmitter {
 
 	protected initializeMarkersMap(markers: MapMarkerResponse[]) {
 		this.markersMap = new SvelteMap(markers.map((m) => [m.id, m]));
+	}
+
+	protected initializePathsMap(paths: PathResponse[]) {
+		this.pathsMap = new SvelteMap(paths.map((p) => [p.sessionId, p]));
 	}
 
 	// Protected shared event handlers

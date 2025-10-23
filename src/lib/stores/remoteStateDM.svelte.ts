@@ -323,6 +323,101 @@ export class RemoteStateDM {
 		this.scheduleBatch();
 	}
 
+	// Exploration methods (NEW)
+
+	async startSession(name: string) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/sessions/start`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to start session');
+			}
+
+			const session = await response.json();
+			console.log('[remoteStateDM] Session started:', session);
+
+			// SSE will handle the state update
+			return session;
+		} catch (error) {
+			console.error('[remoteStateDM] Failed to start session:', error);
+			throw error;
+		}
+	}
+
+	async endSession() {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		const activeSession = this.localState.activeSession;
+		if (!activeSession) {
+			throw new Error('No active session');
+		}
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/sessions/end`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' }
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to end session');
+			}
+
+			const session = await response.json();
+			console.log('[remoteStateDM] Session ended:', session);
+
+			// SSE will handle the state update
+			return session;
+		} catch (error) {
+			console.error('[remoteStateDM] Failed to end session:', error);
+			throw error;
+		}
+	}
+
+	async addPlayerMove(tileKey: string) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		const activeSession = this.localState.activeSession;
+		if (!activeSession) {
+			throw new Error('No active session');
+		}
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/movement/player`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tileKey })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to add player move');
+			}
+
+			const result = await response.json();
+			console.log('[remoteStateDM] Player move added:', result);
+
+			// SSE will handle the state update
+			return result;
+		} catch (error) {
+			console.error('[remoteStateDM] Failed to add player move:', error);
+			throw error;
+		}
+	}
+
 	flush() {
 		if (this.batchTimeout) {
 			clearTimeout(this.batchTimeout);
