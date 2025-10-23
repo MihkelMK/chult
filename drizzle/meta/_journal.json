@@ -43,6 +43,13 @@
       "when": 1760069842922,
       "tag": "0005_glossy_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1761233033429,
+      "tag": "0006_brief_centennial",
+      "breakpoints": true
     }
   ]
 }

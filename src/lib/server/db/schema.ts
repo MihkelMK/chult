@@ -1,4 +1,14 @@
-import { pgTable, serial, text, integer, timestamp, boolean } from 'drizzle-orm/pg-core';
+import {
+	pgTable,
+	serial,
+	text,
+	integer,
+	timestamp,
+	boolean,
+	doublePrecision,
+	jsonb,
+	index
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Campaigns table - main campaign data
@@ -15,6 +25,10 @@ export const campaigns = pgTable('campaigns', {
 	hexOffsetY: integer('hex_offset_y').notNull().default(58),
 	imageWidth: integer('image_width').notNull().default(0),
 	imageHeight: integer('image_height').notNull().default(0),
+	// Exploration state (NEW)
+	globalGameTime: doublePrecision('global_game_time').notNull().default(0), // Days as float
+	partyTokenX: integer('party_token_x'), // null until first session
+	partyTokenY: integer('party_token_y'), // null until first session
 	createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 });
@@ -89,12 +103,84 @@ export const uploadedImages = pgTable('uploaded_images', {
 	associatedId: integer('associated_id').notNull()
 });
 
+// Sessions - DM-controlled exploration sessions (NEW)
+export const sessions = pgTable('sessions', {
+	id: serial('id').primaryKey(),
+	campaignId: integer('campaign_id')
+		.notNull()
+		.references(() => campaigns.id, { onDelete: 'cascade' }),
+	sessionNumber: integer('session_number').notNull(),
+	name: text('name').notNull(), // "Session X - yyyy-mm-dd"
+	startGameTime: doublePrecision('start_game_time').notNull(), // Game days at start
+	endGameTime: doublePrecision('end_game_time'), // Game days at end (null if active)
+	startedAt: timestamp('started_at', { withTimezone: false }).notNull().defaultNow(),
+	endedAt: timestamp('ended_at', { withTimezone: false }), // null if active
+	duration: integer('duration'), // IRL minutes (calculated from startedAt/endedAt)
+	isActive: boolean('is_active').notNull().default(true),
+	lastActivityAt: timestamp('last_activity_at', { withTimezone: false }).notNull().defaultNow()
+});
+
+// PathStep union types for type safety
+export type PlayerMove = {
+	type: 'player_move';
+	tileKey: string;
+	timestamp: Date;
+	gameTime: number;
+};
+
+export type DMTeleport = {
+	type: 'dm_teleport';
+	fromTile: string;
+	toTile: string;
+	timestamp: Date;
+	gameTime: number;
+	timeCost: number;
+};
+
+export type DMPath = {
+	type: 'dm_path';
+	tiles: string[];
+	timestamp: Date;
+	gameTime: number;
+	timeCost: number;
+};
+
+export type PathStep = PlayerMove | DMTeleport | DMPath;
+
+// Paths - movement history for sessions (NEW)
+export const paths = pgTable('paths', {
+	id: serial('id').primaryKey(),
+	sessionId: integer('session_id')
+		.notNull()
+		.references(() => sessions.id, { onDelete: 'cascade' }),
+	steps: jsonb('steps').notNull().$type<PathStep[]>().default([]),
+	revealedTiles: text('revealed_tiles').array().notNull().default([]) // Array of tile keys "col-row"
+});
+
+// Time Audit Log - track all time changes (NEW)
+export const timeAuditLog = pgTable('time_audit_log', {
+	id: serial('id').primaryKey(),
+	campaignId: integer('campaign_id')
+		.notNull()
+		.references(() => campaigns.id, { onDelete: 'cascade' }),
+	timestamp: timestamp('timestamp', { withTimezone: false }).notNull().defaultNow(),
+	type: text('type', {
+		enum: ['movement', 'dm_adjust', 'dm_teleport', 'dm_path', 'undo']
+	}).notNull(),
+	amount: doublePrecision('amount').notNull(), // Time delta in days (can be negative)
+	actorRole: text('actor_role', { enum: ['dm', 'player', 'system'] }).notNull(),
+	notes: text('notes')
+});
+
 // Relations for easier querying
 export const campaignsRelations = relations(campaigns, ({ many }) => ({
 	revealedTiles: many(revealedTiles),
 	gameSessions: many(gameSessions),
 	mapMarkers: many(mapMarkers),
-	uploadedImages: many(uploadedImages)
+	uploadedImages: many(uploadedImages),
+	// NEW exploration relations
+	sessions: many(sessions),
+	timeAuditLog: many(timeAuditLog)
 }));
 
 export const revealedTilesRelations = relations(revealedTiles, ({ one }) => ({
@@ -129,6 +215,29 @@ export const mapMarkersRelations = relations(mapMarkers, ({ one }) => ({
 export const uploadedImagesRelations = relations(uploadedImages, ({ one }) => ({
 	campaign: one(campaigns, {
 		fields: [uploadedImages.campaignId],
+		references: [campaigns.id]
+	})
+}));
+
+// NEW: Exploration relations
+export const sessionsRelations = relations(sessions, ({ one, many }) => ({
+	campaign: one(campaigns, {
+		fields: [sessions.campaignId],
+		references: [campaigns.id]
+	}),
+	paths: many(paths)
+}));
+
+export const pathsRelations = relations(paths, ({ one }) => ({
+	session: one(sessions, {
+		fields: [paths.sessionId],
+		references: [sessions.id]
+	})
+}));
+
+export const timeAuditLogRelations = relations(timeAuditLog, ({ one }) => ({
+	campaign: one(campaigns, {
+		fields: [timeAuditLog.campaignId],
 		references: [campaigns.id]
 	})
 }));
