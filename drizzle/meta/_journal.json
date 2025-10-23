@@ -50,6 +50,13 @@
       "when": 1761233033429,
       "tag": "0006_brief_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1761233868952,
+      "tag": "0007_wild_cyclops",
+      "breakpoints": true
     }
   ]
 }
