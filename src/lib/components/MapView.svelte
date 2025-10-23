@@ -114,9 +114,36 @@
 		const tileKeys: string[] = [];
 		const radius = brushSize - 1; // Convert size to radius (size 1 = radius 0, size 5 = radius 4)
 
+		const maxX = (data.campaign?.hexesPerCol ?? 20) - 1;
+		const maxY = (data.campaign?.hexesPerRow ?? 20) - 1;
+
+		// Convert center to axial coordinates (odd-q offset)
+		// x = col, y = row (from key format col-row)
+		const centerQ = centerCoords.x; // col is q in axial
+		const centerR = centerCoords.y - (centerCoords.x - (centerCoords.x & 1)) / 2;
+
 		for (let dx = -radius; dx <= radius; dx++) {
 			for (let dy = -radius; dy <= radius; dy++) {
-				tileKeys.push(`${centerCoords.x + dx}-${centerCoords.y + dy}`);
+				const x = centerCoords.x + dx;
+				const y = centerCoords.y + dy;
+
+				// Bounds check first (early exit)
+				if (x < 0 || x > maxX || y < 0 || y > maxY) {
+					continue;
+				}
+
+				// Convert target to axial coordinates (odd-q offset)
+				const q = x; // col is q
+				const r = y - (x - (x & 1)) / 2; // row adjusted by col offset
+
+				// Calculate hexagonal distance in axial space
+				const dq = q - centerQ;
+				const dr = r - centerR;
+				const hexDistance = (Math.abs(dq) + Math.abs(dq + dr) + Math.abs(dr)) / 2;
+
+				if (hexDistance <= radius) {
+					tileKeys.push(`${x}-${y}`);
+				}
 			}
 		}
 
