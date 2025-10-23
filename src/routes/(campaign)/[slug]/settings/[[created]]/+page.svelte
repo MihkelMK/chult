@@ -27,13 +27,14 @@
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import MapCanvasWrapper from '$lib/components/MapCanvasWrapper.svelte';
-	import { getCampaignState } from '$lib/contexts/campaignContext';
+	import { getLocalState } from '$lib/contexts/campaignContext';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data }: { data: PageData } = $props();
 
 	// Welcome message state
 	const isNewCampaign = page.params.created === 'created';
-	const campaignState = getCampaignState();
+	const localState = getLocalState();
 
 	// Token visibility state
 	let showDmToken = $state(false);
@@ -406,7 +407,7 @@
 							<MapCanvasWrapper
 								mapUrls={data.mapUrls}
 								previewMode={true}
-								{campaignState}
+								{localState}
 								{canvasHeight}
 								{canvasWidth}
 								variant="detail"
@@ -420,14 +421,15 @@
 								showCoords="never"
 								zoom={previewZoom}
 								cursorMode="pan"
-								onHexRevealed={() => {}}
-								onHexHover={() => {}}
 								hasPoI={() => false}
 								hasNotes={() => false}
 								isPlayerPosition={() => false}
+								onHexTriggered={() => {}}
+								selectedSet={new SvelteSet<string>()}
 								showAlwaysRevealed={true}
 								showRevealed={true}
 								isDM={true}
+								isDragging={false}
 							/>
 
 							<!-- Overlay Controls -->

@@ -6,19 +6,40 @@ import { SvelteSet } from 'svelte/reactivity';
 // Define a type for the event listener to ensure type safety
 type EventListener<T> = (data: T) => void;
 
-export class CampaignState extends EventEmitter {
+export class LocalState extends EventEmitter {
 	public campaign: CampaignDataResponse | PlayerCampaignDataResponse;
 	private campaignSlug: string;
 	private eventSource: EventSource | null = null;
 
 	// Hover state management
 	public hoveredTile = $state<TileCoords | null>(null);
-	public showTileModal = $state(false);
-	public modalTile = $state<TileCoords | null>(null);
 
-	// Empty sets for typescript
+	// Empty sets for typescript (overridden in subclasses)
 	public revealedTilesSet = new SvelteSet<string>();
 	public alwaysRevealedTilesSet = new SvelteSet<string>();
+
+	// Hex grid configuration (reactive so we can update if settings change)
+	protected hexesPerRow = $state(0);
+	protected hexesPerCol = $state(0);
+	protected imageWidth = $state(0);
+	protected imageHeight = $state(0);
+	protected xOffset = $state(0);
+	protected yOffset = $state(0);
+
+	// Derived hex calculations
+	public hexRadius = $derived.by(() => {
+		return (this.imageWidth - this.xOffset * 2) / (this.hexesPerRow * 1.5 + 0.5);
+	});
+
+	protected hexHeight = $derived.by(() => {
+		return (this.imageHeight - this.yOffset * 2) / this.hexesPerCol;
+	});
+
+	protected horizontalSpacing = $derived(this.hexRadius * 1.5);
+	protected verticalSpacing = $derived(this.hexHeight);
+
+	// Version counter to force reactivity when Sets change
+	public tilesVersion = $state(0);
 
 	constructor(
 		initialData: CampaignDataResponse | PlayerCampaignDataResponse,
@@ -27,6 +48,15 @@ export class CampaignState extends EventEmitter {
 		super();
 		this.campaign = $state(initialData);
 		this.campaignSlug = campaignSlug;
+
+		// Initialize hex grid configuration from campaign data
+		this.hexesPerRow = initialData.campaign.hexesPerRow;
+		this.hexesPerCol = initialData.campaign.hexesPerCol;
+		this.imageWidth = initialData.campaign.imageWidth;
+		this.imageHeight = initialData.campaign.imageHeight;
+		this.xOffset = initialData.campaign.hexOffsetX;
+		this.yOffset = initialData.campaign.hexOffsetY + 50;
+
 		if (browser) {
 			this.connect();
 		}
@@ -37,15 +67,15 @@ export class CampaignState extends EventEmitter {
 			return;
 		}
 
-		this.eventSource = new EventSource(`/api/campaigns/${this.campaignSlug}/events`);
+		const url = `/api/campaigns/${this.campaignSlug}/events`;
+		this.eventSource = new EventSource(url);
 
-		this.eventSource.onmessage = (event) => {
+		this.eventSource.onmessage = () => {
 			// This handles the keep-alive messages
-			console.log('SSE message:', event);
 		};
 
 		this.eventSource.onerror = (err) => {
-			console.error('EventSource failed:', err);
+			console.error('[localState] EventSource failed:', err);
 			this.eventSource?.close();
 			// Optional: implement reconnection logic here
 		};
@@ -56,7 +86,8 @@ export class CampaignState extends EventEmitter {
 				const tiles = JSON.parse(event.data);
 				// Handle both single tiles and arrays for backwards compatibility
 				const tilesArray = Array.isArray(tiles) ? tiles : [tiles];
-				tilesArray.forEach((tile) => this.emit('tile-revealed', tile));
+				// Emit the entire array at once for batch processing
+				this.emit('tiles-revealed-batch', tilesArray);
 			} catch (error) {
 				console.error('Failed to parse tile-revealed event:', error);
 			}
@@ -141,21 +172,6 @@ export class CampaignState extends EventEmitter {
 		}
 
 		return response.json() as Promise<T>;
-	}
-
-	// Tile interaction state management
-	setHoveredTile(tile: TileCoords | null) {
-		this.hoveredTile = tile;
-	}
-
-	openTileModal(tile: TileCoords) {
-		this.modalTile = tile;
-		this.showTileModal = true;
-	}
-
-	closeTileModal() {
-		this.showTileModal = false;
-		this.modalTile = null;
 	}
 
 	// Get markers for a specific tile with role-based filtering

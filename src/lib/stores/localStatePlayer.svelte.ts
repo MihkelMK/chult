@@ -1,4 +1,3 @@
-import { CampaignState } from './campaignState.svelte';
 import type {
 	PlayerCampaignDataResponse,
 	RevealedTile,
@@ -6,8 +5,9 @@ import type {
 	PlayerMapMarkerResponse
 } from '$lib/types';
 import { SvelteDate, SvelteSet, SvelteMap } from 'svelte/reactivity';
+import { LocalState } from './localState.svelte';
 
-export class PlayerCampaignState extends CampaignState {
+export class LocalStatePlayer extends LocalState {
 	// Public reactive Sets - UI source of truth
 	public revealedTilesSet = new SvelteSet<string>();
 	public alwaysRevealedTilesSet = new SvelteSet<string>();
@@ -31,8 +31,8 @@ export class PlayerCampaignState extends CampaignState {
 		this.markersMap = new SvelteMap(initialData.mapMarkers.map((m) => [m.id, m]));
 
 		// Event listeners for synchronization
-		this.addEventListener('tile-revealed', (tile) =>
-			this.handleTileRevealed(tile as Pick<RevealedTile, 'x' | 'y'>)
+		this.addEventListener('tiles-revealed-batch', (tiles) =>
+			this.handleTilesRevealedBatch(tiles as RevealedTile[])
 		);
 		this.addEventListener('tile-hidden', (tile) =>
 			this.handleTileHidden(tile as Pick<RevealedTile, 'x' | 'y'>)
@@ -85,20 +85,28 @@ export class PlayerCampaignState extends CampaignState {
 
 	// Event handlers for synchronization
 
-	private handleTileRevealed(tile: Pick<RevealedTile, 'x' | 'y'>) {
+	private handleTilesRevealedBatch(tiles: RevealedTile[]) {
 		if (this.campaign && 'revealedTiles' in this.campaign) {
-			const key = `${tile.x}-${tile.y}`;
+			const newTiles: RevealedTile[] = [];
 
-			// O(1) duplicate check using Sets
-			if (!this.revealedTilesSet.has(key) && !this.alwaysRevealedTilesSet.has(key)) {
-				// Players receive tiles as regular revealed (not always-revealed)
-				this.revealedTilesSet.add(key);
+			for (const tile of tiles) {
+				const key = `${tile.x}-${tile.y}`;
 
-				// Keep array in sync for serialization
-				(this.campaign as PlayerCampaignDataResponse).revealedTiles.push({
-					...tile,
-					alwaysRevealed: false
-				});
+				// O(1) duplicate check using Sets
+				if (!this.revealedTilesSet.has(key) && !this.alwaysRevealedTilesSet.has(key)) {
+					// Add to appropriate Set based on alwaysRevealed flag
+					if (tile.alwaysRevealed) {
+						this.alwaysRevealedTilesSet.add(key);
+					} else {
+						this.revealedTilesSet.add(key);
+					}
+					newTiles.push(tile);
+				}
+			}
+
+			// Batch update array
+			if (newTiles.length > 0) {
+				(this.campaign as PlayerCampaignDataResponse).revealedTiles.push(...newTiles);
 			}
 		}
 	}

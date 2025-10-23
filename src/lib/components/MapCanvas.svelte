@@ -4,12 +4,12 @@
 
 	let {
 		image,
-		hexGrid,
 		isDM,
 		isDragging = $bindable(),
-		selectedSet,
-		revealedSet,
-		alwaysRevealedSet,
+		revealedTiles,
+		alwaysRevealedTiles,
+		unrevealedTiles,
+		selectedTiles,
 		xOffset = 0,
 		yOffset = 0,
 		hexesPerCol,
@@ -99,28 +99,6 @@
 
 	let lastPaintedTile = $state<string | null>(null);
 
-	let fogLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
-	let backgroundLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
-	let alwaysRevealedLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
-	let selectionLayerRef: { cache: () => void; clearCache: () => void } | undefined = $state();
-
-	// Filter tiles for layer based rendering
-	let revealedTiles = $derived.by(() =>
-		hexGrid.filter((hex) => revealedSet.has(`${hex.col}-${hex.row}`))
-	);
-	let alwaysRevealedTiles = $derived.by(() =>
-		hexGrid.filter((hex) => alwaysRevealedSet.has(`${hex.col}-${hex.row}`))
-	);
-	let unrevealedTiles = $derived.by(() =>
-		hexGrid.filter(
-			(hex) =>
-				!revealedSet.has(`${hex.col}-${hex.row}`) && !alwaysRevealedSet.has(`${hex.col}-${hex.row}`)
-		)
-	);
-	let selectedTiles = $derived.by(() =>
-		hexGrid.filter((hex) => selectedSet.has(`${hex.col}-${hex.row}`))
-	);
-
 	let { max: maxXPos, min: minXPos } = $derived(
 		calculatePanBounds(scaledImageWidth, canvasWidth, dragBoundPaddingPX, zoom)
 	);
@@ -128,38 +106,6 @@
 	let { max: maxYPos, min: minYPos } = $derived(
 		calculatePanBounds(scaledImageHeight, canvasHeight, dragBoundPaddingPX, zoom)
 	);
-
-	$effect(() => {
-		if (fogLayerRef) {
-			fogLayerRef.cache();
-		}
-
-		return () => fogLayerRef?.clearCache();
-	});
-
-	$effect(() => {
-		if (backgroundLayerRef) {
-			backgroundLayerRef.cache();
-		}
-
-		return () => backgroundLayerRef?.clearCache();
-	});
-
-	$effect(() => {
-		if (alwaysRevealedLayerRef) {
-			alwaysRevealedLayerRef.cache();
-		}
-
-		return () => alwaysRevealedLayerRef?.clearCache();
-	});
-
-	$effect(() => {
-		if (selectionLayerRef) {
-			selectionLayerRef.cache();
-		}
-
-		return () => selectionLayerRef?.clearCache();
-	});
 
 	// Snap to center on first load
 	$effect(() => {
@@ -253,6 +199,8 @@
 		opacity={isDM ? tileTransparency : 1}
 		stroke={isAlways ? '#f97316' : 'black'}
 		listening={!previewMode}
+		perfectDrawEnabled={false}
+		shadowForStrokeEnabled={false}
 		onclick={() => handleHexTrigger(key)}
 	/>
 	{@const isTopMost = hex.row === 0 && hex.row % 2 === 1}
@@ -277,6 +225,8 @@
 {#snippet selectedTileBorder(hex: Hex)}
 	<RegularPolygon
 		staticConfig={true}
+		perfectDrawEnabled={false}
+		shadowForStrokeEnabled={false}
 		listening={false}
 		x={hex.centerX}
 		y={hex.centerY}
@@ -297,6 +247,7 @@
 	scaleX={scale}
 	scaleY={scale}
 	draggable={cursorMode === 'pan'}
+	perfectDrawEnabled={false}
 	dragBoundFunc={(pos) => {
 		const clampedX = Math.max(Math.min(maxXPos, pos.x), minXPos);
 		const clampedY = Math.max(Math.min(maxYPos, pos.y), minYPos);
@@ -333,7 +284,7 @@
 	}}
 >
 	<!-- Layer 1: Background -->
-	<Layer staticConfig={true} listening={false} bind:handle={backgroundLayerRef}>
+	<Layer staticConfig={true} listening={false}>
 		<Image
 			x={0}
 			y={0}
@@ -356,7 +307,6 @@
 		clipWidth={gridWidth}
 		listening={showUnrevealed && cursorMode !== 'pan'}
 		visible={showUnrevealed && tileTransparency !== 0}
-		bind:handle={fogLayerRef}
 	>
 		{#each unrevealedTiles as hex (hex.id)}
 			{#if hex.row >= 0}
@@ -394,7 +344,6 @@
 			clipWidth={gridWidth}
 			listening={showAlwaysRevealed && cursorMode !== 'pan'}
 			visible={showAlwaysRevealed && tileTransparency !== 0}
-			bind:handle={alwaysRevealedLayerRef}
 		>
 			{#each alwaysRevealedTiles as hex (hex.id)}
 				{@render tile(hex, false, true)}
@@ -411,7 +360,6 @@
 			clipWidth={gridWidth}
 			listening={false}
 			visible={selectedTiles.length > 0}
-			bind:handle={selectionLayerRef}
 		>
 			{#each selectedTiles as hex (hex.id)}
 				{@render selectedTileBorder(hex)}

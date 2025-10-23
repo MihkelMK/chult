@@ -1,4 +1,4 @@
-import type { CampaignState } from '$lib/stores/campaignState.svelte';
+import type { LocalState } from '$lib/stores/localState.svelte';
 import type { RevealedTileResponse } from '$lib/types/database';
 import type { ImageVariant, MapUrlsResponse } from '$lib/types/imgproxy';
 import type { SvelteSet } from 'svelte/reactivity';
@@ -65,7 +65,6 @@ interface MapCanvasSharedProps {
 	xOffset: number; // Horizontal offset in pixels from left edge to where grid starts
 	yOffset: number; // Vertical offset in pixels from top edge to where grid starts
 	zoom: number;
-	selectedSet: SvelteSet<string>;
 	tileTransparency?: number;
 	showAnimations: boolean;
 	showAlwaysRevealed?: boolean;
@@ -85,13 +84,16 @@ export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 	mapUrls: MapUrlsResponse;
 	variant?: ImageVariant;
 	initiallyRevealed?: RevealedTileResponse[];
-	campaignState: CampaignState;
+	localState: LocalState;
+	selectedSet: SvelteSet<string>;
 }
 
 export interface MapCanvasProps extends MapCanvasSharedProps {
 	image: HTMLImageElement | undefined;
 	hexGrid: readonly Hex[];
 	hexRadius: number;
-	revealedSet: SvelteSet<string>;
-	alwaysRevealedSet: SvelteSet<string>;
+	revealedTiles: readonly Hex[];
+	alwaysRevealedTiles: readonly Hex[];
+	unrevealedTiles: readonly Hex[];
+	selectedTiles: readonly Hex[];
 }

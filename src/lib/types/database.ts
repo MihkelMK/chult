@@ -26,7 +26,19 @@ export type NewNavigationPath = InferInsertModel<typeof navigationPaths>;
 export type NewUploadedImage = InferInsertModel<typeof uploadedImages>;
 
 // Response types that match your actual queries
-export type CampaignSummary = Pick<Campaign, 'id' | 'name' | 'slug' | 'createdAt'>;
+export type CampaignSummary = Pick<
+	Campaign,
+	| 'id'
+	| 'name'
+	| 'slug'
+	| 'createdAt'
+	| 'hexesPerRow'
+	| 'hexesPerCol'
+	| 'hexOffsetX'
+	| 'hexOffsetY'
+	| 'imageHeight'
+	| 'imageWidth'
+>;
 
 export type RevealedTileResponse = Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed' | 'revealedAt'>;
 
