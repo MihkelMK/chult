@@ -14,6 +14,7 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Slider } from '$lib/components/ui/slider';
 	import { getLocalState } from '$lib/contexts/campaignContext';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 	import {
 		AlertCircle,
 		Check,
@@ -21,6 +22,8 @@
 		Crown,
 		Eye,
 		EyeOff,
+		Flag,
+		Hand,
 		Map as MapIcon,
 		Settings,
 		Users,
@@ -50,7 +53,17 @@
 	let tilesPerRow = $state(data.campaign?.hexesPerRow ?? 20);
 	let offsetX = $state(data.campaign?.hexOffsetX ?? 70);
 	let offsetY = $state(data.campaign?.hexOffsetY ?? 58);
-	let previewZoom = $state(1);
+
+	// Map preview state
+	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
+	let previewZoomIndex = $state(0);
+	let previewZoom = $derived(zoomSteps[previewZoomIndex]);
+	let previewTool = $state<'pan' | 'set-position'>('pan');
+	let isDragging = $state(false);
+
+	// Party token position state
+	let partyTokenX = $state<number | null>(data.campaign?.partyTokenX ?? null);
+	let partyTokenY = $state<number | null>(data.campaign?.partyTokenY ?? null);
 
 	// Track if settings have changed
 	let hasUnsavedChanges = $derived(
@@ -58,6 +71,12 @@
 			tilesPerRow !== (data.campaign?.hexesPerRow ?? 20) ||
 			offsetX !== (data.campaign?.hexOffsetX ?? 70) ||
 			offsetY !== (data.campaign?.hexOffsetY ?? 58)
+	);
+
+	// Track if party token position has changed
+	let hasUnsavedPartyPosition = $derived(
+		partyTokenX !== (data.campaign?.partyTokenX ?? null) ||
+			partyTokenY !== (data.campaign?.partyTokenY ?? null)
 	);
 
 	// Copy token functions
@@ -133,6 +152,90 @@
 		} finally {
 			saving = false;
 		}
+	}
+
+	// Save party token position
+	let savingPartyPosition = $state(false);
+	let savePartyPositionError = $state('');
+	let savePartyPositionSuccess = $state(false);
+
+	async function savePartyTokenPosition() {
+		if (!hasUnsavedPartyPosition) return;
+
+		savingPartyPosition = true;
+		savePartyPositionError = '';
+		savePartyPositionSuccess = false;
+
+		try {
+			const response = await fetch(`/api/campaigns/${data.campaign?.slug}/map/settings`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					partyTokenX,
+					partyTokenY
+				})
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to save party token position');
+			}
+
+			const result = await response.json();
+			savePartyPositionSuccess = true;
+
+			// Update the data object to reflect the saved values
+			if (data.campaign) {
+				data.campaign.partyTokenX = result.config.partyTokenX;
+				data.campaign.partyTokenY = result.config.partyTokenY;
+			}
+
+			// Clear success message after 3 seconds
+			setTimeout(() => {
+				savePartyPositionSuccess = false;
+			}, 3000);
+		} catch (err) {
+			savePartyPositionError =
+				err instanceof Error ? err.message : 'Failed to save party token position';
+		} finally {
+			savingPartyPosition = false;
+		}
+	}
+
+	// Clear party token position
+	function clearPartyTokenPosition() {
+		partyTokenX = null;
+		partyTokenY = null;
+	}
+
+	// Handle hex click on map preview to set party token position
+	function handleHexClickForPartyPosition(event: { key: string }) {
+		if (previewTool !== 'set-position') return;
+		console.log(event.key);
+
+		const [col, row] = event.key.split('-').map(Number);
+		partyTokenX = col;
+		partyTokenY = row;
+		console.log('[Settings] Party token position set to:', { col, row });
+	}
+
+	// Zoom controls for preview
+	function zoomInPreview() {
+		if (previewZoomIndex < zoomSteps.length - 1) {
+			previewZoomIndex += 1;
+		}
+	}
+
+	function zoomOutPreview() {
+		if (previewZoomIndex > 0) {
+			previewZoomIndex -= 1;
+		}
+	}
+
+	function resetZoomPreview() {
+		previewZoomIndex = 0;
 	}
 </script>
 
@@ -371,6 +474,74 @@
 					</Button>
 				</CardContent>
 			</Card>
+
+			<!-- Party Token Position Section -->
+			<Card>
+				<CardHeader>
+					<CardTitle>Party Token Position</CardTitle>
+					<CardDescription>
+						Set the initial starting position for the party token on the map
+					</CardDescription>
+				</CardHeader>
+				<CardContent class="space-y-4">
+					<!-- Position Display -->
+					<div class="space-y-2">
+						{#if partyTokenX !== null && partyTokenY !== null}
+							<div class="flex gap-2 items-center p-3 rounded-md bg-muted">
+								<span class="font-mono text-sm">
+									Column: {partyTokenX}, Row: {partyTokenY}
+								</span>
+								<Button variant="ghost" size="sm" onclick={clearPartyTokenPosition}>Clear</Button>
+							</div>
+						{:else}
+							<div class="p-3 text-sm rounded-md bg-muted text-muted-foreground">
+								No position set - party token will be placed at first session start
+							</div>
+						{/if}
+					</div>
+
+					<Separator />
+
+					<!-- Set Position Instructions -->
+					<div class="space-y-2">
+						<p class="text-sm text-muted-foreground">
+							Use the <Flag class="inline w-3 h-3" /> tool in the map preview
+						</p>
+					</div>
+
+					<!-- Save Status and Button -->
+					{#if savePartyPositionError}
+						<div
+							class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive"
+						>
+							<AlertCircle class="w-4 h-4" />
+							<span>{savePartyPositionError}</span>
+						</div>
+					{/if}
+
+					{#if savePartyPositionSuccess}
+						<div class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
+							<Check class="w-4 h-4" />
+							<span>Party token position saved successfully!</span>
+						</div>
+					{/if}
+
+					<!-- Save Controls -->
+					<Button
+						onclick={savePartyTokenPosition}
+						disabled={!hasUnsavedPartyPosition || savingPartyPosition}
+						class="w-full"
+					>
+						{#if savingPartyPosition}
+							Saving...
+						{:else if hasUnsavedPartyPosition}
+							Save Position
+						{:else}
+							Position Saved
+						{/if}
+					</Button>
+				</CardContent>
+			</Card>
 		</div>
 
 		<!-- Right Column: Map Preview and Access Tokens -->
@@ -402,9 +573,14 @@
 							class="overflow-hidden relative rounded-lg min-h-80"
 							bind:clientHeight={canvasHeight}
 							bind:clientWidth={canvasWidth}
-							style="aspect-ratio: 1/{aspectRatio};"
+							style="aspect-ratio: 1/{aspectRatio}; cursor: {previewTool === 'pan'
+								? isDragging
+									? 'grabbing'
+									: 'grab'
+								: 'crosshair'};"
 						>
 							<MapCanvasWrapper
+								bind:isDragging
 								mapUrls={data.mapUrls}
 								previewMode={true}
 								{localState}
@@ -417,28 +593,67 @@
 								yOffset={offsetY}
 								imageHeight={data.campaign.imageHeight}
 								imageWidth={data.campaign.imageWidth}
+								activeSelectMode="remove"
 								showAnimations={false}
 								showCoords="never"
 								zoom={previewZoom}
-								cursorMode="pan"
+								activeTool={previewTool}
 								hasPoI={() => false}
 								hasNotes={() => false}
-								isPlayerPosition={() => false}
-								onHexTriggered={() => {}}
+								onHexTriggered={handleHexClickForPartyPosition}
 								selectedSet={new SvelteSet<string>()}
 								showAlwaysRevealed={true}
 								showRevealed={true}
 								isDM={true}
-								isDragging={false}
 							/>
 
-							<!-- Overlay Controls -->
+							<!-- Toolbar Overlay -->
+							<Tooltip.Provider>
+								<div
+									class="flex absolute top-2 left-2 gap-1 p-1 rounded-lg border shadow-sm bg-background/95 backdrop-blur-sm"
+								>
+									<!-- Pan Tool -->
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<Button
+												variant={previewTool === 'pan' ? 'default' : 'ghost'}
+												size="sm"
+												onclick={() => (previewTool = 'pan')}
+												class="p-0 w-8 h-8"
+											>
+												<Hand class="w-4 h-4" />
+											</Button>
+										</Tooltip.Trigger>
+										<Tooltip.Content>
+											<p>Pan (drag to move)</p>
+										</Tooltip.Content>
+									</Tooltip.Root>
+
+									<!-- Set Position Tool -->
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<Button
+												variant={previewTool === 'set-position' ? 'default' : 'ghost'}
+												size="sm"
+												onclick={() => (previewTool = 'set-position')}
+												class="p-0 w-8 h-8"
+											>
+												<Flag class="w-4 h-4" />
+											</Button>
+										</Tooltip.Trigger>
+										<Tooltip.Content>
+											<p>Set Party Position (click tile)</p>
+										</Tooltip.Content>
+									</Tooltip.Root>
+								</div>
+							</Tooltip.Provider>
+
+							<!-- Zoom Controls -->
 							<div class="flex absolute top-2 right-2 gap-1">
-								<!-- Zoom Toggle -->
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => ((previewZoom = Math.min(previewZoom + 2)), 10)}
+									onclick={zoomInPreview}
 									class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
 								>
 									<ZoomIn class="w-3 h-3" />
@@ -446,7 +661,15 @@
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => (previewZoom = Math.max(previewZoom - 2, 1))}
+									onclick={resetZoomPreview}
+									class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
+								>
+									{previewZoom}×
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={zoomOutPreview}
 									class="p-0 w-8 h-8 bg-background/90 backdrop-blur-sm"
 								>
 									<ZoomOut class="w-3 h-3" />

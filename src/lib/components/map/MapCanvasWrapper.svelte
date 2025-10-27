@@ -24,7 +24,8 @@
 		yOffset = 58,
 		imageHeight,
 		imageWidth,
-		cursorMode,
+		activeTool,
+		activeSelectMode,
 		zoom,
 		showAnimations = true,
 		showCoords = 'hover',
@@ -34,8 +35,7 @@
 		onMapLoad = () => {},
 		onMapError = () => {},
 		hasPoI = () => false,
-		hasNotes = () => false,
-		isPlayerPosition = () => false
+		hasNotes = () => false
 	}: MapCanvasWrapperProps = $props();
 
 	function generateHexGrid(
@@ -138,6 +138,18 @@
 		return tiles;
 	});
 
+	let partyTokenTile = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		localState.tilesVersion; // Track version changes
+		return (
+			hexGrid.find(
+				(hex) =>
+					hex.col === localState.partyTokenPosition?.x &&
+					hex.row === localState.partyTokenPosition.y
+			) || null
+		);
+	});
+
 	let selectedTiles = $derived.by(() => {
 		const tiles: Hex[] = [];
 		for (const key of selectedSet) {
@@ -163,9 +175,11 @@
 		{alwaysRevealedTiles}
 		{unrevealedTiles}
 		{selectedTiles}
+		{partyTokenTile}
 		{image}
 		{zoom}
-		{cursorMode}
+		{activeTool}
+		{activeSelectMode}
 		{xOffset}
 		{yOffset}
 		imageHeight={variantHeight}
@@ -185,7 +199,6 @@
 		{onMapError}
 		{hasPoI}
 		{hasNotes}
-		{isPlayerPosition}
 		{hexRadius}
 	/>
 {/await}

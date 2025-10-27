@@ -3,6 +3,7 @@ import type {
 	CampaignDataResponse,
 	GameSessionResponse,
 	MapMarkerResponse,
+	PathStep,
 	PathResponse,
 	PlayerCampaignDataResponse,
 	RevealedTile,
@@ -31,9 +32,12 @@ export class LocalState extends EventEmitter {
 
 	// Exploration state (NEW)
 	public globalGameTime = $state(0); // Days as float
-	public partyTokenPosition = $state<TileCoords | null>(null);
 	public gameSessions = $state<GameSessionResponse[]>([]);
 	protected pathsMap = new SvelteMap<number, PathResponse>(); // gameSessionId -> PathResponse
+	public partyTokenPosition = $state<TileCoords | null>(null);
+	public partyTokenTile = $derived<string | null>(
+		this.partyTokenPosition ? `${this.partyTokenPosition.x}-${this.partyTokenPosition.y}` : null
+	);
 
 	// Hex grid configuration (reactive so we can update if settings change)
 	protected hexesPerRow = $state(0);
@@ -371,6 +375,139 @@ export class LocalState extends EventEmitter {
 					(t: TileCoords) => !(t.x === tile.x && t.y === tile.y)
 				);
 			}
+		}
+	}
+
+	// Exploration event handlers (NEW)
+	protected handleSessionStarted(session: GameSessionResponse) {
+		console.log('[localStateDM] SSE session:started', session);
+
+		// Check if session already exists (from optimistic update)
+		const existingIndex = this.gameSessions.findIndex((s) => s.id === session.id);
+		if (existingIndex !== -1) {
+			// Update existing session
+			this.gameSessions[existingIndex] = session;
+		} else {
+			// Add new session
+			this.gameSessions.push(session);
+		}
+
+		// Create empty path for this session
+		const newPath: PathResponse = {
+			id: session.id, // Path ID matches session ID for simplicity
+			gameSessionId: session.id,
+			steps: [],
+			revealedTiles: []
+		};
+		this.pathsMap.set(session.id, newPath);
+	}
+
+	protected handleSessionEnded(session: GameSessionResponse) {
+		console.log('[localStateDM] SSE session:ended', session);
+
+		// Update session in array
+		const index = this.gameSessions.findIndex((s) => s.id === session.id);
+		if (index !== -1) {
+			this.gameSessions[index] = session;
+		}
+	}
+
+	protected handleSessionDeleted(data: { id: number }) {
+		console.log('[localStateDM] SSE session:deleted', data);
+
+		// Remove session from array
+		this.gameSessions = this.gameSessions.filter((s) => s.id !== data.id);
+
+		// Remove associated path
+		this.pathsMap.delete(data.id);
+		this.pathsMap = new SvelteMap(this.pathsMap);
+	}
+
+	protected handleTimeUpdated(data: { globalGameTime: number }) {
+		console.log('[localStateDM] SSE time:updated', data);
+		this.globalGameTime = data.globalGameTime;
+	}
+
+	protected handleMovementStepAdded(data: { sessionId: number; step: PathStep; tiles: string[] }) {
+		console.log('[localState] SSE movement:step-added', data);
+
+		const path = this.pathsMap.get(data.sessionId);
+		if (!path) {
+			console.warn('[localState] Path not found for session', data.sessionId);
+			return;
+		}
+
+		// Check if step already exists (from optimistic update)
+		const stepExists = path.steps.some((s) => this.stepsEqual(s, data.step));
+		if (stepExists) {
+			console.log('[localState] Step already exists (optimistic)');
+			return;
+		}
+
+		// Add step to path
+		path.steps.push(data.step);
+
+		// Add revealed tiles to path
+		data.tiles.forEach((tileKey) => {
+			if (!path.revealedTiles.includes(tileKey)) {
+				path.revealedTiles.push(tileKey);
+			}
+		});
+
+		// Update party token position
+		const destination = this.getStepDestination(data.step);
+		if (destination) {
+			const [col, row] = destination.split('-').map(Number);
+			this.partyTokenPosition = { x: col, y: row };
+		}
+
+		// Update global game time from step
+		this.globalGameTime = data.step.gameTime;
+
+		// Force reactivity
+		this.pathsMap = new SvelteMap(this.pathsMap);
+	}
+
+	// Helper methods
+	protected stepsEqual(a: PathStep, b: PathStep): boolean {
+		if (a.type !== b.type) return false;
+
+		switch (a.type) {
+			case 'player_move':
+				return (
+					b.type === 'player_move' &&
+					a.tileKey === b.tileKey &&
+					Math.abs(a.gameTime - b.gameTime) < 0.001
+				);
+			case 'dm_teleport':
+				return (
+					b.type === 'dm_teleport' &&
+					a.fromTile === b.fromTile &&
+					a.toTile === b.toTile &&
+					Math.abs(a.gameTime - b.gameTime) < 0.001
+				);
+			case 'dm_path':
+				return (
+					b.type === 'dm_path' &&
+					a.tiles.length === b.tiles.length &&
+					a.tiles.every((t, i) => t === b.tiles[i]) &&
+					Math.abs(a.gameTime - b.gameTime) < 0.001
+				);
+			default:
+				return false;
+		}
+	}
+
+	protected getStepDestination(step: PathStep): string | null {
+		switch (step.type) {
+			case 'player_move':
+				return step.tileKey;
+			case 'dm_teleport':
+				return step.toTile;
+			case 'dm_path':
+				return step.tiles[step.tiles.length - 1] || null;
+			default:
+				return null;
 		}
 	}
 }

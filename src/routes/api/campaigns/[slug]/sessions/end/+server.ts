@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { campaigns, sessions } from '$lib/server/db/schema';
+import { campaigns, gameSessions } from '$lib/server/db/schema';
 import { emitEvent } from '$lib/server/events';
 import { error, json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
@@ -29,8 +29,8 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		// Get active session
 		const [activeSession] = await db
 			.select()
-			.from(sessions)
-			.where(and(eq(sessions.campaignId, campaign.id), eq(sessions.isActive, true)))
+			.from(gameSessions)
+			.where(and(eq(gameSessions.campaignId, campaign.id), eq(gameSessions.isActive, true)))
 			.limit(1);
 
 		if (!activeSession) {
@@ -44,14 +44,14 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 
 		// Update session
 		const [updatedSession] = await db
-			.update(sessions)
+			.update(gameSessions)
 			.set({
 				isActive: false,
 				endedAt: now,
 				endGameTime: campaign.globalGameTime,
 				duration: durationMinutes
 			})
-			.where(eq(sessions.id, activeSession.id))
+			.where(eq(gameSessions.id, activeSession.id))
 			.returning();
 
 		// Emit SSE event

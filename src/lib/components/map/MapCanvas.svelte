@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Hex, HexRendered, MapCanvasProps } from '$lib/types';
-	import { Image, Layer, RegularPolygon, Stage, Text } from 'svelte-konva';
+	import { Group, Image, Layer, RegularPolygon, Stage, Text } from 'svelte-konva';
+	import PartyToken from './tokens/PartyToken.svelte';
 
 	let {
 		image,
@@ -10,13 +11,14 @@
 		alwaysRevealedTiles,
 		unrevealedTiles,
 		selectedTiles,
+		partyTokenTile,
 		xOffset = 0,
 		yOffset = 0,
 		hexesPerCol,
 		hexesPerRow,
 		hexRadius,
 		zoom,
-		cursorMode,
+		activeTool,
 		tileTransparency,
 		previewMode,
 		showRevealed,
@@ -28,7 +30,6 @@
 		onHexTriggered,
 		hasNotes,
 		hasPoI,
-		isPlayerPosition,
 		canvasHeight,
 		canvasWidth
 	}: MapCanvasProps = $props();
@@ -62,7 +63,7 @@
 	};
 
 	function handleHexTrigger(key: string) {
-		if (cursorMode === 'pan') return;
+		if (activeTool === 'pan') return;
 		onHexTriggered?.({ key });
 	}
 
@@ -142,21 +143,6 @@
 	{@const centerY = hex.centerY}
 	{@const hasPoIMarker = hasPoI(coords)}
 	{@const hasNotesMarker = hasNotes(coords)}
-	{@const isPlayerHere = isPlayerPosition(coords)}
-
-	<!-- Player position indicator (highest priority) -->
-	{#if isPlayerHere}
-		<circle
-			cx={centerX}
-			cy={centerY - 8}
-			r="4"
-			fill="#22c55e"
-			stroke="white"
-			stroke-width="1.5"
-			class="drop-shadow-sm"
-		/>
-		<circle cx={centerX} cy={centerY - 8} r="2" fill="white" class="animate-pulse" />
-	{/if}
 
 	<!-- POI indicator (red pin, top right) -->
 	{#if hasPoIMarker}
@@ -197,7 +183,6 @@
 		fill={previewMode ? '' : isAlways ? '#faa16a' : isRevealed ? '#bfd5fc' : 'rgb(253, 250, 240)'}
 		opacity={isDM ? tileTransparency : 1}
 		stroke={isAlways ? '#f97316' : 'black'}
-		listening={!previewMode}
 		perfectDrawEnabled={false}
 		shadowForStrokeEnabled={false}
 		onclick={() => handleHexTrigger(hex.id)}
@@ -245,7 +230,7 @@
 	bind:y={position.y}
 	scaleX={scale}
 	scaleY={scale}
-	draggable={cursorMode === 'pan'}
+	draggable={activeTool === 'pan'}
 	perfectDrawEnabled={false}
 	dragBoundFunc={(pos) => {
 		const clampedX = Math.max(Math.min(maxXPos, pos.x), minXPos);
@@ -254,7 +239,7 @@
 		return { x: clampedX, y: clampedY };
 	}}
 	onmousedown={() => {
-		if (cursorMode === 'paint' || cursorMode === 'select') {
+		if (activeTool === 'paint' || activeTool === 'select') {
 			isDragging = true;
 		}
 	}}
@@ -263,7 +248,7 @@
 		lastPaintedTile = null;
 	}}
 	onmousemove={(e) => {
-		if (isDragging && (cursorMode === 'paint' || cursorMode === 'select')) {
+		if (isDragging && (activeTool === 'paint' || activeTool === 'select')) {
 			const stage = e.target.getStage();
 			const pointerPos = stage?.getPointerPosition();
 
@@ -296,7 +281,7 @@
 		></Image>
 	</Layer>
 
-	<!-- Layer 2: Fog-of-war -->
+	<!-- Layer 2: Tiles -->
 	<Layer
 		x={xOffset}
 		y={yOffset}
@@ -304,65 +289,57 @@
 		clipY={gridClipY}
 		clipHeight={gridHeight}
 		clipWidth={gridWidth}
-		listening={showUnrevealed && cursorMode !== 'pan'}
-		visible={showUnrevealed && tileTransparency !== 0}
 	>
-		{#each unrevealedTiles as hex (hex.id)}
-			{#if hex.row >= 0}
-				{@render tile(hex, false, false)}
-			{/if}
-		{/each}
-	</Layer>
-
-	{#if isDM}
-		<!-- Layer 3: Revealed tiles -->
-		<Layer
-			x={xOffset}
-			y={yOffset}
-			clipX={gridClipX}
-			clipY={gridClipY}
-			clipHeight={gridHeight}
-			clipWidth={gridWidth}
-			listening={showRevealed && cursorMode !== 'pan'}
-			visible={showRevealed && tileTransparency !== 0}
+		<!-- 1: Fog-of-war -->
+		<Group
+			listening={showUnrevealed && activeTool !== 'pan'}
+			visible={showUnrevealed && tileTransparency !== 0}
 		>
-			{#each revealedTiles as hex (hex.id)}
+			{#each unrevealedTiles as hex (hex.id)}
 				{#if hex.row >= 0}
-					{@render tile(hex, true, false)}
+					{@render tile(hex, false, false)}
 				{/if}
 			{/each}
-		</Layer>
+		</Group>
+		{#if isDM}
+			<!-- 2: Revealed tiles -->
+			<Group
+				listening={showRevealed && activeTool !== 'pan'}
+				visible={showRevealed && tileTransparency !== 0}
+			>
+				{#each revealedTiles as hex (hex.id)}
+					{#if hex.row >= 0}
+						{@render tile(hex, true, false)}
+					{/if}
+				{/each}
+			</Group>
 
-		<!-- Layer 4: Always-revealed tiles -->
-		<Layer
-			x={xOffset}
-			y={yOffset}
-			clipX={gridClipX}
-			clipY={gridClipY}
-			clipHeight={gridHeight}
-			clipWidth={gridWidth}
-			listening={showAlwaysRevealed && cursorMode !== 'pan'}
-			visible={showAlwaysRevealed && tileTransparency !== 0}
-		>
-			{#each alwaysRevealedTiles as hex (hex.id)}
-				{@render tile(hex, false, true)}
-			{/each}
-		</Layer>
+			<!-- 3: Always-revealed tiles -->
+			<Group
+				listening={showAlwaysRevealed && activeTool !== 'pan'}
+				visible={showAlwaysRevealed && tileTransparency !== 0}
+			>
+				{#each alwaysRevealedTiles as hex (hex.id)}
+					{@render tile(hex, false, true)}
+				{/each}
+			</Group>
+		{/if}
+	</Layer>
 
-		<!-- Layer 5: Selection borders (non-interactive overlay) -->
-		<Layer
-			x={xOffset}
-			y={yOffset}
-			clipX={gridClipX}
-			clipY={gridClipY}
-			clipHeight={gridHeight}
-			clipWidth={gridWidth}
-			listening={false}
-			visible={selectedTiles.length > 0}
-		>
-			{#each selectedTiles as hex (hex.id)}
+	<!-- Layer 3: UI elements (non-interactive overlay) -->
+	<Layer
+		x={xOffset}
+		y={yOffset}
+		clipX={gridClipX}
+		clipY={gridClipY}
+		clipHeight={gridHeight}
+		clipWidth={gridWidth}
+	>
+		<Group visible={selectedTiles.length > 0} listening={false}>
+			{#each selectedTiles as hex (`selected-${hex.id}`)}
 				{@render selectedTileBorder(hex)}
 			{/each}
-		</Layer>
-	{/if}
+		</Group>
+		<PartyToken tile={partyTokenTile} radius={hexRadius} />
+	</Layer>
 </Stage>

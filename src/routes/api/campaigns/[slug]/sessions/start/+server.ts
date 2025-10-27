@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { campaigns, paths, sessions } from '$lib/server/db/schema';
+import { campaigns, gameSessions, paths } from '$lib/server/db/schema';
 import { emitEvent } from '$lib/server/events';
 import { error, json } from '@sveltejs/kit';
 import { and, desc, eq } from 'drizzle-orm';
@@ -29,8 +29,8 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		// Check if there's already an active session
 		const [activeSession] = await db
 			.select()
-			.from(sessions)
-			.where(and(eq(sessions.campaignId, campaign.id), eq(sessions.isActive, true)))
+			.from(gameSessions)
+			.where(and(eq(gameSessions.campaignId, campaign.id), eq(gameSessions.isActive, true)))
 			.limit(1);
 
 		if (activeSession) {
@@ -39,22 +39,20 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 
 		// Get the next session number
 		const [lastSession] = await db
-			.select({ sessionNumber: sessions.sessionNumber })
-			.from(sessions)
-			.where(eq(sessions.campaignId, campaign.id))
-			.orderBy(desc(sessions.sessionNumber))
+			.select({ sessionNumber: gameSessions.sessionNumber })
+			.from(gameSessions)
+			.where(eq(gameSessions.campaignId, campaign.id))
+			.orderBy(desc(gameSessions.sessionNumber))
 			.limit(1);
 
 		const sessionNumber = (lastSession?.sessionNumber || 0) + 1;
 
 		// Generate session name
-		const now = new Date();
-		const dateStr = now.toISOString().split('T')[0];
-		const name = `Session ${sessionNumber} - ${dateStr}`;
+		const name = `Session ${sessionNumber}`;
 
 		// Create session
 		const [newSession] = await db
-			.insert(sessions)
+			.insert(gameSessions)
 			.values({
 				campaignId: campaign.id,
 				sessionNumber,
@@ -66,7 +64,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 
 		// Create empty path for this session
 		await db.insert(paths).values({
-			sessionId: newSession.id,
+			gameSessionId: newSession.id,
 			steps: [],
 			revealedTiles: []
 		});

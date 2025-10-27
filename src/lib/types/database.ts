@@ -12,7 +12,7 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type { MapUrlsResponse } from './imgproxy';
 
 // Export PathStep types from schema
-export type { PathStep } from '$lib/server/db/schema';
+export type { PathStep, PlayerMove, DMTeleport, DMPath } from '$lib/server/db/schema';
 
 // Full model types
 export type Campaign = InferSelectModel<typeof campaigns>;

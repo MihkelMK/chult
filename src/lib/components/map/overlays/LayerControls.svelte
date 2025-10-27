@@ -37,7 +37,7 @@
 		<div class="flex items-center">
 			<Tooltip.Root>
 				<Tooltip.Trigger>
-					<Button variant="ghost" size="sm" onclick={onToggle}>
+					<Button variant="ghost" size="sm" onclick={onToggle} class="cursor-pointer">
 						{#if visibleState}
 							<Eye class="w-4 h-4" />
 						{:else}
@@ -49,7 +49,7 @@
 					{visibleState ? `Hide ${name}` : `Show ${name}`}
 				</Tooltip.Content>
 			</Tooltip.Root>
-			<p class="font-mono text-xs mt-[0.175em]">{name}</p>
+			<p class="font-mono text-xs select-none mt-[0.175em]">{name}</p>
 		</div>
 	</div>
 {/snippet}
@@ -61,7 +61,9 @@
 >
 	<div class="flex justify-between items-center py-1 pl-2">
 		<h4 class="text-sm font-semibold">Layers</h4>
-		<Collapsible.Trigger class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-9 p-0' })}>
+		<Collapsible.Trigger
+			class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-9 cursor-pointer p-0' })}
+		>
 			{#if isOpen}
 				<ChevronDownIcon />
 			{:else}
@@ -79,7 +81,7 @@
 
 		<!-- Tile Transparency Control -->
 		<div class="flex gap-2 justify-between items-center py-1 pl-2">
-			<span class="text-xs">Opacity</span>
+			<span class="text-xs select-none">Opacity</span>
 
 			<ToggleGroup.Root
 				size="sm"

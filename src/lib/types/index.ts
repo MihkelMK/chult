@@ -52,6 +52,9 @@ export interface CanvasImage {
 	status: 'loading' | 'loaded' | 'failed';
 }
 
+export type UITool = 'interact' | 'pan' | 'select' | 'paint' | 'explore' | 'set-position';
+export type SelectMode = 'add' | 'remove';
+
 interface MapCanvasSharedProps {
 	isDM?: boolean;
 	isDragging: boolean;
@@ -71,13 +74,13 @@ interface MapCanvasSharedProps {
 	showRevealed?: boolean;
 	showUnrevealed?: boolean;
 	showCoords: 'never' | 'always' | 'hover';
-	cursorMode: 'interact' | 'pan' | 'select' | 'paint';
+	activeTool: UITool;
+	activeSelectMode: SelectMode;
 	onHexTriggered: (event: HexTriggerEvent) => void;
 	onMapLoad?: (dimensions: { width: number; height: number }) => void;
 	onMapError?: () => void;
 	hasPoI: (coords: TileCoords) => boolean;
 	hasNotes: (coords: TileCoords) => boolean;
-	isPlayerPosition: (coords: TileCoords) => boolean;
 }
 
 export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
@@ -96,4 +99,5 @@ export interface MapCanvasProps extends MapCanvasSharedProps {
 	alwaysRevealedTiles: readonly Hex[];
 	unrevealedTiles: readonly Hex[];
 	selectedTiles: readonly Hex[];
+	partyTokenTile: Hex | null;
 }

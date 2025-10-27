@@ -1,4 +1,10 @@
-import type { MapMarkerResponse, PlayerCampaignDataResponse, RevealedTile } from '$lib/types';
+import type {
+	GameSessionResponse,
+	MapMarkerResponse,
+	PathStep,
+	PlayerCampaignDataResponse,
+	RevealedTile
+} from '$lib/types';
 import { SvelteDate, SvelteSet } from 'svelte/reactivity';
 import { LocalState } from './localState.svelte';
 
@@ -29,6 +35,23 @@ export class LocalStatePlayer extends LocalState {
 		);
 		this.addEventListener('marker-deleted', (data) =>
 			super.handleMarkerDeleted((data as { id: number }).id)
+		);
+
+		// Exploration event listeners (NEW)
+		this.addEventListener('movement:step-added', (data) =>
+			super.handleMovementStepAdded(data as { sessionId: number; step: PathStep; tiles: string[] })
+		);
+		this.addEventListener('time:updated', (data) =>
+			super.handleTimeUpdated(data as { globalGameTime: number })
+		);
+		this.addEventListener('session:started', (session) =>
+			super.handleSessionStarted(session as GameSessionResponse)
+		);
+		this.addEventListener('session:ended', (session) =>
+			super.handleSessionEnded(session as GameSessionResponse)
+		);
+		this.addEventListener('session:deleted', (data) =>
+			super.handleSessionDeleted(data as { id: number })
 		);
 	}
 

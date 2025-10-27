@@ -5,31 +5,11 @@ interface PendingOperation {
 	coords: TileCoords;
 }
 
-function isAdjacent(from: TileCoords, to: TileCoords): boolean {
-	const dx = Math.abs(from.x - to.x);
-	const dy = Math.abs(from.y - to.y);
-
-	if (dx === 0 && dy === 1) return true; // Vertical neighbors
-	if (dy === 0 && dx === 1) return true; // Horizontal neighbors
-	if (dx === 1 && dy === 1) {
-		// Diagonal neighbors (hex grid specific)
-		const evenCol = from.x % 2 === 0;
-		if (evenCol) {
-			return to.y === from.y - 1 || to.y === from.y + 1;
-		} else {
-			return to.y === from.y - 1 || to.y === from.y + 1;
-		}
-	}
-
-	return false;
-}
-
 export class RemoteStatePlayer {
 	// Public reactive state
 	public revealed = $state<TileCoords[]>([]);
 	public pending = $state<PendingOperation[] | null>(null);
 	public error = $state<string | null>(null);
-	public currentPosition = $state<TileCoords | null>(null);
 
 	private campaignSlug: string;
 	private localState?: LocalStatePlayer;
@@ -53,57 +33,36 @@ export class RemoteStatePlayer {
 		}
 	}
 
-	async navigate(coords: TileCoords) {
-		// Check if already revealed
-		if (this.revealed.some((tile) => tile.x === coords.x && tile.y === coords.y)) {
-			return; // Don't navigate to revealed tiles, but don't show an error either
+	async addPlayerMove(tileKey: string) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
 		}
 
-		// Adjacency check
-		if (!this.currentPosition) {
-			const adjacentToRevealed = this.revealed.some((revealed) => isAdjacent(coords, revealed));
-			if (!adjacentToRevealed) {
-				this.error = 'You can only explore tiles adjacent to already discovered areas.';
-				return;
-			}
-		} else {
-			if (!isAdjacent(this.currentPosition, coords)) {
-				this.error = 'You can only move to adjacent tiles.';
-				return;
-			}
+		const activeSession = this.localState.activeSession;
+		if (!activeSession) {
+			throw new Error('No active session');
 		}
-
-		// Clear any previous errors
-		this.error = null;
-
-		// Optimistically update pending state
-		this.pending = [{ coords }];
-		this.currentPosition = coords;
 
 		try {
-			const response = await fetch(`/api/campaigns/${this.campaignSlug}/tiles/navigate`, {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/movement/player`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ coords })
+				body: JSON.stringify({ tileKey })
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to navigate');
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to add player move');
 			}
 
-			const data = await response.json();
+			const result = await response.json();
+			console.log('[remoteStateDM] Player move added:', result);
 
-			// Update revealed tiles with new discoveries
-			if (data.revealed && Array.isArray(data.revealed)) {
-				this.revealed = data.revealed;
-			}
-
-			// Clear pending after successful navigation
-			this.pending = null;
-		} catch (err) {
-			// Rollback optimistic updates on failure
-			this.pending = null;
-			this.error = err instanceof Error ? err.message : 'Failed to navigate';
+			// SSE will handle the state update
+			return result;
+		} catch (error) {
+			console.error('[remoteStateDM] Failed to add player move:', error);
+			throw error;
 		}
 	}
 

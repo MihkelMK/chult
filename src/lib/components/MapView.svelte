@@ -5,8 +5,8 @@
 	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
-	import type { HexTriggerEvent, TileCoords } from '$lib/types';
-	import { MapPin, User, Users } from '@lucide/svelte';
+	import type { HexTriggerEvent, SelectMode, TileCoords, UITool } from '$lib/types';
+	import { MapPin } from '@lucide/svelte';
 	import { PressedKeys, Previous } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
@@ -16,13 +16,16 @@
 	import SelectionToolbar from './map/overlays/SelectionToolbar.svelte';
 	import ToolModeButtons from './map/overlays/ToolModeButtons.svelte';
 	import ZoomControls from './map/overlays/ZoomControls.svelte';
+	import GlobalTimeDisplay from './map/overlays/GlobalTimeDisplay.svelte';
+	import ConfirmDialog from './general/ConfirmDialog.svelte';
 
 	interface Props {
 		data: PageData;
-		mode: 'player' | 'dm';
+		userRole: 'player' | 'dm';
+		effectiveRole: 'player' | 'dm';
 	}
 
-	let { data, mode }: Props = $props();
+	let { data, userRole, effectiveRole }: Props = $props();
 
 	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
 
@@ -40,12 +43,25 @@
 	const remoteState = getRemoteState();
 
 	// Internal state to track what tool was selected
-	let _selectedTool = $state<'interact' | 'pan' | 'select' | 'paint'>('interact');
-	let _selectedSelectMode = $state<'add' | 'remove'>('add');
+	let _selectedTool = $state<UITool>('interact');
+	let _selectedSelectMode = $state<SelectMode>('add');
+
+	// Exploration state
+	let showDialog = $state(false);
+	let dialogConfig = $state<{
+		title: string;
+		description: string;
+		actions: Array<{
+			label: string;
+			variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+			action: () => void;
+		}>;
+	}>({ title: '', description: '', actions: [] });
+	let pendingMovementTile = $state<string>('');
 
 	// Use these values to determine actual expected action
 	let activeTool = $derived(shiftHeld ? 'pan' : _selectedTool);
-	let activeSelectMode = $derived<'add' | 'remove'>(
+	let activeSelectMode = $derived<SelectMode>(
 		!ctrlHeld ? _selectedSelectMode : _selectedSelectMode === 'add' ? 'remove' : 'add'
 	);
 
@@ -117,12 +133,51 @@
 	}
 
 	let hasPendingOperations = $derived(
-		mode === 'dm' && remoteState.pending && remoteState.pending.length > 0
+		effectiveRole === 'dm' && remoteState.pending && remoteState.pending.length > 0
 	);
 
 	let hasErrors = $derived(
-		mode === 'dm' && 'errors' in remoteState && remoteState.errors && remoteState.errors.length > 0
+		effectiveRole === 'dm' &&
+			'errors' in remoteState &&
+			remoteState.errors &&
+			remoteState.errors.length > 0
 	);
+
+	// Exploration derived state
+	let hasActiveSession = $derived(localState.activeSession !== null);
+	let canExplore = $derived(hasActiveSession && localState.partyTokenPosition !== null);
+
+	// Current session duration (updates every second when session is active)
+	let currentTime = $state(Date.now());
+	let sessionDuration = $derived.by(() => {
+		if (!localState.activeSession) return null;
+
+		const startTime = new Date(localState.activeSession.startedAt).getTime();
+		const elapsed = (currentTime - startTime) / 1000; // seconds
+
+		const hours = Math.floor(elapsed / 3600);
+		const minutes = Math.floor((elapsed % 3600) / 60);
+		const seconds = Math.floor(elapsed % 60);
+
+		if (hours > 0) {
+			return `${hours}h ${minutes}m ${seconds}s`;
+		} else if (minutes > 0) {
+			return `${minutes}m ${seconds}s`;
+		} else {
+			return `${seconds}s`;
+		}
+	});
+
+	// Update current time every second when session is active
+	$effect(() => {
+		if (hasActiveSession) {
+			const interval = setInterval(() => {
+				currentTime = Date.now();
+			}, 1000);
+
+			return () => clearInterval(interval);
+		}
+	});
 
 	function getBrushTiles(centerTile: string): string[] {
 		const tileKeys: string[] = [];
@@ -166,21 +221,11 @@
 	}
 
 	function hasPoI(coords: TileCoords) {
-		return localState.getTileMarkers(coords, mode).some((m) => m.type === 'poi');
+		return localState.getTileMarkers(coords, effectiveRole).some((m) => m.type === 'poi');
 	}
 
 	function hasNotes(coords: TileCoords) {
-		return localState.getTileMarkers(coords, mode).some((m) => m.type === 'note');
-	}
-
-	function isPlayerPosition(coords: TileCoords) {
-		return !!(
-			mode === 'player' &&
-			'currentPosition' in remoteState &&
-			remoteState.currentPosition &&
-			remoteState.currentPosition.x === coords.x &&
-			remoteState.currentPosition.y === coords.y
-		);
+		return localState.getTileMarkers(coords, effectiveRole).some((m) => m.type === 'note');
 	}
 
 	function clearSelection(clearHistory: boolean = true) {
@@ -230,15 +275,49 @@
 				// TODO: open tile content modal
 				// TODO: maybe add a context menu
 				break;
+			case 'explore':
+				// Player exploration mode - check if tile is adjacent and if there's an active session
+				if (canExplore && isAdjacentToParty(clickedKey)) {
+					pendingMovementTile = clickedKey;
+					dialogConfig = {
+						title: 'Confirm Movement',
+						description: `Move to tile ${clickedKey}? This will take 0.5 days.`,
+						actions: [
+							{
+								label: 'Cancel',
+								variant: 'outline',
+								action: () => {
+									pendingMovementTile = '';
+								}
+							},
+							{
+								label: 'Move',
+								variant: 'default',
+								action: async () => {
+									if ('addPlayerMove' in remoteState) {
+										try {
+											await remoteState.addPlayerMove(pendingMovementTile);
+											pendingMovementTile = '';
+										} catch (error) {
+											console.error('Failed to move:', error);
+										}
+									}
+								}
+							}
+						]
+					};
+					showDialog = true;
+				}
+				break;
 			case 'select':
 				// Multi-select mode - toggle selection
-				if (mode === 'dm') {
+				if (effectiveRole === 'dm') {
 					handleSelect(clickedKey);
 				}
 				break;
 			case 'paint':
 				// Paint mode - paint multiple tiles based on brush size
-				if (mode === 'dm') {
+				if (effectiveRole === 'dm') {
 					const tilesToPaint = getBrushTiles(clickedKey);
 					// Batch updates to the set for better performance
 					for (const key of tilesToPaint) {
@@ -369,15 +448,115 @@
 	}
 
 	// Cursor mode functions
-	function setSelectedTool(mode: 'interact' | 'pan' | 'select' | 'paint') {
-		_selectedTool = mode;
-		if (mode !== 'select' && mode !== 'paint') {
+	function setSelectedTool(tool: UITool) {
+		_selectedTool = tool;
+		if (tool !== 'select' && tool !== 'paint') {
 			clearSelection();
 		}
 	}
 
+	// Exploration functions
+	async function handleStartSession() {
+		if (effectiveRole === 'dm' && 'startSession' in remoteState) {
+			try {
+				// Pass undefined for party token
+				await remoteState.startSession();
+			} catch (error) {
+				console.error('Failed to start session:', error);
+			}
+		}
+	}
+
+	async function handleEndSession() {
+		if (effectiveRole === 'dm' && 'endSession' in remoteState) {
+			const activeSession = localState.activeSession;
+			if (!activeSession) return;
+
+			// Calculate session duration in minutes
+			const now = new Date();
+			const startTime = new Date(activeSession.startedAt);
+			const durationMinutes = (now.getTime() - startTime.getTime()) / 60000;
+
+			// If session is less than 1 minute, ask if they want to delete it
+			if (durationMinutes < 1) {
+				dialogConfig = {
+					title: 'End Short Session?',
+					description: `This session has only been active for ${Math.floor(durationMinutes * 60)} seconds. Would you like to end it or delete it?`,
+					actions: [
+						{
+							label: 'Cancel',
+							variant: 'outline',
+							action: () => {}
+						},
+						{
+							label: 'Delete Session',
+							variant: 'destructive',
+							action: async () => {
+								try {
+									if ('deleteSession' in remoteState) {
+										await remoteState.deleteSession(activeSession.id);
+									}
+								} catch (error) {
+									console.error('Failed to delete session:', error);
+								}
+							}
+						},
+						{
+							label: 'End Session',
+							variant: 'default',
+							action: async () => {
+								try {
+									await remoteState.endSession();
+								} catch (error) {
+									console.error('Failed to end session:', error);
+								}
+							}
+						}
+					]
+				};
+				showDialog = true;
+			} else {
+				// Session is longer than 1 minute, end it directly
+				try {
+					await remoteState.endSession();
+				} catch (error) {
+					console.error('Failed to end session:', error);
+				}
+			}
+		}
+	}
+
+	function isAdjacentToParty(tileKey: string): boolean {
+		if (!localState.partyTokenPosition) return false;
+
+		const [x, y] = tileKey.split('-').map(Number);
+		const { x: partyX, y: partyY } = localState.partyTokenPosition;
+
+		// Odd-q offset coordinates - calculate adjacent hexes
+		const isOddCol = partyX % 2 === 1;
+		const adjacentOffsets = isOddCol
+			? [
+					[0, -1],
+					[1, 0],
+					[1, 1],
+					[0, 1],
+					[-1, 1],
+					[-1, 0]
+				] // Odd column
+			: [
+					[0, -1],
+					[1, -1],
+					[1, 0],
+					[0, 1],
+					[-1, 0],
+					[-1, -1]
+				]; // Even column
+
+		return adjacentOffsets.some(([dx, dy]) => partyX + dx === x && partyY + dy === y);
+	}
+
 	function revealSelectedTiles() {
-		if (mode === 'dm' && 'revealTiles' in remoteState) {
+		if (effectiveRole === 'dm' && 'revealTiles' in remoteState) {
 			const selectedCoords = getSelectedTileCoordsFromSet(selectedSet);
 			remoteState.revealTiles(selectedCoords, alwaysRevealMode);
 			clearSelection();
@@ -385,7 +564,7 @@
 	}
 
 	function hideSelectedTiles() {
-		if (mode === 'dm' && 'hideTiles' in remoteState) {
+		if (effectiveRole === 'dm' && 'hideTiles' in remoteState) {
 			const selectedCoords = getSelectedTileCoordsFromSet(selectedSet);
 			remoteState.hideTiles(selectedCoords);
 			clearSelection();
@@ -393,7 +572,7 @@
 	}
 
 	function flushPendingOperations() {
-		if (mode === 'dm' && 'flush' in remoteState) {
+		if (effectiveRole === 'dm' && 'flush' in remoteState) {
 			remoteState.flush();
 		}
 	}
@@ -424,61 +603,38 @@
 		<Sheet bind:open={sidebarOpen}>
 			<div class="flex relative flex-col flex-1">
 				<!-- Floating Toolbars -->
-				<div class="flex absolute top-4 left-4 z-20 flex-col gap-2">
-					<MainToolbar
-						campaignName={data.campaign?.name || data.session?.campaignSlug}
-						{mode}
-						{hasErrors}
-						errorMessage={mode === 'player' && 'error' in remoteState
-							? remoteState.error
-							: undefined}
-						selectedCount={selectedSet.size}
-						showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
-					/>
+				<MainToolbar
+					campaignName={data.campaign?.name || data.session?.campaignSlug}
+					{userRole}
+					{effectiveRole}
+					{hasErrors}
+					activeSession={localState.activeSession}
+					errorMessage={userRole === 'player' && 'error' in remoteState
+						? remoteState.error
+						: undefined}
+					selectedCount={selectedSet.size}
+					showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
+				/>
 
-					<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
-					{#if mode === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
-						<SelectionToolbar
-							{alwaysRevealMode}
-							{activeSelectMode}
-							selectedCount={selectedSet.size}
-							showBrushSize={activeTool === 'paint'}
-							{brushSize}
-							onToggleAlwaysReveal={() => (alwaysRevealMode = !alwaysRevealMode)}
-							onSetSelectMode={(mode) => (_selectedSelectMode = mode)}
-							onReveal={revealSelectedTiles}
-							onHide={hideSelectedTiles}
-							onClear={() => clearSelection()}
-							onBrushSizeChange={(size) => (brushSize = size)}
-						/>
-					{/if}
-				</div>
+				<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
+				{#if effectiveRole === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
+					<SelectionToolbar
+						{alwaysRevealMode}
+						{activeSelectMode}
+						selectedCount={selectedSet.size}
+						showBrushSize={activeTool === 'paint'}
+						{brushSize}
+						onToggleAlwaysReveal={() => (alwaysRevealMode = !alwaysRevealMode)}
+						onSetSelectMode={(mode) => (_selectedSelectMode = mode)}
+						onReveal={revealSelectedTiles}
+						onHide={hideSelectedTiles}
+						onClear={() => clearSelection()}
+						onBrushSizeChange={(size) => (brushSize = size)}
+					/>
+				{/if}
 
 				<!-- Zoom Controls -->
-				<div class="absolute bottom-4 left-4 z-20">
-					<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
-				</div>
-
-				<!-- Navigation Links -->
-				{#if data.session?.role === 'dm'}
-					<div class="absolute top-4 right-4 z-20">
-						<div
-							class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
-						>
-							<form action="?/toggleView" method="POST" class="contents">
-								<Button variant="link" size="sm" type="submit">
-									{#if mode === 'dm'}
-										<Users class="mr-2 w-4 h-4" />
-										Player View
-									{:else}
-										<User class="mr-2 w-4 h-4" />
-										DM View
-									{/if}
-								</Button>
-							</form>
-						</div>
-					</div>
-				{/if}
+				<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
 
 				<!-- Map Container with native scroll -->
 				<div
@@ -504,11 +660,11 @@
 							{canvasWidth}
 							mapUrls={data.mapUrls}
 							variant="detail"
-							isDM={mode === 'dm'}
-							showAlwaysRevealed={mode === 'dm' ? showAlwaysRevealed : false}
-							showRevealed={mode === 'dm' ? showRevealed : false}
-							showUnrevealed={mode === 'dm' ? showUnrevealed : true}
-							tileTransparency={mode === 'dm' ? Number(tileTransparency) : 0.75}
+							isDM={effectiveRole === 'dm'}
+							showAlwaysRevealed={effectiveRole === 'dm' ? showAlwaysRevealed : false}
+							showRevealed={effectiveRole === 'dm' ? showRevealed : false}
+							showUnrevealed={effectiveRole === 'dm' ? showUnrevealed : true}
+							tileTransparency={effectiveRole === 'dm' ? Number(tileTransparency) : 0.75}
 							hexesPerRow={data.campaign?.hexesPerRow ?? 20}
 							hexesPerCol={data.campaign?.hexesPerCol ?? 20}
 							xOffset={data.campaign?.hexOffsetX ?? 70}
@@ -517,12 +673,12 @@
 							imageWidth={data.campaign?.imageWidth}
 							{localState}
 							{selectedSet}
-							showCoords={mode === 'dm' ? 'always' : 'hover'}
+							showCoords={effectiveRole === 'dm' ? 'always' : 'hover'}
 							onHexTriggered={handleTileTrigger}
 							{hasPoI}
 							{hasNotes}
-							{isPlayerPosition}
-							cursorMode={activeTool}
+							{activeTool}
+							{activeSelectMode}
 							showAnimations={true}
 							previewMode={false}
 							{zoom}
@@ -537,7 +693,7 @@
 								</div>
 								<h3 class="text-lg font-medium">Map Not Available</h3>
 								<p class="text-muted-foreground">
-									{#if mode === 'dm'}
+									{#if userRole === 'dm'}
 										<a class="underline" href="/{data.campaign.slug}/settings">Upload a map</a>
 										to get started.
 									{:else}
@@ -550,19 +706,27 @@
 				</div>
 
 				<!-- Bottom Toolbar with Cursor Modes -->
-				<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-					<ToolModeButtons
-						{activeTool}
-						{activeSelectMode}
-						{brushSize}
-						showDMTools={mode === 'dm'}
-						onSelectTool={setSelectedTool}
-					/>
-				</div>
+				<ToolModeButtons
+					{activeTool}
+					{activeSelectMode}
+					{brushSize}
+					showDMTools={effectiveRole === 'dm'}
+					showExploreTool={effectiveRole === 'player'}
+					{canExplore}
+					onSelectTool={setSelectedTool}
+				/>
+
+				<!-- General Confirmation Dialog -->
+				<ConfirmDialog
+					bind:open={showDialog}
+					title={dialogConfig.title}
+					description={dialogConfig.description}
+					actions={dialogConfig.actions}
+				/>
 			</div>
 
 			<!-- Layer Controls -->
-			{#if mode === 'dm'}
+			{#if effectiveRole === 'dm'}
 				<div class="absolute right-4 bottom-4 z-20">
 					<LayerControls
 						{showAlwaysRevealed}
@@ -583,99 +747,128 @@
 			<SheetContent side="left" class="w-80">
 				<SheetHeader>
 					<SheetTitle>
-						{mode === 'dm' ? 'DM Controls' : 'Map Info'}
+						{effectiveRole === 'dm' ? 'DM Controls' : 'Map Info'}
 					</SheetTitle>
 				</SheetHeader>
 
-				<div class="px-6 mt-6 space-y-4">
-					<!-- Statistics -->
-					<div>
-						<h3 class="mb-3 text-sm font-medium">Statistics</h3>
-						<div class="space-y-2">
-							<div class="flex justify-between text-sm">
-								<span class="text-muted-foreground">Revealed Tiles</span>
-								<span class="font-medium">{localState.revealedTilesSet.size}</span>
-							</div>
-							<div class="flex justify-between text-sm">
-								<span class="text-muted-foreground">Always Revealed Tiles</span>
-								<span class="font-medium">{localState.alwaysRevealedTilesSet.size}</span>
-							</div>
-							<div class="flex justify-between text-sm">
-								<span class="text-muted-foreground">Points of Interest</span>
-								<span class="font-medium">
-									{data.mapMarkers?.filter((m) => m.type === 'poi').length || 0}
-								</span>
-							</div>
-							<div class="flex justify-between text-sm">
-								<span class="text-muted-foreground">Notes</span>
-								<span class="font-medium">
-									{data.mapMarkers?.filter((m) => m.type === 'note').length || 0}
-								</span>
-							</div>
-							{#if hasPendingOperations}
+				<div class="flex flex-col justify-between p-6 h-full">
+					<div class="space-y-4">
+						<!-- Statistics -->
+						<div>
+							<h3 class="mb-3 text-sm font-medium">Statistics</h3>
+							<div class="space-y-2">
+								<!-- Global Game Time -->
 								<div class="flex justify-between text-sm">
-									<span class="text-orange-600">Pending Changes</span>
-									<Badge variant="secondary">{remoteState.pending?.length}</Badge>
+									<span class="text-muted-foreground">Game Time</span>
+									<GlobalTimeDisplay globalGameTime={localState.globalGameTime} />
 								</div>
+								<div class="flex justify-between text-sm">
+									<span class="text-muted-foreground">Revealed Tiles</span>
+									<span class="font-medium">{localState.revealedTilesSet.size}</span>
+								</div>
+								<div class="flex justify-between text-sm">
+									<span class="text-muted-foreground">Always Revealed Tiles</span>
+									<span class="font-medium">{localState.alwaysRevealedTilesSet.size}</span>
+								</div>
+								<div class="flex justify-between text-sm">
+									<span class="text-muted-foreground">Points of Interest</span>
+									<span class="font-medium">
+										{data.mapMarkers?.filter((m) => m.type === 'poi').length || 0}
+									</span>
+								</div>
+								<div class="flex justify-between text-sm">
+									<span class="text-muted-foreground">Notes</span>
+									<span class="font-medium">
+										{data.mapMarkers?.filter((m) => m.type === 'note').length || 0}
+									</span>
+								</div>
+								{#if hasPendingOperations}
+									<div class="flex justify-between text-sm">
+										<span class="text-orange-600">Pending Changes</span>
+										<Badge variant="secondary">{remoteState.pending?.length}</Badge>
+									</div>
+								{/if}
+							</div>
+						</div>
+
+						<Separator />
+
+						{#if effectiveRole === 'dm'}
+							<!-- DM Controls -->
+							<div>
+								<h3 class="mb-3 text-sm font-medium">Tile Management</h3>
+								<div class="space-y-2">
+									<p class="text-sm text-muted-foreground">
+										Click any tile to add POI or notes. Use multi-select for bulk reveal/hide
+										operations.
+									</p>
+
+									{#if hasPendingOperations}
+										<Button
+											variant="outline"
+											size="sm"
+											class="w-full"
+											onclick={flushPendingOperations}
+										>
+											Save {remoteState.pending?.length} Changes Now
+										</Button>
+									{/if}
+								</div>
+							</div>
+						{:else}
+							<!-- Player Info -->
+							<div>
+								<h3 class="mb-3 text-sm font-medium">How to Explore</h3>
+								<div class="space-y-2 text-sm text-muted-foreground">
+									<p>• Click any tile to view details or add notes</p>
+									<p>• Revealed tiles show explored territory</p>
+									<p>• Look for POI markers on important locations</p>
+									<p>• Travel mode coming soon...</p>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Session Controls (DM Only) -->
+						<Separator />
+						<div>
+							{#if hasActiveSession}
+								<div class="space-y-4">
+									<div class="flex justify-between items-center text-sm">
+										<span class="text-muted-foreground">Active Session</span>
+										<Badge variant="default" class="text-xs">
+											Session {localState.activeSession?.sessionNumber}
+										</Badge>
+									</div>
+									<div class="flex justify-between items-center text-sm">
+										<span class="text-muted-foreground">Duration</span>
+										<span class="font-medium tabular-nums">{sessionDuration}</span>
+									</div>
+									{#if effectiveRole === 'dm'}
+										<Button
+											variant="destructive"
+											size="sm"
+											class="w-full cursor-pointer"
+											onclick={handleEndSession}
+										>
+											End Session
+										</Button>
+									{/if}
+								</div>
+							{:else if effectiveRole === 'dm'}
+								<Button
+									variant="default"
+									size="sm"
+									class="w-full cursor-pointer"
+									onclick={handleStartSession}
+								>
+									Start Session
+								</Button>
 							{/if}
 						</div>
 					</div>
 
-					<Separator />
-
-					{#if mode === 'dm'}
-						<!-- DM Controls -->
-						<div>
-							<h3 class="mb-3 text-sm font-medium">Tile Management</h3>
-							<div class="space-y-2">
-								<p class="text-sm text-muted-foreground">
-									Click any tile to add POI or notes. Use multi-select for bulk reveal/hide
-									operations.
-								</p>
-
-								{#if hasPendingOperations}
-									<Button
-										variant="outline"
-										size="sm"
-										class="w-full"
-										onclick={flushPendingOperations}
-									>
-										Save {remoteState.pending?.length} Changes Now
-									</Button>
-								{/if}
-							</div>
-						</div>
-					{:else}
-						<!-- Player Info -->
-						<div>
-							<h3 class="mb-3 text-sm font-medium">How to Explore</h3>
-							<div class="space-y-2 text-sm text-muted-foreground">
-								<p>• Click any tile to view details or add notes</p>
-								<p>• Revealed tiles show explored territory</p>
-								<p>• Look for POI markers on important locations</p>
-								<p>• Travel mode coming soon...</p>
-							</div>
-						</div>
-
-						{#if 'currentPosition' in remoteState && remoteState.currentPosition}
-							<div>
-								<h3 class="mb-3 text-sm font-medium">Current Position</h3>
-								<div
-									class="flex gap-2 items-center p-2 bg-green-50 rounded-md border border-green-200"
-								>
-									<User class="w-4 h-4 text-green-600" />
-									<span class="text-sm">
-										{remoteState.currentPosition.x + 1}, {remoteState.currentPosition.y + 1}
-									</span>
-								</div>
-							</div>
-						{/if}
-					{/if}
-
-					<Separator />
-
 					<div class="space-y-2">
-						{#if mode === 'dm'}
+						{#if effectiveRole === 'dm'}
 							<a
 								href="/{data.campaign.slug}/settings"
 								class={buttonVariants({ size: 'sm', variant: 'secondary', class: 'w-full' })}

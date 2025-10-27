@@ -32,4 +32,4 @@
 	<title>{isDM ? 'Interactive Map' : 'Explore'} - {data.campaign.name}</title>
 </svelte:head>
 
-<MapView {data} mode={isDM ? 'dm' : 'player'} />
+<MapView {data} {effectiveRole} userRole={data.session.role} />

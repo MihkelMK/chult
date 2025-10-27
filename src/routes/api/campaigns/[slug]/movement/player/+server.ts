@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { campaigns, paths, revealedTiles, sessions, timeAuditLog } from '$lib/server/db/schema';
+import { campaigns, gameSessions, paths, revealedTiles, timeAuditLog } from '$lib/server/db/schema';
 import { emitEvent } from '$lib/server/events';
 import type { PathStep } from '$lib/types';
 import { error, json } from '@sveltejs/kit';
@@ -43,8 +43,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		// Get active session
 		const [activeSession] = await db
 			.select()
-			.from(sessions)
-			.where(and(eq(sessions.campaignId, campaign.id), eq(sessions.isActive, true)))
+			.from(gameSessions)
+			.where(and(eq(gameSessions.campaignId, campaign.id), eq(gameSessions.isActive, true)))
 			.limit(1);
 
 		if (!activeSession) {
@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const [currentPath] = await db
 			.select()
 			.from(paths)
-			.where(eq(paths.sessionId, activeSession.id))
+			.where(eq(paths.gameSessionId, activeSession.id))
 			.limit(1);
 
 		if (!currentPath) {
@@ -141,9 +141,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 		// Update session last activity
 		await db
-			.update(sessions)
+			.update(gameSessions)
 			.set({ lastActivityAt: new Date() })
-			.where(eq(sessions.id, activeSession.id));
+			.where(eq(gameSessions.id, activeSession.id));
 
 		// Emit SSE events
 		emitEvent(params.slug, 'movement:step-added', {
