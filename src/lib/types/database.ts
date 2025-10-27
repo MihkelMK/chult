@@ -5,7 +5,6 @@ import {
 	navigationPaths,
 	paths,
 	revealedTiles,
-	sessions,
 	timeAuditLog,
 	uploadedImages
 } from '$lib/server/db/schema';
@@ -22,7 +21,6 @@ export type MapMarker = InferSelectModel<typeof mapMarkers>;
 export type GameSession = InferSelectModel<typeof gameSessions>;
 export type NavigationPath = InferSelectModel<typeof navigationPaths>;
 export type UploadedImage = InferSelectModel<typeof uploadedImages>;
-export type Session = InferSelectModel<typeof sessions>;
 export type Path = InferSelectModel<typeof paths>;
 export type TimeAuditLog = InferSelectModel<typeof timeAuditLog>;
 
@@ -33,7 +31,6 @@ export type NewMapMarker = InferInsertModel<typeof mapMarkers>;
 export type NewGameSession = InferInsertModel<typeof gameSessions>;
 export type NewNavigationPath = InferInsertModel<typeof navigationPaths>;
 export type NewUploadedImage = InferInsertModel<typeof uploadedImages>;
-export type NewSession = InferInsertModel<typeof sessions>;
 export type NewPath = InferInsertModel<typeof paths>;
 export type NewTimeAuditLog = InferInsertModel<typeof timeAuditLog>;
 
@@ -74,12 +71,6 @@ export type MapMarkerResponse = Pick<
 
 export type GameSessionResponse = Pick<
 	GameSession,
-	'id' | 'name' | 'startTime' | 'endTime' | 'createdAt'
->;
-
-// Exploration session response types
-export type SessionResponse = Pick<
-	Session,
 	| 'id'
 	| 'sessionNumber'
 	| 'name'
@@ -90,9 +81,10 @@ export type SessionResponse = Pick<
 	| 'duration'
 	| 'isActive'
 	| 'lastActivityAt'
+	| 'createdAt'
 >;
 
-export type PathResponse = Pick<Path, 'id' | 'sessionId' | 'steps' | 'revealedTiles'>;
+export type PathResponse = Pick<Path, 'id' | 'gameSessionId' | 'steps' | 'revealedTiles'>;
 
 export type TimeAuditLogResponse = Pick<
 	TimeAuditLog,
@@ -113,8 +105,6 @@ export type CampaignDataResponse = {
 	revealedTiles: RevealedTileResponse[];
 	mapMarkers: MapMarkerResponse[];
 	gameSessions: GameSessionResponse[];
-	// Exploration data (NEW)
-	sessions: SessionResponse[];
 	paths: PathResponse[];
 	timeAuditLog?: TimeAuditLogResponse[]; // DM only
 };
@@ -138,9 +128,7 @@ export interface PlayerCampaignDataResponse {
 	>;
 	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
 	mapMarkers: MapMarkerResponse[];
-	gameSessions: never[]; // Players don't get game sessions
-	// Exploration data (NEW)
-	sessions: SessionResponse[];
+	gameSessions: GameSessionResponse[];
 	paths: PathResponse[];
 	mapUrls: MapUrlsResponse | undefined;
 }

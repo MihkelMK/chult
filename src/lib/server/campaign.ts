@@ -4,7 +4,6 @@ import {
 	mapMarkers,
 	paths,
 	revealedTiles,
-	sessions,
 	timeAuditLog
 } from '$lib/server/db/schema';
 import type {
@@ -163,52 +162,37 @@ export async function getCampaignData(
 				.where(eq(mapMarkers.campaignId, campaignId))
 				.orderBy(mapMarkers.createdAt);
 
-	// Get recent game sessions (DM only)
-	const gameSessionsPromise = isPlayerView
-		? Promise.resolve([])
-		: db
-				.select({
-					id: gameSessionsSchema.id,
-					name: gameSessionsSchema.name,
-					startTime: gameSessionsSchema.startTime,
-					endTime: gameSessionsSchema.endTime,
-					createdAt: gameSessionsSchema.createdAt
-				})
-				.from(gameSessionsSchema)
-				.where(eq(gameSessionsSchema.campaignId, campaignId))
-				.orderBy(desc(gameSessionsSchema.startTime))
-				.limit(10);
-
-	// Get exploration sessions (NEW) - limit to 50 most recent
-	const sessionsPromise = db
+	// Get exploration game sessions - limit to 50 most recent
+	const gameSessionsPromise = db
 		.select({
-			id: sessions.id,
-			sessionNumber: sessions.sessionNumber,
-			name: sessions.name,
-			startGameTime: sessions.startGameTime,
-			endGameTime: sessions.endGameTime,
-			startedAt: sessions.startedAt,
-			endedAt: sessions.endedAt,
-			duration: sessions.duration,
-			isActive: sessions.isActive,
-			lastActivityAt: sessions.lastActivityAt
+			id: gameSessionsSchema.id,
+			sessionNumber: gameSessionsSchema.sessionNumber,
+			name: gameSessionsSchema.name,
+			startGameTime: gameSessionsSchema.startGameTime,
+			endGameTime: gameSessionsSchema.endGameTime,
+			startedAt: gameSessionsSchema.startedAt,
+			endedAt: gameSessionsSchema.endedAt,
+			duration: gameSessionsSchema.duration,
+			isActive: gameSessionsSchema.isActive,
+			lastActivityAt: gameSessionsSchema.lastActivityAt,
+			createdAt: gameSessionsSchema.createdAt
 		})
-		.from(sessions)
-		.where(eq(sessions.campaignId, campaignId))
-		.orderBy(desc(sessions.sessionNumber))
+		.from(gameSessionsSchema)
+		.where(eq(gameSessionsSchema.campaignId, campaignId))
+		.orderBy(desc(gameSessionsSchema.sessionNumber))
 		.limit(50);
 
-	// Get paths for sessions (NEW)
+	// Get paths for game sessions (NEW)
 	const pathsPromise = db
 		.select({
 			id: paths.id,
-			sessionId: paths.sessionId,
+			gameSessionId: paths.gameSessionId,
 			steps: paths.steps,
 			revealedTiles: paths.revealedTiles
 		})
 		.from(paths)
-		.innerJoin(sessions, eq(paths.sessionId, sessions.id))
-		.where(eq(sessions.campaignId, campaignId));
+		.innerJoin(gameSessionsSchema, eq(paths.gameSessionId, gameSessionsSchema.id))
+		.where(eq(gameSessionsSchema.campaignId, campaignId));
 
 	// Get time audit log (DM only, NEW)
 	const timeAuditLogPromise = isPlayerView
@@ -227,20 +211,11 @@ export async function getCampaignData(
 				.orderBy(desc(timeAuditLog.timestamp))
 				.limit(100);
 
-	const [
-		mapUrls,
-		revealed,
-		markers,
-		gameSessions,
-		explorationSessions,
-		explorationPaths,
-		auditLog
-	] = await Promise.all([
+	const [mapUrls, revealed, markers, gameSessions, explorationPaths, auditLog] = await Promise.all([
 		mapUrlsPromise,
 		revealedPromise,
 		markersPromise,
 		gameSessionsPromise,
-		sessionsPromise,
 		pathsPromise,
 		timeAuditLogPromise
 	]);
@@ -264,7 +239,6 @@ export async function getCampaignData(
 		revealedTiles: revealed,
 		mapMarkers: markers,
 		gameSessions: gameSessions,
-		sessions: explorationSessions,
 		paths: explorationPaths,
 		timeAuditLog: auditLog,
 		mapUrls: mapUrls

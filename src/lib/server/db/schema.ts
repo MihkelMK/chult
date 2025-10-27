@@ -57,7 +57,7 @@ export const revealedTiles = pgTable(
 	(table) => [index('revealed_tiles_campaign_id_idx').on(table.campaignId)]
 );
 
-// GameSessions - DM-created gameSessions for tracking player movement
+// GameSessions - DM-created exploration sessions for tracking player movement
 export const gameSessions = pgTable(
 	'gameSessions',
 	{
@@ -65,12 +65,22 @@ export const gameSessions = pgTable(
 		campaignId: integer('campaign_id')
 			.notNull()
 			.references(() => campaigns.id, { onDelete: 'cascade' }),
-		name: text('name').notNull(),
-		startTime: timestamp('start_time', { withTimezone: false }).notNull().defaultNow(),
-		endTime: timestamp('end_time', { withTimezone: false }),
+		sessionNumber: integer('session_number').notNull(),
+		name: text('name').notNull(), // "Session X - yyyy-mm-dd"
+		startGameTime: doublePrecision('start_game_time').notNull(), // Game days at start
+		endGameTime: doublePrecision('end_game_time'), // Game days at end (null if active)
+		startedAt: timestamp('started_at', { withTimezone: false }).notNull().defaultNow(),
+		endedAt: timestamp('ended_at', { withTimezone: false }), // null if active
+		duration: integer('duration'), // IRL minutes (calculated from startedAt/endedAt)
+		isActive: boolean('is_active').notNull().default(false),
+		lastActivityAt: timestamp('last_activity_at', { withTimezone: false }).notNull().defaultNow(),
 		createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow()
 	},
-	(table) => [index('game_sessions_campaign_id_idx').on(table.campaignId)]
+	(table) => [
+		index('game_sessions_campaign_id_idx').on(table.campaignId),
+		index('game_sessions_campaign_id_is_active_idx').on(table.campaignId, table.isActive),
+		index('game_sessions_campaign_id_session_number_idx').on(table.campaignId, table.sessionNumber)
+	]
 );
 
 // Navigation paths - player movement during gameSessions
@@ -123,31 +133,6 @@ export const uploadedImages = pgTable('uploaded_images', {
 	associatedId: integer('associated_id').notNull()
 });
 
-// Sessions - DM-controlled exploration sessions (NEW)
-export const sessions = pgTable(
-	'sessions',
-	{
-		id: serial('id').primaryKey(),
-		campaignId: integer('campaign_id')
-			.notNull()
-			.references(() => campaigns.id, { onDelete: 'cascade' }),
-		sessionNumber: integer('session_number').notNull(),
-		name: text('name').notNull(), // "Session X - yyyy-mm-dd"
-		startGameTime: doublePrecision('start_game_time').notNull(), // Game days at start
-		endGameTime: doublePrecision('end_game_time'), // Game days at end (null if active)
-		startedAt: timestamp('started_at', { withTimezone: false }).notNull().defaultNow(),
-		endedAt: timestamp('ended_at', { withTimezone: false }), // null if active
-		duration: integer('duration'), // IRL minutes (calculated from startedAt/endedAt)
-		isActive: boolean('is_active').notNull().default(true),
-		lastActivityAt: timestamp('last_activity_at', { withTimezone: false }).notNull().defaultNow()
-	},
-	(table) => [
-		index('sessions_campaign_id_idx').on(table.campaignId),
-		index('sessions_campaign_id_is_active_idx').on(table.campaignId, table.isActive),
-		index('sessions_campaign_id_session_number_idx').on(table.campaignId, table.sessionNumber)
-	]
-);
-
 // PathStep union types for type safety
 export type PlayerMove = {
 	type: 'player_move';
@@ -175,18 +160,18 @@ export type DMPath = {
 
 export type PathStep = PlayerMove | DMTeleport | DMPath;
 
-// Paths - movement history for sessions (NEW)
+// Paths - movement history for game sessions (NEW)
 export const paths = pgTable(
 	'paths',
 	{
 		id: serial('id').primaryKey(),
-		sessionId: integer('session_id')
+		gameSessionId: integer('game_session_id')
 			.notNull()
-			.references(() => sessions.id, { onDelete: 'cascade' }),
+			.references(() => gameSessions.id, { onDelete: 'cascade' }),
 		steps: jsonb('steps').notNull().$type<PathStep[]>().default([]),
 		revealedTiles: text('revealed_tiles').array().notNull().default([]) // Array of tile keys "col-row"
 	},
-	(table) => [index('paths_session_id_idx').on(table.sessionId)]
+	(table) => [index('paths_game_session_id_idx').on(table.gameSessionId)]
 );
 
 // Time Audit Log - track all time changes (NEW)
@@ -218,7 +203,6 @@ export const campaignsRelations = relations(campaigns, ({ many }) => ({
 	mapMarkers: many(mapMarkers),
 	uploadedImages: many(uploadedImages),
 	// NEW exploration relations
-	sessions: many(sessions),
 	timeAuditLog: many(timeAuditLog)
 }));
 
@@ -234,7 +218,8 @@ export const gameSessionsRelations = relations(gameSessions, ({ one, many }) => 
 		fields: [gameSessions.campaignId],
 		references: [campaigns.id]
 	}),
-	navigationPaths: many(navigationPaths)
+	navigationPaths: many(navigationPaths),
+	paths: many(paths)
 }));
 
 export const navigationPathsRelations = relations(navigationPaths, ({ one }) => ({
@@ -259,18 +244,10 @@ export const uploadedImagesRelations = relations(uploadedImages, ({ one }) => ({
 }));
 
 // NEW: Exploration relations
-export const sessionsRelations = relations(sessions, ({ one, many }) => ({
-	campaign: one(campaigns, {
-		fields: [sessions.campaignId],
-		references: [campaigns.id]
-	}),
-	paths: many(paths)
-}));
-
 export const pathsRelations = relations(paths, ({ one }) => ({
-	session: one(sessions, {
-		fields: [paths.sessionId],
-		references: [sessions.id]
+	gameSession: one(gameSessions, {
+		fields: [paths.gameSessionId],
+		references: [gameSessions.id]
 	})
 }));
 

@@ -1,11 +1,11 @@
 import { browser } from '$app/environment';
 import type {
 	CampaignDataResponse,
+	GameSessionResponse,
 	MapMarkerResponse,
 	PathResponse,
 	PlayerCampaignDataResponse,
 	RevealedTile,
-	SessionResponse,
 	TileCoords
 } from '$lib/types';
 import EventEmitter from 'eventemitter3';
@@ -32,8 +32,8 @@ export class LocalState extends EventEmitter {
 	// Exploration state (NEW)
 	public globalGameTime = $state(0); // Days as float
 	public partyTokenPosition = $state<TileCoords | null>(null);
-	public sessions = $state<SessionResponse[]>([]);
-	protected pathsMap = new SvelteMap<number, PathResponse>(); // sessionId -> PathResponse
+	public gameSessions = $state<GameSessionResponse[]>([]);
+	protected pathsMap = new SvelteMap<number, PathResponse>(); // gameSessionId -> PathResponse
 
 	// Hex grid configuration (reactive so we can update if settings change)
 	protected hexesPerRow = $state(0);
@@ -57,7 +57,7 @@ export class LocalState extends EventEmitter {
 
 	// Derived exploration properties
 	public activeSession = $derived.by(() => {
-		return this.sessions.find((s) => s.isActive) ?? null;
+		return this.gameSessions.find((s) => s.isActive) ?? null;
 	});
 
 	public currentPath = $derived.by(() => {
@@ -92,7 +92,7 @@ export class LocalState extends EventEmitter {
 				y: initialData.campaign.partyTokenY
 			};
 		}
-		this.sessions = initialData.sessions || [];
+		this.gameSessions = initialData.gameSessions || [];
 		this.initializePathsMap(initialData.paths || []);
 
 		if (browser) {
@@ -214,6 +214,15 @@ export class LocalState extends EventEmitter {
 				console.error('Failed to parse time:updated event:', error);
 			}
 		});
+
+		this.eventSource.addEventListener('session:deleted', (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				this.emit('session:deleted', data);
+			} catch (error) {
+				console.error('Failed to parse session:deleted event:', error);
+			}
+		});
 	}
 
 	public disconnect() {
@@ -297,7 +306,7 @@ export class LocalState extends EventEmitter {
 	}
 
 	protected initializePathsMap(paths: PathResponse[]) {
-		this.pathsMap = new SvelteMap(paths.map((p) => [p.sessionId, p]));
+		this.pathsMap = new SvelteMap(paths.map((p) => [p.gameSessionId, p]));
 	}
 
 	// Protected shared event handlers

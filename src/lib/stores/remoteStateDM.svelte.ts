@@ -325,16 +325,14 @@ export class RemoteStateDM {
 
 	// Exploration methods (NEW)
 
-	async startSession(name: string) {
+	async startSession() {
 		if (!this.localState) {
 			throw new Error('Local state not available');
 		}
 
 		try {
 			const response = await fetch(`/api/campaigns/${this.campaignSlug}/sessions/start`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name })
+				method: 'POST'
 			});
 
 			if (!response.ok) {
@@ -381,6 +379,31 @@ export class RemoteStateDM {
 			return session;
 		} catch (error) {
 			console.error('[remoteStateDM] Failed to end session:', error);
+			throw error;
+		}
+	}
+
+	async deleteSession(sessionId: number) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/sessions/${sessionId}`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' }
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to delete session');
+			}
+
+			console.log('[remoteStateDM] Session deleted:', sessionId);
+
+			// SSE will handle the state update
+		} catch (error) {
+			console.error('[remoteStateDM] Failed to delete session:', error);
 			throw error;
 		}
 	}

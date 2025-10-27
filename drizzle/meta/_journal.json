@@ -57,6 +57,13 @@
       "when": 1761233868952,
       "tag": "0007_wild_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1761240646535,
+      "tag": "0008_thin_purple_man",
+      "breakpoints": true
     }
   ]
 }

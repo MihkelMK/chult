@@ -1,10 +1,10 @@
 import type {
 	CampaignDataResponse,
+	GameSessionResponse,
 	MapMarkerResponse,
 	PathResponse,
 	PathStep,
-	RevealedTileResponse,
-	SessionResponse
+	RevealedTileResponse
 } from '$lib/types';
 import { untrack } from 'svelte';
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -41,16 +41,19 @@ export class LocalStateDM extends LocalState {
 
 		// Exploration event listeners (NEW)
 		this.addEventListener('session:started', (session) =>
-			this.handleSessionStarted(session as SessionResponse)
+			this.handleSessionStarted(session as GameSessionResponse)
 		);
 		this.addEventListener('session:ended', (session) =>
-			this.handleSessionEnded(session as SessionResponse)
+			this.handleSessionEnded(session as GameSessionResponse)
 		);
 		this.addEventListener('movement:step-added', (data) =>
 			this.handleMovementStepAdded(data as { sessionId: number; step: PathStep; tiles: string[] })
 		);
 		this.addEventListener('time:updated', (data) =>
 			this.handleTimeUpdated(data as { globalGameTime: number })
+		);
+		this.addEventListener('session:deleted', (data) =>
+			this.handleSessionDeleted(data as { id: number })
 		);
 	}
 
@@ -235,37 +238,36 @@ export class LocalStateDM extends LocalState {
 	}
 
 	// Exploration event handlers (NEW)
-
-	private handleSessionStarted(session: SessionResponse) {
+	private handleSessionStarted(session: GameSessionResponse) {
 		console.log('[localStateDM] SSE session:started', session);
 
 		// Check if session already exists (from optimistic update)
-		const existingIndex = this.sessions.findIndex((s) => s.id === session.id);
+		const existingIndex = this.gameSessions.findIndex((s) => s.id === session.id);
 		if (existingIndex !== -1) {
 			// Update existing session
-			this.sessions[existingIndex] = session;
+			this.gameSessions[existingIndex] = session;
 		} else {
 			// Add new session
-			this.sessions.push(session);
+			this.gameSessions.push(session);
 		}
 
 		// Create empty path for this session
 		const newPath: PathResponse = {
 			id: session.id, // Path ID matches session ID for simplicity
-			sessionId: session.id,
+			gameSessionId: session.id,
 			steps: [],
 			revealedTiles: []
 		};
 		this.pathsMap.set(session.id, newPath);
 	}
 
-	private handleSessionEnded(session: SessionResponse) {
+	private handleSessionEnded(session: GameSessionResponse) {
 		console.log('[localStateDM] SSE session:ended', session);
 
 		// Update session in array
-		const index = this.sessions.findIndex((s) => s.id === session.id);
+		const index = this.gameSessions.findIndex((s) => s.id === session.id);
 		if (index !== -1) {
-			this.sessions[index] = session;
+			this.gameSessions[index] = session;
 		}
 	}
 
@@ -312,6 +314,17 @@ export class LocalStateDM extends LocalState {
 	private handleTimeUpdated(data: { globalGameTime: number }) {
 		console.log('[localStateDM] SSE time:updated', data);
 		this.globalGameTime = data.globalGameTime;
+	}
+
+	private handleSessionDeleted(data: { id: number }) {
+		console.log('[localStateDM] SSE session:deleted', data);
+
+		// Remove session from array
+		this.gameSessions = this.gameSessions.filter((s) => s.id !== data.id);
+
+		// Remove associated path
+		this.pathsMap.delete(data.id);
+		this.pathsMap = new SvelteMap(this.pathsMap);
 	}
 
 	// Helper methods
