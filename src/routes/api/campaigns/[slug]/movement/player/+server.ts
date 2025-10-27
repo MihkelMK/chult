@@ -51,7 +51,39 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			throw error(400, 'No active session');
 		}
 
-		// TODO: Validate that tile is adjacent to current party position
+		// Validate that tile is adjacent to current party position
+		const currentX = campaign.partyTokenX;
+		const currentY = campaign.partyTokenY;
+
+		if (currentX === null || currentY === null) {
+			throw error(400, 'Party token position not set');
+		}
+
+		// Calculate adjacent hexes using odd-q offset coordinates
+		const isOddCol = currentX % 2 === 1;
+		const adjacentOffsets = isOddCol
+			? [
+					[0, -1],
+					[1, 0],
+					[1, 1],
+					[0, 1],
+					[-1, 1],
+					[-1, 0]
+				] // Odd column
+			: [
+					[0, -1],
+					[1, -1],
+					[1, 0],
+					[0, 1],
+					[-1, 0],
+					[-1, -1]
+				]; // Even column
+
+		const isAdjacent = adjacentOffsets.some(([dx, dy]) => currentX + dx === col && currentY + dy === row);
+
+		if (!isAdjacent) {
+			throw error(400, 'Tile is not adjacent to party position');
+		}
 
 		// Get current path
 		const [currentPath] = await db
@@ -120,15 +152,27 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			})
 			.where(eq(paths.id, currentPath.id));
 
-		// Update campaign global game time and party position
-		await db
+		// Update campaign global game time and party position with optimistic locking
+		const updateResult = await db
 			.update(campaigns)
 			.set({
 				globalGameTime: newGameTime,
 				partyTokenX: col,
 				partyTokenY: row
 			})
-			.where(eq(campaigns.id, campaign.id));
+			.where(
+				and(
+					eq(campaigns.id, campaign.id),
+					eq(campaigns.partyTokenX, campaign.partyTokenX),
+					eq(campaigns.partyTokenY, campaign.partyTokenY)
+				)
+			)
+			.returning({ id: campaigns.id });
+
+		// Check if update succeeded (position unchanged during transaction)
+		if (updateResult.length === 0) {
+			throw error(409, 'Party position changed - another player moved');
+		}
 
 		// Create audit log entry
 		await db.insert(timeAuditLog).values({

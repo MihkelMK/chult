@@ -75,6 +75,7 @@ interface MapCanvasSharedProps {
 	showUnrevealed?: boolean;
 	showCoords: 'never' | 'always' | 'hover';
 	activeTool: UITool;
+	selectedTool: UITool;
 	activeSelectMode: SelectMode;
 	onHexTriggered: (event: HexTriggerEvent) => void;
 	onMapLoad?: (dimensions: { width: number; height: number }) => void;
@@ -93,11 +94,11 @@ export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 
 export interface MapCanvasProps extends MapCanvasSharedProps {
 	image: HTMLImageElement | undefined;
-	hexGrid: readonly Hex[];
 	hexRadius: number;
 	revealedTiles: readonly Hex[];
 	alwaysRevealedTiles: readonly Hex[];
 	unrevealedTiles: readonly Hex[];
 	selectedTiles: readonly Hex[];
+	adjacentTiles: readonly Hex[]; // Valid moves with explore tool
 	partyTokenTile: Hex | null;
 }

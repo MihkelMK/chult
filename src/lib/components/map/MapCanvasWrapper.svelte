@@ -25,6 +25,7 @@
 		imageHeight,
 		imageWidth,
 		activeTool,
+		selectedTool,
 		activeSelectMode,
 		zoom,
 		showAnimations = true,
@@ -158,6 +159,43 @@
 		}
 		return tiles;
 	});
+
+	let adjacentTiles = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		localState.tilesVersion; // Track version changes
+		const tiles: Hex[] = [];
+
+		if (localState.partyTokenPosition) {
+			const { x: partyX, y: partyY } = localState.partyTokenPosition;
+			const isOddCol = partyX % 2 === 1;
+			const adjacentOffsets = isOddCol
+				? [
+						[0, -1],
+						[1, 0],
+						[1, 1],
+						[0, 1],
+						[-1, 1],
+						[-1, 0]
+					] // Odd column
+				: [
+						[0, -1],
+						[1, -1],
+						[1, 0],
+						[0, 1],
+						[-1, 0],
+						[-1, -1]
+					]; // Even column
+
+			adjacentOffsets.forEach(([dx, dy]) => {
+				const x = partyX + dx;
+				const y = partyY + dy;
+				const key = `${x}-${y}`;
+				const hex = hexMap.get(key);
+				if (hex) tiles.push(hex);
+			});
+		}
+		return tiles;
+	});
 </script>
 
 {#await MapCanvasLoader}
@@ -168,17 +206,18 @@
 	{/if}
 	<MapCanvas
 		bind:isDragging
-		{hexGrid}
 		{canvasWidth}
 		{canvasHeight}
 		{revealedTiles}
 		{alwaysRevealedTiles}
 		{unrevealedTiles}
 		{selectedTiles}
+		{adjacentTiles}
 		{partyTokenTile}
 		{image}
 		{zoom}
 		{activeTool}
+		{selectedTool}
 		{activeSelectMode}
 		{xOffset}
 		{yOffset}

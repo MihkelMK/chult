@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Hex, HexRendered, MapCanvasProps } from '$lib/types';
+	import type { Hex, MapCanvasProps } from '$lib/types';
 	import { Group, Image, Layer, RegularPolygon, Stage, Text } from 'svelte-konva';
 	import PartyToken from './tokens/PartyToken.svelte';
 
@@ -11,6 +11,7 @@
 		alwaysRevealedTiles,
 		unrevealedTiles,
 		selectedTiles,
+		adjacentTiles,
 		partyTokenTile,
 		xOffset = 0,
 		yOffset = 0,
@@ -19,6 +20,7 @@
 		hexRadius,
 		zoom,
 		activeTool,
+		selectedTool,
 		tileTransparency,
 		previewMode,
 		showRevealed,
@@ -28,8 +30,6 @@
 		imageHeight,
 		imageWidth,
 		onHexTriggered,
-		hasNotes,
-		hasPoI,
 		canvasHeight,
 		canvasWidth
 	}: MapCanvasProps = $props();
@@ -137,39 +137,16 @@
 	});
 </script>
 
-{#snippet indicators(hex: HexRendered)}
-	{@const coords = { x: hex.col, y: hex.row }}
-	{@const centerX = hex.centerX}
-	{@const centerY = hex.centerY}
-	{@const hasPoIMarker = hasPoI(coords)}
-	{@const hasNotesMarker = hasNotes(coords)}
-
-	<!-- POI indicator (red pin, top right) -->
-	{#if hasPoIMarker}
-		<g transform="translate({centerX + 8}, {centerY - 8})">
-			<circle r="3" fill="#ef4444" stroke="white" stroke-width="1" />
-			<circle r="1.5" fill="white" />
-		</g>
-	{/if}
-
-	<!-- Notes indicator (blue note, top left) -->
-	{#if hasNotesMarker}
-		<g transform="translate({centerX - 8}, {centerY - 8})">
-			<rect
-				x="-2"
-				y="-2"
-				width="4"
-				height="4"
-				rx="0.5"
-				fill="#3b82f6"
-				stroke="white"
-				stroke-width="1"
-			/>
-			<line x1="-1" y1="-1" x2="1" y2="-1" stroke="white" stroke-width="0.5" />
-			<line x1="-1" y1="0" x2="1" y2="0" stroke="white" stroke-width="0.5" />
-			<line x1="-1" y1="1" x2="0" y2="1" stroke="white" stroke-width="0.5" />
-		</g>
-	{/if}
+{#snippet tileCoords(hex: Hex)}
+	<Text
+		staticConfig={true}
+		listening={false}
+		x={hex.centerX - textXOffset * (hex.col === rotatedHexesPerCol - 1 ? 1.75 : 1)}
+		y={hex.centerY + textYOffset}
+		text="{hex.col.toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}"
+		fill="#000000"
+		{fontSize}
+	/>
 {/snippet}
 
 {#snippet tile(hex: Hex, isRevealed: boolean, isAlways: boolean)}
@@ -180,7 +157,7 @@
 		radius={hexRadius}
 		sides={6}
 		rotation={90}
-		fill={previewMode ? '' : isAlways ? '#faa16a' : isRevealed ? '#bfd5fc' : 'rgb(253, 250, 240)'}
+		fill={previewMode ? '' : isAlways ? '#faa16a' : isRevealed ? '#bfd5fc' : '#fdfaf0'}
 		opacity={isDM ? tileTransparency : 1}
 		stroke={isAlways ? '#f97316' : 'black'}
 		perfectDrawEnabled={false}
@@ -191,15 +168,7 @@
 	{@const isBottomMost = hex.row === rotatedHexesPerRow - 1 && hex.row % 2 === 0}
 	{@const isLeftMost = hex.col === 0}
 	{#if showCoords !== 'never' && !isTopMost && !isLeftMost && !isBottomMost}
-		<Text
-			staticConfig={true}
-			listening={false}
-			x={hex.centerX - textXOffset * (hex.col === rotatedHexesPerCol - 1 ? 1.75 : 1)}
-			y={hex.centerY + textYOffset}
-			text="{hex.col.toString().padStart(2, '0')}{hex.row.toString().padStart(2, '0')}"
-			fill="#000000"
-			{fontSize}
-		/>
+		{@render tileCoords(hex)}
 	{/if}
 	<!-- {#if hex.row > 0 && showCoords !== 'never'} -->
 	<!-- {@render indicators(hex)} -->
@@ -220,6 +189,35 @@
 		stroke="#3b82f6"
 		strokeWidth={5}
 	/>
+{/snippet}
+
+{#snippet adjacentTileHighlight(hex: Hex)}
+	<Group
+		staticConfig={true}
+		perfectDrawEnabled={false}
+		shadowForStrokeEnabled={false}
+		onclick={() => handleHexTrigger(hex.id)}
+	>
+		<RegularPolygon
+			x={hex.centerX}
+			y={hex.centerY}
+			radius={hexRadius}
+			sides={6}
+			rotation={90}
+			fill="#e2ffd3"
+			opacity={0.5}
+		/>
+		<RegularPolygon
+			x={hex.centerX}
+			y={hex.centerY}
+			radius={hexRadius}
+			sides={6}
+			rotation={90}
+			strokeWidth={2}
+			stroke="black"
+		/>
+		{@render tileCoords(hex)}
+	</Group>
 {/snippet}
 
 <Stage
@@ -335,11 +333,24 @@
 		clipHeight={gridHeight}
 		clipWidth={gridWidth}
 	>
-		<Group visible={selectedTiles.length > 0} listening={false}>
+		<!-- 1: Highlight selected tile borders when selecting -->
+		<Group
+			visible={(activeTool === 'select' || activeTool === 'paint') && selectedTiles.length > 0}
+			listening={false}
+		>
 			{#each selectedTiles as hex (`selected-${hex.id}`)}
 				{@render selectedTileBorder(hex)}
 			{/each}
 		</Group>
+
+		<!-- 2: Highlight possible moves when exploring -->
+		<Group visible={selectedTool === 'explore' && adjacentTiles.length > 0}>
+			{#each adjacentTiles as hex (`adjacent-${hex.id}`)}
+				{@render adjacentTileHighlight(hex)}
+			{/each}
+		</Group>
+
+		<!-- 3: Show PartyToken on current position -->
 		<PartyToken tile={partyTokenTile} radius={hexRadius} />
 	</Layer>
 </Stage>

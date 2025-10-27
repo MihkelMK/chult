@@ -43,6 +43,15 @@ export class RemoteStatePlayer {
 			throw new Error('No active session');
 		}
 
+		// Save original state for rollback
+		const originalPosition = this.localState.partyTokenPosition;
+		const originalGameTime = this.localState.globalGameTime;
+
+		// Optimistic update
+		const [x, y] = tileKey.split('-').map(Number);
+		this.localState.partyTokenPosition = { x, y };
+		this.localState.globalGameTime += 0.5;
+
 		try {
 			const response = await fetch(`/api/campaigns/${this.campaignSlug}/movement/player`, {
 				method: 'POST',
@@ -56,12 +65,22 @@ export class RemoteStatePlayer {
 			}
 
 			const result = await response.json();
-			console.log('[remoteStateDM] Player move added:', result);
 
-			// SSE will handle the state update
+			// SSE will reconcile the final state
 			return result;
 		} catch (error) {
-			console.error('[remoteStateDM] Failed to add player move:', error);
+			// Rollback on failure
+			this.localState.partyTokenPosition = originalPosition;
+			this.localState.globalGameTime = originalGameTime;
+
+			// Handle 409 Conflict (position changed) differently
+			if (error instanceof Error && error.message.includes('Party position changed')) {
+				this.error = 'Party moved - please try again';
+			} else {
+				this.error = error instanceof Error ? error.message : 'Failed to move';
+			}
+
+			console.error('[remoteStatePlayer] Failed to add player move:', error);
 			throw error;
 		}
 	}

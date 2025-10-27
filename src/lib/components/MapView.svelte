@@ -9,6 +9,7 @@
 	import { MapPin } from '@lucide/svelte';
 	import { PressedKeys, Previous } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { toast } from 'svelte-sonner';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
 	import MapCanvasWrapper from './map/MapCanvasWrapper.svelte';
 	import LayerControls from './map/overlays/LayerControls.svelte';
@@ -57,7 +58,6 @@
 			action: () => void;
 		}>;
 	}>({ title: '', description: '', actions: [] });
-	let pendingMovementTile = $state<string>('');
 
 	// Use these values to determine actual expected action
 	let activeTool = $derived(shiftHeld ? 'pan' : _selectedTool);
@@ -278,35 +278,11 @@
 			case 'explore':
 				// Player exploration mode - check if tile is adjacent and if there's an active session
 				if (canExplore && isAdjacentToParty(clickedKey)) {
-					pendingMovementTile = clickedKey;
-					dialogConfig = {
-						title: 'Confirm Movement',
-						description: `Move to tile ${clickedKey}? This will take 0.5 days.`,
-						actions: [
-							{
-								label: 'Cancel',
-								variant: 'outline',
-								action: () => {
-									pendingMovementTile = '';
-								}
-							},
-							{
-								label: 'Move',
-								variant: 'default',
-								action: async () => {
-									if ('addPlayerMove' in remoteState) {
-										try {
-											await remoteState.addPlayerMove(pendingMovementTile);
-											pendingMovementTile = '';
-										} catch (error) {
-											console.error('Failed to move:', error);
-										}
-									}
-								}
-							}
-						]
-					};
-					showDialog = true;
+					showMovementConfirmation(clickedKey);
+				} else if (!canExplore) {
+					toast.error('No active session');
+				} else if (!isAdjacentToParty(clickedKey)) {
+					toast.error('Tile is not adjacent to party position');
 				}
 				break;
 			case 'select':
@@ -455,16 +431,96 @@
 		}
 	}
 
+	// Movement confirmation and execution
+	async function confirmMovement(tileKey: string) {
+		if ('addPlayerMove' in remoteState) {
+			try {
+				await remoteState.addPlayerMove(tileKey);
+				toast.success('Moved successfully');
+			} catch (error) {
+				console.error('Failed to move:', error);
+				const errorMessage = error instanceof Error ? error.message : 'Failed to move';
+				toast.error(errorMessage);
+			}
+		}
+	}
+
+	function showMovementConfirmation(tileKey: string) {
+		dialogConfig = {
+			title: 'Confirm Movement',
+			description: `Move to tile ${tileKey}? This will take 0.5 days.`,
+			actions: [
+				{
+					label: 'Cancel',
+					variant: 'outline',
+					action: () => {}
+				},
+				{
+					label: 'Move',
+					variant: 'default',
+					action: () => confirmMovement(tileKey)
+				}
+			]
+		};
+		showDialog = true;
+	}
+
 	// Exploration functions
 	async function handleStartSession() {
 		if (effectiveRole === 'dm' && 'startSession' in remoteState) {
 			try {
-				// Pass undefined for party token
 				await remoteState.startSession();
+				toast.success('Session started');
 			} catch (error) {
 				console.error('Failed to start session:', error);
+				toast.error('Failed to start session');
 			}
 		}
+	}
+
+	function showEndSessionConfirmation(sessionId: number, durationSeconds: number) {
+		dialogConfig = {
+			title: 'End Short Session?',
+			description: `This session has only been active for ${Math.floor(durationSeconds)} seconds. Would you like to end it or delete it?`,
+			actions: [
+				{
+					label: 'Cancel',
+					variant: 'outline',
+					action: () => {}
+				},
+				{
+					label: 'Delete Session',
+					variant: 'destructive',
+					action: async () => {
+						try {
+							if ('deleteSession' in remoteState) {
+								await remoteState.deleteSession(sessionId);
+								toast.success('Session deleted');
+							}
+						} catch (error) {
+							console.error('Failed to delete session:', error);
+							toast.error('Failed to delete session');
+						}
+					}
+				},
+				{
+					label: 'End Session',
+					variant: 'default',
+					action: async () => {
+						try {
+							if ('endSession' in remoteState) {
+								await remoteState.endSession();
+								toast.success('Session ended');
+							}
+						} catch (error) {
+							console.error('Failed to end session:', error);
+							toast.error('Failed to end session');
+						}
+					}
+				}
+			]
+		};
+		showDialog = true;
 	}
 
 	async function handleEndSession() {
@@ -479,48 +535,15 @@
 
 			// If session is less than 1 minute, ask if they want to delete it
 			if (durationMinutes < 1) {
-				dialogConfig = {
-					title: 'End Short Session?',
-					description: `This session has only been active for ${Math.floor(durationMinutes * 60)} seconds. Would you like to end it or delete it?`,
-					actions: [
-						{
-							label: 'Cancel',
-							variant: 'outline',
-							action: () => {}
-						},
-						{
-							label: 'Delete Session',
-							variant: 'destructive',
-							action: async () => {
-								try {
-									if ('deleteSession' in remoteState) {
-										await remoteState.deleteSession(activeSession.id);
-									}
-								} catch (error) {
-									console.error('Failed to delete session:', error);
-								}
-							}
-						},
-						{
-							label: 'End Session',
-							variant: 'default',
-							action: async () => {
-								try {
-									await remoteState.endSession();
-								} catch (error) {
-									console.error('Failed to end session:', error);
-								}
-							}
-						}
-					]
-				};
-				showDialog = true;
+				showEndSessionConfirmation(activeSession.id, durationMinutes * 60);
 			} else {
 				// Session is longer than 1 minute, end it directly
 				try {
 					await remoteState.endSession();
+					toast.success('Session ended');
 				} catch (error) {
 					console.error('Failed to end session:', error);
+					toast.error('Failed to end session');
 				}
 			}
 		}
@@ -609,9 +632,6 @@
 					{effectiveRole}
 					{hasErrors}
 					activeSession={localState.activeSession}
-					errorMessage={userRole === 'player' && 'error' in remoteState
-						? remoteState.error
-						: undefined}
 					selectedCount={selectedSet.size}
 					showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
 				/>
@@ -678,6 +698,7 @@
 							{hasPoI}
 							{hasNotes}
 							{activeTool}
+							selectedTool={_selectedTool}
 							{activeSelectMode}
 							showAnimations={true}
 							previewMode={false}

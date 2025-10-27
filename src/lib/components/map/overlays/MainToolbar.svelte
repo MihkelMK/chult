@@ -11,7 +11,6 @@
 		effectiveRole: 'player' | 'dm';
 		activeSession: GameSessionResponse | null;
 		hasErrors?: boolean;
-		errorMessage?: string | null;
 		selectedCount?: number;
 		showSelectedCount?: boolean;
 	}
@@ -22,7 +21,6 @@
 		effectiveRole,
 		activeSession,
 		hasErrors = false,
-		errorMessage,
 		selectedCount = 0,
 		showSelectedCount = false
 	}: Props = $props();
@@ -59,11 +57,6 @@
 					<Badge variant="destructive" class="text-xs">Error</Badge>
 				{/if}
 
-				{#if errorMessage}
-					<Badge variant="destructive" class="text-xs">
-						{errorMessage}
-					</Badge>
-				{/if}
 				{#if showSelectedCount}
 					<Badge variant="secondary" class="justify-self-end text-xs">
 						{selectedCount} selected
