@@ -124,31 +124,32 @@
 		mode === 'dm' && 'errors' in remoteState && remoteState.errors && remoteState.errors.length > 0
 	);
 
-	function getBrushTiles(centerCoords: TileCoords): string[] {
+	function getBrushTiles(centerTile: string): string[] {
 		const tileKeys: string[] = [];
 		const radius = brushSize - 1; // Convert size to radius (size 1 = radius 0, size 5 = radius 4)
 
-		const maxX = (data.campaign?.hexesPerCol ?? 20) - 1;
-		const maxY = (data.campaign?.hexesPerRow ?? 20) - 1;
+		const [centerCol, centerRow] = centerTile.split('-').map(Number);
+		// Flip col/row because the hex grid is rotated 90deg when rendered
+		const maxRow = (data.campaign?.hexesPerCol ?? 20) - 1;
+		const maxCol = (data.campaign?.hexesPerRow ?? 20) - 1;
 
 		// Convert center to axial coordinates (odd-q offset)
-		// x = col, y = row (from key format col-row)
-		const centerQ = centerCoords.x; // col is q in axial
-		const centerR = centerCoords.y - (centerCoords.x - (centerCoords.x & 1)) / 2;
+		const centerQ = centerCol; // col is q in axial
+		const centerR = centerRow - (centerCol - (centerCol & 1)) / 2;
 
 		for (let dx = -radius; dx <= radius; dx++) {
 			for (let dy = -radius; dy <= radius; dy++) {
-				const x = centerCoords.x + dx;
-				const y = centerCoords.y + dy;
+				const col = centerCol + dx;
+				const row = centerRow + dy;
 
 				// Bounds check first (early exit)
-				if (x < 0 || x > maxX || y < 0 || y > maxY) {
+				if (col < 0 || col > maxCol || row < 0 || row > maxRow) {
 					continue;
 				}
 
 				// Convert target to axial coordinates (odd-q offset)
-				const q = x; // col is q
-				const r = y - (x - (x & 1)) / 2; // row adjusted by col offset
+				const q = col; // col is q
+				const r = row - (col - (col & 1)) / 2; // row adjusted by col offset
 
 				// Calculate hexagonal distance in axial space
 				const dq = q - centerQ;
@@ -156,7 +157,7 @@
 				const hexDistance = (Math.abs(dq) + Math.abs(dq + dr) + Math.abs(dr)) / 2;
 
 				if (hexDistance <= radius) {
-					tileKeys.push(`${x}-${y}`);
+					tileKeys.push(`${col}-${row}`);
 				}
 			}
 		}
@@ -223,8 +224,6 @@
 	// Event handlers based on cursor mode
 	function handleTileTrigger(event: HexTriggerEvent) {
 		const clickedKey = event.key;
-		const [x, y] = clickedKey.split('-');
-		const coords = { x: Number(x), y: Number(y) };
 
 		switch (activeTool) {
 			case 'interact':
@@ -240,7 +239,7 @@
 			case 'paint':
 				// Paint mode - paint multiple tiles based on brush size
 				if (mode === 'dm') {
-					const tilesToPaint = getBrushTiles(coords);
+					const tilesToPaint = getBrushTiles(clickedKey);
 					// Batch updates to the set for better performance
 					for (const key of tilesToPaint) {
 						const isRevealed = localState.revealedTilesSet.has(key);

@@ -45,6 +45,7 @@
 		verticalSpacing: number
 	): readonly Hex[] {
 		const newHexGrid: Hex[] = [];
+		// Flip col/row because the hex grid is rotated 90deg when rendered
 		for (let row = 0; row < hexesPerCol; row++) {
 			for (let col = 0; col < hexesPerRow; col++) {
 				// Perfect tessellation for flat-top hexagons: odd columns offset vertically
@@ -55,7 +56,7 @@
 
 				newHexGrid.push(
 					Object.freeze({
-						id: `hex-${row}-${col}`,
+						id: `${col}-${row}`,
 						row,
 						col,
 						centerX,

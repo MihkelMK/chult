@@ -187,11 +187,10 @@
 {/snippet}
 
 {#snippet tile(hex: Hex, isRevealed: boolean, isAlways: boolean)}
-	{@const key = `${hex.col}-${hex.row}`}
 	<RegularPolygon
 		x={hex.centerX}
 		y={hex.centerY}
-		tileKey={key}
+		tileKey={hex.id}
 		radius={hexRadius}
 		sides={6}
 		rotation={90}
@@ -201,7 +200,7 @@
 		listening={!previewMode}
 		perfectDrawEnabled={false}
 		shadowForStrokeEnabled={false}
-		onclick={() => handleHexTrigger(key)}
+		onclick={() => handleHexTrigger(hex.id)}
 	/>
 	{@const isTopMost = hex.row === 0 && hex.row % 2 === 1}
 	{@const isBottomMost = hex.row === rotatedHexesPerRow - 1 && hex.row % 2 === 0}
