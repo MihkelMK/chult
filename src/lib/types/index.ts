@@ -35,6 +35,17 @@ export interface HexTriggerEvent {
 	key: string;
 }
 
+export type RightClickEventType = 'tile' | 'token' | 'marker' | 'poi';
+
+export interface RightClickEvent {
+	type: RightClickEventType;
+	key?: string; // For tiles
+	coords?: TileCoords; // For anything with position
+	screenX: number; // Screen X position for menu
+	screenY: number; // Screen Y position for menu
+	data?: any; // Additional context
+}
+
 export interface HexRendered extends Hex {
 	fill: string;
 	stroke: string;
@@ -78,6 +89,7 @@ interface MapCanvasSharedProps {
 	selectedTool: UITool;
 	activeSelectMode: SelectMode;
 	onHexTriggered: (event: HexTriggerEvent) => void;
+	onRightClick?: (event: RightClickEvent) => void;
 	onMapLoad?: (dimensions: { width: number; height: number }) => void;
 	onMapError?: () => void;
 	hasPoI: (coords: TileCoords) => boolean;

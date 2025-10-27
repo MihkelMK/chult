@@ -4,8 +4,16 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
-	import type { HexTriggerEvent, SelectMode, TileCoords, UITool } from '$lib/types';
+	import type {
+		HexTriggerEvent,
+		RightClickEvent,
+		RightClickEventType,
+		SelectMode,
+		TileCoords,
+		UITool
+	} from '$lib/types';
 	import { MapPin } from '@lucide/svelte';
 	import { PressedKeys, Previous } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -19,6 +27,7 @@
 	import ZoomControls from './map/overlays/ZoomControls.svelte';
 	import GlobalTimeDisplay from './map/overlays/GlobalTimeDisplay.svelte';
 	import ConfirmDialog from './general/ConfirmDialog.svelte';
+	import TimeCostDialog from './general/TimeCostDialog.svelte';
 
 	interface Props {
 		data: PageData;
@@ -58,6 +67,18 @@
 			action: () => void;
 		}>;
 	}>({ title: '', description: '', actions: [] });
+
+	// Context menu state
+	let contextMenuOpen = $state(false);
+	let contextMenuPosition = $state({ x: 0, y: 0 });
+	let contextMenuType = $state<RightClickEventType | null>(null);
+	// let contextMenuData = $state<any>(null);
+
+	// Teleport state
+	let teleportMode = $state<'selecting-destination' | null>(null);
+	let teleportOrigin = $state<TileCoords | null>(null);
+	let showTimeCostDialog = $state(false);
+	let pendingTeleportDestination = $state<TileCoords | null>(null);
 
 	// Use these values to determine actual expected action
 	let activeTool = $derived(shiftHeld ? 'pan' : _selectedTool);
@@ -269,6 +290,12 @@
 	// Event handlers based on cursor mode
 	function handleTileTrigger(event: HexTriggerEvent) {
 		const clickedKey = event.key;
+
+		// Check if in teleport mode first
+		if (teleportMode === 'selecting-destination') {
+			handleTeleportDestinationClick(clickedKey);
+			return;
+		}
 
 		switch (activeTool) {
 			case 'interact':
@@ -600,6 +627,64 @@
 		}
 	}
 
+	// Right-click handler
+	function handleRightClick(event: RightClickEvent) {
+		if (effectiveRole !== 'dm') return; // Only DM can use context menus
+
+		contextMenuPosition = { x: event.screenX, y: event.screenY };
+		contextMenuType = event.type;
+		// contextMenuData = event.data;
+		contextMenuOpen = true;
+	}
+
+	// Teleport functions
+	function startTeleport() {
+		if (!localState.partyTokenPosition) {
+			toast.error('Cannot teleport: no party token position');
+			return;
+		}
+		if (!hasActiveSession) {
+			toast.error('Cannot teleport: no active session ');
+			return;
+		}
+
+		teleportOrigin = localState.partyTokenPosition;
+		teleportMode = 'selecting-destination';
+		contextMenuOpen = false;
+		toast.info('Click a tile to teleport the party');
+	}
+
+	function cancelTeleport() {
+		teleportMode = null;
+		teleportOrigin = null;
+		pendingTeleportDestination = null;
+	}
+
+	function handleTeleportDestinationClick(tileKey: string) {
+		const [x, y] = tileKey.split('-').map(Number);
+		pendingTeleportDestination = { x, y };
+		showTimeCostDialog = true;
+	}
+
+	async function confirmTeleport(timeCost: number) {
+		if (!teleportOrigin || !pendingTeleportDestination) return;
+
+		if ('addDMTeleport' in remoteState) {
+			try {
+				await remoteState.addDMTeleport(teleportOrigin, pendingTeleportDestination, timeCost);
+				toast.success('Party teleported successfully');
+			} catch (error) {
+				console.error('Failed to teleport:', error);
+				const errorMessage = error instanceof Error ? error.message : 'Failed to teleport';
+				toast.error(errorMessage);
+			}
+		}
+
+		// Reset teleport state
+		showTimeCostDialog = false;
+		cancelTeleport();
+	}
+
 	// Add global event listeners
 	$effect(() => {
 		document.addEventListener('keydown', handleKeyDown);
@@ -695,6 +780,7 @@
 							{selectedSet}
 							showCoords={effectiveRole === 'dm' ? 'always' : 'hover'}
 							onHexTriggered={handleTileTrigger}
+							onRightClick={handleRightClick}
 							{hasPoI}
 							{hasNotes}
 							{activeTool}
@@ -906,4 +992,31 @@
 			</SheetContent>
 		</Sheet>
 	</div>
+
+	<!-- Context Menu -->
+	<div
+		style="position: fixed; left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px; pointer-events: none; z-index: 9999;"
+	>
+		<DropdownMenu.Root bind:open={contextMenuOpen}>
+			<DropdownMenu.Trigger style="pointer-events: auto;" />
+			<DropdownMenu.Content style="pointer-events: auto;">
+				{#if contextMenuType === 'token'}
+					<DropdownMenu.Item onclick={startTeleport}>Teleport Party</DropdownMenu.Item>
+				{/if}
+			</DropdownMenu.Content>
+		</DropdownMenu.Root>
+	</div>
+
+	<!-- Time Cost Dialog for Teleport -->
+	<TimeCostDialog
+		bind:open={showTimeCostDialog}
+		title="Set Teleport Time Cost"
+		description="How much game time should this teleport take?"
+		defaultTimeCost={0}
+		onConfirm={confirmTeleport}
+		onCancel={() => {
+			showTimeCostDialog = false;
+			cancelTeleport();
+		}}
+	/>
 </Tooltip.Provider>

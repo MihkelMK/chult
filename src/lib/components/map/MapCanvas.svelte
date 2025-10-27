@@ -30,6 +30,7 @@
 		imageHeight,
 		imageWidth,
 		onHexTriggered,
+		onRightClick,
 		canvasHeight,
 		canvasWidth
 	}: MapCanvasProps = $props();
@@ -351,6 +352,6 @@
 		</Group>
 
 		<!-- 3: Show PartyToken on current position -->
-		<PartyToken tile={partyTokenTile} radius={hexRadius} />
+		<PartyToken tile={partyTokenTile} radius={hexRadius} {onRightClick} />
 	</Layer>
 </Stage>

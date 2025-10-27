@@ -33,6 +33,7 @@
 		localState,
 		selectedSet,
 		onHexTriggered = () => {},
+		onRightClick,
 		onMapLoad = () => {},
 		onMapError = () => {},
 		hasPoI = () => false,
@@ -234,6 +235,7 @@
 		{isDM}
 		{tileTransparency}
 		{onHexTriggered}
+		{onRightClick}
 		{onMapLoad}
 		{onMapError}
 		{hasPoI}

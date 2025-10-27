@@ -405,6 +405,45 @@ export class RemoteStateDM {
 		}
 	}
 
+	async addDMTeleport(from: TileCoords, to: TileCoords, timeCost: number) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		const activeSession = this.localState.activeSession;
+		if (!activeSession) {
+			throw new Error('No active session');
+		}
+
+		// Optimistic update - update party position immediately
+		const originalPosition = this.localState.partyTokenPosition;
+		this.localState.partyTokenPosition = to;
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/movement/dm/teleport`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ from, to, timeCost })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to teleport');
+			}
+
+			const result = await response.json();
+			console.log('[remoteStateDM] Teleport successful:', result);
+
+			// SSE will handle the complete state update
+			return result;
+		} catch (error) {
+			// Rollback optimistic update on failure
+			this.localState.partyTokenPosition = originalPosition;
+			console.error('[remoteStateDM] Failed to teleport:', error);
+			throw error;
+		}
+	}
+
 	flush() {
 		if (this.batchTimeout) {
 			clearTimeout(this.batchTimeout);
