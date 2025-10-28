@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
+	interface Props {
+		fullscreen?: boolean;
+	}
+
+	let { fullscreen = true }: Props = $props();
+
 	const messages = [
 		'Rolling for initiative',
 		'Casting fireball',
@@ -36,9 +42,15 @@
 </script>
 
 <div
-	class="flex absolute top-0 left-0 flex-col gap-4 justify-center items-center p-4 w-full h-full bg-gray-200 rounded-lg"
+	class="absolute top-0 left-0 flex h-full w-full flex-col items-center justify-center rounded-lg bg-gray-200 p-8 {fullscreen
+		? 'gap-4'
+		: 'gap-0'}"
 >
-	<h2 class="pb-2 text-3xl font-semibold tracking-tight text-center first:mt-0 scroll-m-20">
+	<h2
+		class="scroll-m-20 text-center font-semibold tracking-tight first:mt-0 {fullscreen
+			? 'text-3xl'
+			: 'text-2xl'}"
+	>
 		{message}
 	</h2>
 	<h3 class="text-[0]">

@@ -202,51 +202,52 @@
 </script>
 
 {#await MapCanvasLoader}
-	<LoadingScreen />
+	<LoadingScreen fullscreen={!previewMode} />
 {:then MapCanvas}
 	{#if status !== 'loaded' || !image}
-		<LoadingScreen />
+		<LoadingScreen fullscreen={!previewMode} />
+	{:else}
+		<MapCanvas
+			bind:isDragging
+			{canvasWidth}
+			{canvasHeight}
+			{revealedTiles}
+			{alwaysRevealedTiles}
+			{unrevealedTiles}
+			{selectedTiles}
+			{adjacentTiles}
+			{partyTokenTile}
+			{image}
+			{zoom}
+			{activeTool}
+			{selectedTool}
+			{activeSelectMode}
+			{xOffset}
+			{yOffset}
+			imageHeight={variantHeight}
+			imageWidth={variantWidth}
+			{hexesPerCol}
+			{hexesPerRow}
+			{showCoords}
+			{showAnimations}
+			{showAlwaysRevealed}
+			{showUnrevealed}
+			{showRevealed}
+			{previewMode}
+			{isDM}
+			{tileTransparency}
+			{onHexTriggered}
+			{onRightClick}
+			{onMapLoad}
+			{onMapError}
+			{hasPoI}
+			{hasNotes}
+			{hexRadius}
+			{showPaths}
+			{visiblePathSessions}
+			sessions={localState.gameSessions}
+			pathsMap={localState.pathsMap}
+			{hexGrid}
+		/>
 	{/if}
-	<MapCanvas
-		bind:isDragging
-		{canvasWidth}
-		{canvasHeight}
-		{revealedTiles}
-		{alwaysRevealedTiles}
-		{unrevealedTiles}
-		{selectedTiles}
-		{adjacentTiles}
-		{partyTokenTile}
-		{image}
-		{zoom}
-		{activeTool}
-		{selectedTool}
-		{activeSelectMode}
-		{xOffset}
-		{yOffset}
-		imageHeight={variantHeight}
-		imageWidth={variantWidth}
-		{hexesPerCol}
-		{hexesPerRow}
-		{showCoords}
-		{showAnimations}
-		{showAlwaysRevealed}
-		{showUnrevealed}
-		{showRevealed}
-		{previewMode}
-		{isDM}
-		{tileTransparency}
-		{onHexTriggered}
-		{onRightClick}
-		{onMapLoad}
-		{onMapError}
-		{hasPoI}
-		{hasNotes}
-		{hexRadius}
-		{showPaths}
-		{visiblePathSessions}
-		sessions={localState.gameSessions}
-		pathsMap={localState.pathsMap}
-		{hexGrid}
-	/>
 {/await}
