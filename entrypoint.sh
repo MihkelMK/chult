@@ -11,7 +11,7 @@ done
 echo "PostgreSQL is available. Running migrations..."
 #Run migrations
 
-npm run db:migrate
+pnpm db:migrate
 #Start the main application
 
 echo "Starting the application..."

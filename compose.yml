@@ -1,10 +1,11 @@
+name: chult
 services:
   web:
+    container_name: chult-web
     build:
       context: .
       args:
-        DATABASE_URL: '${DATABASE_URL}'
-    env_file: .env
+        DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}'
     restart: unless-stopped
     volumes:
       - ./uploads:/app/uploads
@@ -14,6 +15,7 @@ services:
       - 9007:3000
 
   imgproxy:
+    container_name: chult-imgproxy
     image: ghcr.io/imgproxy/imgproxy:latest
     environment:
       # Basic config
@@ -66,6 +68,7 @@ services:
     restart: unless-stopped
 
   postgres:
+    container_name: ${POSTGRES_HOST}
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -78,12 +81,13 @@ services:
     restart: unless-stopped
 
   adminer:
+    container_name: chult-adminer
     image: adminer:latest
     ports:
       - '8081:8080' # Adminer default port is 8080, map to 8081 on host
     environment:
       ADMINER_DEFAULT_SERVER: postgres # Connect to the 'postgres' service
-      ADMINER_SERVER: postgres # Hostname of the database service
+      ADMINER_SERVER: ${POSTGRES_HOST}
       ADMINER_USERNAME: ${POSTGRES_USER}
       ADMINER_PASSWORD: ${POSTGRES_PASSWORD}
       ADMINER_DATABASE: ${POSTGRES_DB}
