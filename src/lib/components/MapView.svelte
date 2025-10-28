@@ -1,4 +1,6 @@
 <script lang="ts">
+	import * as Empty from '$lib/components/ui/empty/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import ConfirmDialog from '$lib/components/general/ConfirmDialog.svelte';
 	import TimeCostDialog from '$lib/components/general/TimeCostDialog.svelte';
 	import CampaignSidebar from '$lib/components/map/CampaignSidebar.svelte';
@@ -21,7 +23,7 @@
 		TileCoords,
 		UITool
 	} from '$lib/types';
-	import { MapPin } from '@lucide/svelte';
+	import { Map } from '@lucide/svelte';
 	import { PressedKeys, Previous } from 'runed';
 	import { toast } from 'svelte-sonner';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -811,22 +813,29 @@
 						/>
 					{:else}
 						<div class="flex justify-center items-center h-full">
-							<div class="text-center">
-								<div
-									class="flex justify-center items-center mx-auto mb-4 w-16 h-16 rounded-full bg-muted"
-								>
-									<MapPin class="w-8 h-8 text-muted-foreground" />
-								</div>
-								<h3 class="text-lg font-medium">Map Not Available</h3>
-								<p class="text-muted-foreground">
-									{#if userRole === 'dm'}
-										<a class="underline" href="/{data.campaign.slug}/settings">Upload a map</a>
-										to get started.
-									{:else}
-										The campaign map is being prepared by your DM.
-									{/if}
-								</p>
-							</div>
+							<Empty.Root class="border border-dashed">
+								<Empty.Header>
+									<Empty.Media variant="icon">
+										<Map />
+									</Empty.Media>
+									<Empty.Title>Map Not Available</Empty.Title>
+									<Empty.Description>
+										{#if userRole === 'dm'}
+											Upload a map in the settings to get started.
+										{:else}
+											The campaign map is being prepared by your DM.
+										{/if}
+									</Empty.Description>
+								</Empty.Header>
+								<Empty.Content>
+									<Button
+										variant="outline"
+										size="sm"
+										href="/{data.campaign.slug}/settings"
+										class="cursor-pointer">Go to settings</Button
+									>
+								</Empty.Content>
+							</Empty.Root>
 						</div>
 					{/if}
 				</div>
