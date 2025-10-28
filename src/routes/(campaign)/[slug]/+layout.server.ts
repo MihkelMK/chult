@@ -9,7 +9,7 @@ export const load: LayoutServerLoad = async ({ locals, params, depends }) => {
 	}
 
 	if (locals.session.campaignSlug !== params.slug) {
-		throw error(403, 'Access denied');
+		throw redirect(302, `/${locals.session.campaignSlug}`);
 	}
 
 	depends('campaign:data');

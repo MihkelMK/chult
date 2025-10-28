@@ -1,6 +1,4 @@
 <script lang="ts">
-	import * as Empty from '$lib/components/ui/empty/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import ConfirmDialog from '$lib/components/general/ConfirmDialog.svelte';
 	import TimeCostDialog from '$lib/components/general/TimeCostDialog.svelte';
 	import CampaignSidebar from '$lib/components/map/CampaignSidebar.svelte';
@@ -11,7 +9,9 @@
 	import ToolModeButtons from '$lib/components/map/overlays/ToolModeButtons.svelte';
 	import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
 	import SessionSidebar from '$lib/components/map/SessionSidebar.svelte';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import * as Empty from '$lib/components/ui/empty/index.js';
 	import { Sheet } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
@@ -27,7 +27,9 @@
 	import { PressedKeys, Previous } from 'runed';
 	import { toast } from 'svelte-sonner';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { fly } from 'svelte/transition';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
+	import { expoIn, expoOut } from 'svelte/easing';
 
 	interface Props {
 		data: PageData;
@@ -742,23 +744,31 @@
 
 				<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
 				{#if effectiveRole === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
-					<SelectionToolbar
-						{alwaysRevealMode}
-						{activeSelectMode}
-						selectedCount={selectedSet.size}
-						showBrushSize={activeTool === 'paint'}
-						{brushSize}
-						onToggleAlwaysReveal={() => (alwaysRevealMode = !alwaysRevealMode)}
-						onSetSelectMode={(mode) => (_selectedSelectMode = mode)}
-						onReveal={revealSelectedTiles}
-						onHide={hideSelectedTiles}
-						onClear={() => clearSelection()}
-						onBrushSizeChange={(size) => (brushSize = size)}
-					/>
+					<div
+						in:fly={{ y: 100, easing: expoOut, duration: 500 }}
+						out:fly={{ y: 100, easing: expoIn, duration: 250 }}
+						class="absolute bottom-16 left-1/2 z-20 -translate-x-1/2"
+					>
+						<SelectionToolbar
+							{alwaysRevealMode}
+							{activeSelectMode}
+							selectedCount={selectedSet.size}
+							showBrushSize={activeTool === 'paint'}
+							{brushSize}
+							onToggleAlwaysReveal={() => (alwaysRevealMode = !alwaysRevealMode)}
+							onSetSelectMode={(mode) => (_selectedSelectMode = mode)}
+							onReveal={revealSelectedTiles}
+							onHide={hideSelectedTiles}
+							onClear={() => clearSelection()}
+							onBrushSizeChange={(size) => (brushSize = size)}
+						/>
+					</div>
 				{/if}
 
 				<!-- Zoom Controls -->
-				<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
+				<div class="absolute right-4 bottom-4 z-20">
+					<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
+				</div>
 
 				<!-- Map Container with native scroll -->
 				<div
@@ -841,15 +851,17 @@
 				</div>
 
 				<!-- Bottom Toolbar with Cursor Modes -->
-				<ToolModeButtons
-					{activeTool}
-					{activeSelectMode}
-					{brushSize}
-					showDMTools={effectiveRole === 'dm'}
-					showExploreTool={effectiveRole === 'player'}
-					{canExplore}
-					onSelectTool={setSelectedTool}
-				/>
+				<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
+					<ToolModeButtons
+						{activeTool}
+						{activeSelectMode}
+						{brushSize}
+						showDMTools={effectiveRole === 'dm'}
+						showExploreTool={effectiveRole === 'player'}
+						{canExplore}
+						onSelectTool={setSelectedTool}
+					/>
+				</div>
 
 				<!-- General Confirmation Dialog -->
 				<ConfirmDialog
@@ -862,7 +874,7 @@
 
 			<!-- Layer Controls -->
 			{#if effectiveRole === 'dm'}
-				<div class="absolute right-4 bottom-4 z-20">
+				<div class="absolute bottom-4 left-4 z-20">
 					<LayerControls
 						{showAlwaysRevealed}
 						{showRevealed}

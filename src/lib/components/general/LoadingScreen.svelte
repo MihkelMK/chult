@@ -36,9 +36,9 @@
 </script>
 
 <div
-	class="flex absolute top-0 left-0 flex-col gap-4 justify-center items-center p-4 w-screen h-screen bg-gray-200 rounded-lg"
+	class="flex absolute top-0 left-0 flex-col gap-4 justify-center items-center p-4 w-full h-full bg-gray-200 rounded-lg"
 >
-	<h2 class="pb-2 text-3xl font-semibold tracking-tight first:mt-0 scroll-m-20">
+	<h2 class="pb-2 text-3xl font-semibold tracking-tight text-center first:mt-0 scroll-m-20">
 		{message}
 	</h2>
 	<h3 class="text-[0]">
