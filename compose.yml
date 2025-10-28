@@ -6,6 +6,7 @@ services:
       context: .
       args:
         DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}'
+        BODY_SIZE_LIMIT: '${PUBLIC_MAX_IMAGE_SIZE}'
     restart: unless-stopped
     volumes:
       - ./uploads:/app/uploads

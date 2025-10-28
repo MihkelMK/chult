@@ -46,6 +46,8 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
+ARG BODY_SIZE_LIMIT
+ENV BODY_SIZE_LIMIT=${BODY_SIZE_LIMIT}
 
 # Build the application with caching
 RUN --mount=type=cache,id=s/<service-id>-/root/.cache/pnpm,target=/root/.cache/pnpm \
@@ -74,6 +76,8 @@ COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
+ARG BODY_SIZE_LIMIT
+ENV BODY_SIZE_LIMIT=${BODY_SIZE_LIMIT}
 
 # Expose the port the app runs on
 EXPOSE 3000
