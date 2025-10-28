@@ -169,6 +169,7 @@
 		stroke={isAlways ? '#f97316' : 'black'}
 		perfectDrawEnabled={false}
 		shadowForStrokeEnabled={false}
+		listening={activeTool !== 'pan'}
 		onclick={() => handleHexTrigger(hex.id)}
 	/>
 	{@const isTopMost = hex.row === 0 && hex.row % 2 === 1}

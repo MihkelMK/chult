@@ -32,6 +32,7 @@
 	} from '@lucide/svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
+	import { Debounced } from 'runed';
 
 	let { data }: { data: PageData } = $props();
 
@@ -49,10 +50,15 @@
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
 	let aspectRatio = $derived(Math.fround(data.campaign.imageHeight / data.campaign.imageWidth));
-	let tilesPerColumn = $state(data.campaign?.hexesPerCol ?? 20);
-	let tilesPerRow = $state(data.campaign?.hexesPerRow ?? 20);
-	let offsetX = $state(data.campaign?.hexOffsetX ?? 70);
-	let offsetY = $state(data.campaign?.hexOffsetY ?? 58);
+	let tilesPerColumn = $state(data.campaign?.hexesPerCol);
+	let tilesPerRow = $state(data.campaign?.hexesPerRow);
+	let offsetX = $state(data.campaign?.hexOffsetX);
+	let offsetY = $state(data.campaign?.hexOffsetY);
+
+	let tilesPerColumnDebounced = new Debounced(() => tilesPerColumn, 1000);
+	let tilesPerRowDebounced = new Debounced(() => tilesPerRow, 1000);
+	let offsetXDebounced = new Debounced(() => offsetX, 250);
+	let offsetYDebounced = new Debounced(() => offsetY, 250);
 
 	// Map preview state
 	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
@@ -67,10 +73,10 @@
 
 	// Track if settings have changed
 	let hasUnsavedChanges = $derived(
-		tilesPerColumn !== (data.campaign?.hexesPerCol ?? 20) ||
-			tilesPerRow !== (data.campaign?.hexesPerRow ?? 20) ||
-			offsetX !== (data.campaign?.hexOffsetX ?? 70) ||
-			offsetY !== (data.campaign?.hexOffsetY ?? 58)
+		tilesPerColumn !== data.campaign?.hexesPerCol ||
+			tilesPerRow !== data.campaign?.hexesPerRow ||
+			offsetX !== data.campaign?.hexOffsetX ||
+			offsetY !== data.campaign?.hexOffsetY
 	);
 
 	// Track if party token position has changed
@@ -114,16 +120,21 @@
 		saveSuccess = false;
 
 		try {
+			tilesPerColumnDebounced.updateImmediately();
+			tilesPerRowDebounced.updateImmediately();
+			offsetXDebounced.updateImmediately();
+			offsetYDebounced.updateImmediately();
+
 			const response = await fetch(`/api/campaigns/${data.campaign?.slug}/map/settings`, {
 				method: 'PATCH',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					hexesPerRow: tilesPerRow,
-					hexesPerCol: tilesPerColumn,
-					hexOffsetX: offsetX,
-					hexOffsetY: offsetY
+					hexesPerRow: tilesPerRowDebounced.current,
+					hexesPerCol: tilesPerColumnDebounced.current,
+					hexOffsetX: offsetXDebounced.current,
+					hexOffsetY: offsetYDebounced.current
 				})
 			});
 
@@ -237,6 +248,15 @@
 	function resetZoomPreview() {
 		previewZoomIndex = 0;
 	}
+
+	// Sync party token position to localState for map preview
+	$effect(() => {
+		if (partyTokenX !== null && partyTokenY !== null) {
+			localState.partyTokenPosition = { x: partyTokenX, y: partyTokenY };
+		} else {
+			localState.partyTokenPosition = null;
+		}
+	});
 </script>
 
 <svelte:head>
@@ -587,10 +607,10 @@
 								{canvasHeight}
 								{canvasWidth}
 								variant="detail"
-								hexesPerRow={tilesPerRow}
-								hexesPerCol={tilesPerColumn}
-								xOffset={offsetX}
-								yOffset={offsetY}
+								hexesPerRow={tilesPerRowDebounced.current}
+								hexesPerCol={tilesPerColumnDebounced.current}
+								xOffset={offsetXDebounced.current}
+								yOffset={offsetYDebounced.current}
 								imageHeight={data.campaign.imageHeight}
 								imageWidth={data.campaign.imageWidth}
 								activeSelectMode="remove"
