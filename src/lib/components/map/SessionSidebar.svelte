@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
-	import SessionListItem from './SessionListItem.svelte';
 	import type { GameSessionResponse, Path } from '$lib/types';
 	import { SvelteMap } from 'svelte/reactivity';
+	import SessionListItem from './overlays/SessionListItem.svelte';
 
 	interface Props {
 		sessions: GameSessionResponse[];

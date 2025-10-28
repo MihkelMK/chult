@@ -1,12 +1,12 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import GlobalTimeDisplay from '$lib/components/map/overlays/GlobalTimeDisplay.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
 	import { SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
-	import GlobalTimeDisplay from './map/overlays/GlobalTimeDisplay.svelte';
 	import type { GameSessionResponse, MapMarker } from '$lib/types';
 	import { User, Users } from '@lucide/svelte';
-	import { enhance } from '$app/forms';
 
 	interface Props {
 		effectiveRole: 'player' | 'dm';

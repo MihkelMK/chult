@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import LoadingScreen from '$lib/components/general/LoadingScreen.svelte';
 	import useImage from '$lib/hooks/useImage.svelte';
 	import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
 	import { type Component } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import LoadingBar from '../general/LoadingBar.svelte';
 
 	let {
 		mapUrls,
@@ -202,10 +202,10 @@
 </script>
 
 {#await MapCanvasLoader}
-	<LoadingBar />
+	<LoadingScreen />
 {:then MapCanvas}
 	{#if status !== 'loaded' || !image}
-		<LoadingBar />
+		<LoadingScreen />
 	{/if}
 	<MapCanvas
 		bind:isDragging

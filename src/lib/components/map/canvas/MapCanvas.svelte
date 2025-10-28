@@ -1,8 +1,8 @@
 <script lang="ts">
+	import PathLayer from '$lib/components/map/canvas/PathLayer.svelte';
+	import PartyToken from '$lib/components/map/canvas/tokens/PartyToken.svelte';
 	import type { Hex, MapCanvasProps } from '$lib/types';
 	import { Group, Image, Layer, RegularPolygon, Stage, Text } from 'svelte-konva';
-	import PartyToken from './tokens/PartyToken.svelte';
-	import PathLayer from './PathLayer.svelte';
 
 	let {
 		image,
@@ -364,7 +364,7 @@
 		{pathsMap}
 		visibleSessionIds={visiblePathSessions}
 		{showPaths}
-		hexRadius={hexRadius}
+		{hexRadius}
 		{hexGrid}
 		{xOffset}
 		{yOffset}

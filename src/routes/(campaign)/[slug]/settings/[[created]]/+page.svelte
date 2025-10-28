@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import MapCanvasWrapper from '$lib/components/map/MapCanvasWrapper.svelte';
-	import MapUpload from '$lib/components/map/MapUpload.svelte';
+	import MapCanvasWrapper from '$lib/components/map/canvas/MapCanvasWrapper.svelte';
+	import MapUpload from '$lib/components/map/overlays/MapUpload.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -13,18 +13,18 @@
 	} from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Slider } from '$lib/components/ui/slider';
-	import { getLocalState } from '$lib/contexts/campaignContext';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { getLocalState } from '$lib/contexts/campaignContext';
 	import {
-		AlertCircle,
 		Check,
+		CircleAlert,
 		Copy,
 		Crown,
 		Eye,
 		EyeOff,
 		Flag,
 		Hand,
-		Map as MapIcon,
+		Map,
 		Settings,
 		Users,
 		ZoomIn,
@@ -273,7 +273,7 @@
 			class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 		>
 			<Button href="/{data.campaign.slug}" variant="link" size="sm" type="submit">
-				<MapIcon class="mr-2 w-4 h-4" />
+				<Map class="mr-2 w-4 h-4" />
 				Back
 			</Button>
 		</div>
@@ -446,7 +446,7 @@
 						<div
 							class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive"
 						>
-							<AlertCircle class="w-4 h-4" />
+							<CircleAlert class="w-4 h-4" />
 							<span>{saveError}</span>
 						</div>
 					{/if}
@@ -514,7 +514,7 @@
 						<div
 							class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive"
 						>
-							<AlertCircle class="w-4 h-4" />
+							<CircleAlert class="w-4 h-4" />
 							<span>{savePartyPositionError}</span>
 						</div>
 					{/if}
@@ -598,6 +598,7 @@
 								showCoords="never"
 								zoom={previewZoom}
 								activeTool={previewTool}
+								selectedTool={previewTool}
 								hasPoI={() => false}
 								hasNotes={() => false}
 								onHexTriggered={handleHexClickForPartyPosition}

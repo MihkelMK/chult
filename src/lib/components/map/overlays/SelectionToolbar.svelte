@@ -3,7 +3,7 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { CircleDot, Eye, EyeOff, Lock, Minus, Plus, Trash2 } from '@lucide/svelte';
+	import { Eye, EyeOff, Lock, Minus, Plus, Trash2 } from '@lucide/svelte';
 	import { fly } from 'svelte/transition';
 
 	interface Props {

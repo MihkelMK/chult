@@ -1,7 +1,17 @@
 <script lang="ts">
+	import ConfirmDialog from '$lib/components/general/ConfirmDialog.svelte';
+	import TimeCostDialog from '$lib/components/general/TimeCostDialog.svelte';
+	import CampaignSidebar from '$lib/components/map/CampaignSidebar.svelte';
+	import MapCanvasWrapper from '$lib/components/map/canvas/MapCanvasWrapper.svelte';
+	import MainToolbar from '$lib/components/map/MainToolbar.svelte';
+	import LayerControls from '$lib/components/map/overlays/LayerControls.svelte';
+	import SelectionToolbar from '$lib/components/map/overlays/SelectionToolbar.svelte';
+	import ToolModeButtons from '$lib/components/map/overlays/ToolModeButtons.svelte';
+	import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
+	import SessionSidebar from '$lib/components/map/SessionSidebar.svelte';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Sheet } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
 	import type {
 		HexTriggerEvent,
@@ -13,19 +23,9 @@
 	} from '$lib/types';
 	import { MapPin } from '@lucide/svelte';
 	import { PressedKeys, Previous } from 'runed';
-	import { SvelteSet } from 'svelte/reactivity';
 	import { toast } from 'svelte-sonner';
+	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
-	import MapCanvasWrapper from './map/MapCanvasWrapper.svelte';
-	import LayerControls from './map/overlays/LayerControls.svelte';
-	import MainToolbar from './map/overlays/MainToolbar.svelte';
-	import SelectionToolbar from './map/overlays/SelectionToolbar.svelte';
-	import ToolModeButtons from './map/overlays/ToolModeButtons.svelte';
-	import ZoomControls from './map/overlays/ZoomControls.svelte';
-	import ConfirmDialog from './general/ConfirmDialog.svelte';
-	import TimeCostDialog from './general/TimeCostDialog.svelte';
-	import MapSidebar from './MapSidebar.svelte';
-	import SessionHistorySheet from './SessionHistorySheet.svelte';
 
 	interface Props {
 		data: PageData;
@@ -872,7 +872,7 @@
 			{/if}
 
 			<!-- Left Sidebar Content -->
-			<MapSidebar
+			<CampaignSidebar
 				{effectiveRole}
 				{userRole}
 				campaignSlug={data.campaign.slug}
@@ -892,7 +892,7 @@
 
 		<!-- Right Sidebar - Session History -->
 		<Sheet bind:open={rightSidebarOpen}>
-			<SessionHistorySheet
+			<SessionSidebar
 				sessions={localState.gameSessions}
 				pathsMap={localState.pathsMap}
 				activeSessionId={localState.activeSession?.id || null}

@@ -2,7 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import type { SelectMode, UITool } from '$lib/types';
-	import { Hand, Minus, MousePointer, Paintbrush, Plus, Square, Navigation } from '@lucide/svelte';
+	import { Hand, Minus, MousePointer, Navigation, Paintbrush, Plus, Square } from '@lucide/svelte';
 
 	interface Props {
 		activeTool: UITool;

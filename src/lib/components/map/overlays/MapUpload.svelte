@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Upload, Image, Trash2, Loader2, CheckCircle, AlertCircle } from '@lucide/svelte';
 	import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
 	import type { MapUrlsResponse } from '$lib/types';
+	import { CircleAlert, CircleCheck, Image, LoaderCircle, Trash2, Upload } from '@lucide/svelte';
 
 	interface Props {
 		mapUrls?: MapUrlsResponse;
@@ -145,14 +145,14 @@
 	<!-- Status Messages -->
 	{#if uploadError}
 		<div class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive">
-			<AlertCircle class="w-4 h-4" />
+			<CircleAlert class="w-4 h-4" />
 			<span>{uploadError}</span>
 		</div>
 	{/if}
 
 	{#if uploadSuccess}
 		<div class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
-			<CheckCircle class="w-4 h-4" />
+			<CircleCheck class="w-4 h-4" />
 			<div>
 				<p class="font-medium">Success!</p>
 				<p class="text-xs opacity-90">{uploadSuccess}</p>
@@ -210,7 +210,7 @@
 				>
 					{#if uploading}
 						<div class="py-6">
-							<Loader2 class="mx-auto mb-3 w-8 h-8 animate-spin text-primary" />
+							<LoaderCircle class="mx-auto mb-3 w-8 h-8 animate-spin text-primary" />
 							<p class="text-sm font-medium">Processing map...</p>
 							<p class="mt-1 text-xs text-muted-foreground">
 								Large maps may take a moment to optimize
