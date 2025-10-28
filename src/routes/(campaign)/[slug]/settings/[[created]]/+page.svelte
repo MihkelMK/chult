@@ -34,6 +34,7 @@
 	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
+	import ViewAsToggle from '$lib/components/map/overlays/ViewAsToggle.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -48,6 +49,7 @@
 	let playerTokenCopied = $state(false);
 
 	// Map configuration state - initialize from database values
+	let viewAs: UserRole = $state('dm');
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
 	let aspectRatio = $derived(Math.fround(data.campaign.imageHeight / data.campaign.imageWidth));
@@ -92,6 +94,13 @@
 			partyTokenY !== (data.campaign?.partyTokenY ?? null)
 	);
 
+	// Compute which map URLs to show based on viewAs toggle
+	let displayMapUrls = $derived(
+		viewAs !== 'dm' && hasPlayerMap && data.playerMapUrls
+			? data.playerMapUrls
+			: data.dmMapUrls || data.mapUrls
+	);
+
 	// Copy token functions
 	async function copyToken(token: string, type: UserRole) {
 		try {
@@ -105,6 +114,14 @@
 			}
 		} catch (err) {
 			console.error('Failed to copy token:', err);
+		}
+	}
+
+	function handleViewAsToggle() {
+		if (viewAs === 'dm') {
+			viewAs = 'player';
+		} else {
+			viewAs = 'dm';
 		}
 	}
 
@@ -655,11 +672,18 @@
 				</Card>
 
 				<!-- Map Preview Section -->
-				{#if data.mapUrls}
+				{#if displayMapUrls}
 					<Card>
 						<CardHeader>
-							<CardTitle>Map Preview</CardTitle>
-							<CardDescription>Preview your map with hex grid overlay</CardDescription>
+							<div class="flex justify-between align-center">
+								<div>
+									<CardTitle>Map Preview</CardTitle>
+									<CardDescription>Preview hex grid on the map</CardDescription>
+								</div>
+								{#if hasPlayerMap}
+									<ViewAsToggle effectiveRole={viewAs} onCheckedChange={handleViewAsToggle} />
+								{/if}
+							</div>
 						</CardHeader>
 						<CardContent>
 							<div
@@ -674,7 +698,7 @@
 							>
 								<MapCanvasWrapper
 									bind:isDragging
-									mapUrls={data.mapUrls}
+									mapUrls={displayMapUrls}
 									previewMode={true}
 									{localState}
 									{canvasHeight}

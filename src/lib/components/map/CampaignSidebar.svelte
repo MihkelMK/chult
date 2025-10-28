@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import GlobalTimeDisplay from '$lib/components/map/overlays/GlobalTimeDisplay.svelte';
+	import ViewAsToggle from '$lib/components/map/overlays/ViewAsToggle.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
 	import { SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
 	import type { GameSessionResponse, MapMarker } from '$lib/types';
-	import { User, Users } from '@lucide/svelte';
 
 	interface Props {
 		effectiveRole: 'player' | 'dm';
@@ -43,6 +43,8 @@
 		onStartSession,
 		onEndSession
 	}: Props = $props();
+
+	let toggleForm: HTMLFormElement | undefined = $state();
 </script>
 
 <SheetContent side="left" class="w-80">
@@ -52,21 +54,14 @@
 		</SheetTitle>
 	</SheetHeader>
 
-	<div class="flex flex-col justify-between p-6 h-full">
+	<div class="flex flex-col justify-between p-6 pt-0 h-full">
 		<div class="space-y-4">
 			<!-- Player/DM View Toggle -->
 			{#if userRole === 'dm'}
-				<div>
-					<form action="?/toggleView" method="POST" class="contents">
-						<Button variant="outline" size="sm" type="submit" class="w-full">
-							{#if effectiveRole === 'dm'}
-								<Users class="mr-2 w-4 h-4" />
-								Switch to Player View
-							{:else}
-								<User class="mr-2 w-4 h-4" />
-								Switch to DM View
-							{/if}
-						</Button>
+				<div class="flex justify-between items-center">
+					<p class="-mt-0.5">View as:</p>
+					<form action="?/toggleView" method="POST" bind:this={toggleForm}>
+						<ViewAsToggle {effectiveRole} onCheckedChange={() => toggleForm?.submit()} />
 					</form>
 				</div>
 
