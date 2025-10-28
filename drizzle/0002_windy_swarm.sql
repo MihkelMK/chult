@@ -1,2 +1,0 @@
-CREATE INDEX "points_of_interest_campaign_id_visible_idx" ON "points_of_interest" USING btree ("campaign_id","visible_to_players");--> statement-breakpoint
-CREATE INDEX "sessions_campaign_id_idx" ON "sessions" USING btree ("campaign_id");

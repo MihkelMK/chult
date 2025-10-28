@@ -5,64 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1756177615532,
-      "tag": "0000_noisy_human_fly",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1756218647441,
-      "tag": "0001_nostalgic_magma",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1756244628831,
-      "tag": "0002_windy_swarm",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1756740321612,
-      "tag": "0003_faithful_slyde",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1756749706990,
-      "tag": "0004_wise_leo",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1760069842922,
-      "tag": "0005_glossy_speed_demon",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1761233033429,
-      "tag": "0006_brief_centennial",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1761233868952,
-      "tag": "0007_wild_cyclops",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1761240646535,
-      "tag": "0008_thin_purple_man",
+      "when": 1761657587936,
+      "tag": "0000_previous_mesmero",
       "breakpoints": true
     }
   ]
