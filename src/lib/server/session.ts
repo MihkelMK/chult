@@ -1,5 +1,6 @@
 import { dev } from '$app/environment';
 import { campaigns } from '$lib/server/db/schema';
+import type { UserRole } from '$lib/types';
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from './db';
@@ -7,8 +8,8 @@ import { db } from './db';
 export interface SessionData {
 	campaignId: number;
 	campaignSlug: string;
-	role: 'dm' | 'player';
-	viewAs?: 'dm' | 'player';
+	role: UserRole;
+	viewAs?: UserRole;
 	expiresAt: number;
 }
 
@@ -26,7 +27,7 @@ function isSessionExpired(session: SessionData): boolean {
 export async function validateCampaignAccess(
 	campaignSlug: string,
 	token: string,
-	requiredRole?: 'dm' | 'player'
+	requiredRole?: UserRole
 ) {
 	const campaign = await db
 		.select()
@@ -39,7 +40,7 @@ export async function validateCampaignAccess(
 	}
 
 	const camp = campaign[0];
-	let role: 'dm' | 'player' | null = null;
+	let role: UserRole | null = null;
 
 	if (token === camp.dmToken) {
 		role = 'dm';
@@ -119,7 +120,7 @@ export function destroySession(event: RequestEvent): void {
 	event.cookies.delete('session', { path: '/' });
 }
 
-export function requireAuth(event: RequestEvent, requiredRole?: 'dm' | 'player') {
+export function requireAuth(event: RequestEvent, requiredRole?: UserRole) {
 	const session = getSession(event);
 
 	if (!session) {

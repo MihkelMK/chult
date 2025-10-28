@@ -92,11 +92,13 @@ export type TimeAuditLogResponse = Pick<
 	'id' | 'timestamp' | 'type' | 'amount' | 'actorRole' | 'notes'
 >;
 
+export type UserRole = 'dm' | 'player';
+
 // Session data type
 export type SessionData = {
 	campaignId: number;
 	campaignSlug: string;
-	role: 'dm' | 'player';
+	role: UserRole;
 	expiresAt: number;
 };
 

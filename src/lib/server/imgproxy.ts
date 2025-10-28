@@ -1,5 +1,5 @@
 import { IMGPROXY_KEY, IMGPROXY_SALT, IMGPROXY_URL } from '$env/static/private';
-import type { ImageOptions, ImageVariants, MapUrlsResponse } from '$lib/types';
+import type { ImageOptions, ImageVariants, MapUrlsResponse, UserRole } from '$lib/types';
 import crypto from 'crypto';
 import path from 'path';
 import { computeFileHash, hasMapImage } from './uploads';
@@ -16,7 +16,7 @@ export function generateMapUrl(
 	campaignSlug: string,
 	options: ImageOptions = {},
 	hash?: string,
-	mapType: 'dm' | 'player' = 'dm'
+	mapType: UserRole = 'dm'
 ): string {
 	const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
 
@@ -156,7 +156,7 @@ export function generateMarkerImageUrl(
 export function generateMapVariants(
 	campaignSlug: string,
 	hash?: string,
-	mapType: 'dm' | 'player' = 'dm'
+	mapType: UserRole = 'dm'
 ): ImageVariants {
 	return {
 		large: { url: generateMapUrl(campaignSlug, { preset: 'large' }, hash, mapType), width: 1920 },
@@ -235,7 +235,7 @@ export async function hasMarkerImage(campaignSlug: string, markerId: number): Pr
 
 export async function getMapUrls(
 	slug: string,
-	mapType: 'dm' | 'player' = 'dm'
+	mapType: UserRole = 'dm'
 ): Promise<MapUrlsResponse | undefined> {
 	if (await hasMapImage(slug, mapType)) {
 		const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';

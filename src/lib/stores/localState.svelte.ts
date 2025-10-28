@@ -3,11 +3,12 @@ import type {
 	CampaignDataResponse,
 	GameSessionResponse,
 	MapMarkerResponse,
-	PathStep,
 	PathResponse,
+	PathStep,
 	PlayerCampaignDataResponse,
 	RevealedTile,
-	TileCoords
+	TileCoords,
+	UserRole
 } from '$lib/types';
 import EventEmitter from 'eventemitter3';
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -272,7 +273,7 @@ export class LocalState extends EventEmitter {
 	}
 
 	// Get markers for a specific tile with role-based filtering
-	getTileMarkers(coords: TileCoords, role: 'dm' | 'player') {
+	getTileMarkers(coords: TileCoords, role: UserRole) {
 		if (!('mapMarkers' in this.campaign)) return [];
 
 		const tileMarkers = this.campaign.mapMarkers.filter(

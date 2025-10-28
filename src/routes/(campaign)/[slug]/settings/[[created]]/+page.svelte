@@ -17,6 +17,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState } from '$lib/contexts/campaignContext';
+	import type { UserRole } from '$lib/types';
 	import {
 		Check,
 		CircleAlert,
@@ -92,7 +93,7 @@
 	);
 
 	// Copy token functions
-	async function copyToken(token: string, type: 'dm' | 'player') {
+	async function copyToken(token: string, type: UserRole) {
 		try {
 			await navigator.clipboard.writeText(token);
 			if (type === 'dm') {

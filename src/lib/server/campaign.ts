@@ -11,7 +11,8 @@ import type {
 	CampaignDataResponse,
 	CampaignStatsResponse,
 	CampaignTokenResponse,
-	PlayerCampaignDataResponse
+	PlayerCampaignDataResponse,
+	UserRole
 } from '$lib/types';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from './db';
@@ -137,7 +138,7 @@ export async function getCampaignData(
 	if (!campaign) return null;
 
 	// Get appropriate map based on role and hasPlayerMap setting
-	const mapType: 'dm' | 'player' = isPlayerView && campaign.hasPlayerMap ? 'player' : 'dm';
+	const mapType: UserRole = isPlayerView && campaign.hasPlayerMap ? 'player' : 'dm';
 	const mapUrlsPromise = getMapUrls(campaign.slug, mapType);
 
 	// For DM view, also check if player map file exists

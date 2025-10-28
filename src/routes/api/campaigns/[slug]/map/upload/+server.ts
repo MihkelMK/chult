@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { campaigns } from '$lib/server/db/schema';
 import { requireAuth } from '$lib/server/session';
 import { saveMapImage, type UploadResult } from '$lib/server/uploads';
+import type { UserRole } from '$lib/types';
 import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -20,7 +21,7 @@ export const POST: RequestHandler = async (event) => {
 	try {
 		const formData = await event.request.formData();
 		const file = formData.get('map') as File;
-		const mapType = (event.url.searchParams.get('mapType') as 'dm' | 'player') || 'dm';
+		const mapType = (event.url.searchParams.get('mapType') as UserRole) || 'dm';
 
 		if (!file) {
 			return error(400, 'No file uploaded');
@@ -84,7 +85,7 @@ export const DELETE: RequestHandler = async (event) => {
 	}
 
 	try {
-		const mapType = (event.url.searchParams.get('mapType') as 'dm' | 'player') || 'dm';
+		const mapType = (event.url.searchParams.get('mapType') as UserRole) || 'dm';
 		const { deleteMapImage } = await import('$lib/server/uploads');
 		await deleteMapImage(session.campaignSlug, mapType);
 

@@ -3,6 +3,7 @@
 	import ConfirmDialog from '$lib/components/general/ConfirmDialog.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import type { UserRole } from '$lib/types';
 	import { Image, LoaderCircle, Trash2, Upload } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -11,7 +12,7 @@
 		campaignSlug: string;
 		onMapUploaded?: () => void;
 		onDeleted?: () => void;
-		mapType?: 'dm' | 'player';
+		mapType?: UserRole;
 		label?: string;
 	}
 

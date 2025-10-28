@@ -1,4 +1,5 @@
 import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
+import type { UserRole } from '$lib/types';
 import crypto from 'crypto';
 import { existsSync } from 'fs';
 import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises';
@@ -100,7 +101,7 @@ export async function computeFileHash(filepath: string): Promise<string> {
 export async function saveMapImage(
 	campaignSlug: string,
 	file: File,
-	mapType: 'dm' | 'player' = 'dm'
+	mapType: UserRole = 'dm'
 ): Promise<UploadResult> {
 	try {
 		const validation = await validateImageFile(file);
@@ -131,7 +132,7 @@ export async function saveMapImage(
 
 export async function deleteMapImage(
 	campaignSlug: string,
-	mapType: 'dm' | 'player' = 'dm'
+	mapType: UserRole = 'dm'
 ): Promise<void> {
 	const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
 	const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
@@ -144,7 +145,7 @@ export async function deleteMapImage(
 
 export async function hasMapImage(
 	campaignSlug: string,
-	mapType: 'dm' | 'player' = 'dm'
+	mapType: UserRole = 'dm'
 ): Promise<boolean> {
 	const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
 	const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);

@@ -1,3 +1,4 @@
+import type { EventRole } from '$lib/types/events';
 import { EventEmitter } from 'events';
 
 // This is a singleton instance that will be shared across the entire server.
@@ -12,7 +13,7 @@ export function emitEvent(
 	campaignSlug: string,
 	eventType: string,
 	data: unknown,
-	role: 'dm' | 'player' | 'all' = 'all'
+	role: EventRole = 'all'
 ) {
 	eventEmitter.emit(`campaign-${campaignSlug}`, {
 		event: eventType,

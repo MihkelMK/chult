@@ -21,20 +21,21 @@
 		RightClickEventType,
 		SelectMode,
 		TileCoords,
-		UITool
+		UITool,
+		UserRole
 	} from '$lib/types';
 	import { Map } from '@lucide/svelte';
 	import { PressedKeys, Previous } from 'runed';
 	import { toast } from 'svelte-sonner';
+	import { expoIn, expoOut } from 'svelte/easing';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
-	import { expoIn, expoOut } from 'svelte/easing';
 
 	interface Props {
 		data: PageData;
-		userRole: 'player' | 'dm';
-		effectiveRole: 'player' | 'dm';
+		userRole: UserRole;
+		effectiveRole: UserRole;
 	}
 
 	let { data, userRole, effectiveRole }: Props = $props();
