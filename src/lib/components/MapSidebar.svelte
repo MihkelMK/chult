@@ -57,7 +57,7 @@
 			<!-- Player/DM View Toggle -->
 			{#if userRole === 'dm'}
 				<div>
-					<form action="?/toggleView" method="POST" class="contents" use:enhance>
+					<form action="?/toggleView" method="POST" class="contents">
 						<Button variant="outline" size="sm" type="submit" class="w-full">
 							{#if effectiveRole === 'dm'}
 								<Users class="mr-2 w-4 h-4" />
