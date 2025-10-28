@@ -210,10 +210,9 @@ export async function hasMarkerImage(campaignSlug: string, markerId: number): Pr
 	return existsSync(markerPath);
 }
 
-export function getMapUrls(slug: string): MapUrlsResponse | undefined {
-	if (!hasMapImage(slug)) {
-		return undefined;
+export async function getMapUrls(slug: string): Promise<MapUrlsResponse | undefined> {
+	if (await hasMapImage(slug)) {
+		return { variants: generateMapVariants(slug) };
 	}
-
-	return { variants: generateMapVariants(slug) };
+	return undefined;
 }
