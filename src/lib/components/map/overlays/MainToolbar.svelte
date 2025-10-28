@@ -3,26 +3,26 @@
 	import { Button } from '$lib/components/ui/button';
 	import { SheetTrigger } from '$lib/components/ui/sheet';
 	import type { GameSessionResponse } from '$lib/types';
-	import { Menu, User, Users } from '@lucide/svelte';
+	import { Clock, Menu } from '@lucide/svelte';
 
 	interface Props {
 		campaignName?: string;
-		userRole: 'player' | 'dm';
 		effectiveRole: 'player' | 'dm';
 		activeSession: GameSessionResponse | null;
 		hasErrors?: boolean;
 		selectedCount?: number;
 		showSelectedCount?: boolean;
+		onOpenHistory?: () => void;
 	}
 
 	let {
 		campaignName,
-		userRole,
 		effectiveRole,
 		activeSession,
 		hasErrors = false,
 		selectedCount = 0,
-		showSelectedCount = false
+		showSelectedCount = false,
+		onOpenHistory
 	}: Props = $props();
 </script>
 
@@ -73,19 +73,9 @@
 			{/if}
 		</h2>
 
-		<!-- Navigation Links -->
-		{#if userRole === 'dm'}
-			<form action="?/toggleView" method="POST" class="contents">
-				<Button variant="link" size="sm" type="submit" class="justify-self-end w-fit">
-					{#if effectiveRole === 'dm'}
-						<Users class="mr-2 w-4 h-4" />
-						Player View
-					{:else}
-						<User class="mr-2 w-4 h-4" />
-						DM View
-					{/if}
-				</Button>
-			</form>
-		{/if}
+		<!-- History Button -->
+		<Button variant="ghost" size="sm" onclick={onOpenHistory} class="justify-self-end w-fit">
+			<Clock class="w-4 h-4" />
+		</Button>
 	</div>
 </div>

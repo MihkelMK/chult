@@ -9,11 +9,13 @@
 		showAlwaysRevealed: boolean;
 		showRevealed: boolean;
 		showUnrevealed: boolean;
+		showPaths: boolean;
 		tileTransparency: string;
 		isOpen: boolean;
 		onToggleAlwaysRevealed: () => void;
 		onToggleRevealed: () => void;
 		onToggleUnrevealed: () => void;
+		onTogglePaths: () => void;
 		onTransparencyChange: (value: string) => void;
 		onToggleOpen: (open: boolean) => void;
 	}
@@ -22,11 +24,13 @@
 		showAlwaysRevealed,
 		showRevealed,
 		showUnrevealed,
+		showPaths,
 		tileTransparency,
 		isOpen,
 		onToggleAlwaysRevealed,
 		onToggleRevealed,
 		onToggleUnrevealed,
+		onTogglePaths,
 		onTransparencyChange,
 		onToggleOpen
 	}: Props = $props();
@@ -77,6 +81,7 @@
 			{@render layerControl('Always Revealed', showAlwaysRevealed, onToggleAlwaysRevealed)}
 			{@render layerControl('Revealed', showRevealed, onToggleRevealed)}
 			{@render layerControl('Unrevealed', showUnrevealed, onToggleUnrevealed)}
+			{@render layerControl('Paths', showPaths, onTogglePaths)}
 		</div>
 
 		<!-- Tile Transparency Control -->

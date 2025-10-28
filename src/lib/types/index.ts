@@ -1,7 +1,7 @@
 import type { LocalState } from '$lib/stores/localState.svelte';
-import type { RevealedTileResponse } from '$lib/types/database';
+import type { GameSessionResponse, Path, RevealedTileResponse } from '$lib/types/database';
 import type { ImageVariant, MapUrlsResponse } from '$lib/types/imgproxy';
-import type { SvelteSet } from 'svelte/reactivity';
+import type { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 export * from '$lib/types/database';
 export * from '$lib/types/imgproxy';
@@ -102,6 +102,8 @@ export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 	initiallyRevealed?: RevealedTileResponse[];
 	localState: LocalState;
 	selectedSet: SvelteSet<string>;
+	showPaths?: boolean;
+	visiblePathSessions?: Set<number>;
 }
 
 export interface MapCanvasProps extends MapCanvasSharedProps {
@@ -113,4 +115,9 @@ export interface MapCanvasProps extends MapCanvasSharedProps {
 	selectedTiles: readonly Hex[];
 	adjacentTiles: readonly Hex[]; // Valid moves with explore tool
 	partyTokenTile: Hex | null;
+	showPaths?: boolean;
+	visiblePathSessions?: Set<number>;
+	sessions: GameSessionResponse[];
+	pathsMap: SvelteMap<number, Path>;
+	hexGrid: readonly Hex[];
 }

@@ -37,7 +37,9 @@
 		onMapLoad = () => {},
 		onMapError = () => {},
 		hasPoI = () => false,
-		hasNotes = () => false
+		hasNotes = () => false,
+		showPaths = false,
+		visiblePathSessions = new Set<number>()
 	}: MapCanvasWrapperProps = $props();
 
 	function generateHexGrid(
@@ -241,5 +243,10 @@
 		{hasPoI}
 		{hasNotes}
 		{hexRadius}
+		{showPaths}
+		{visiblePathSessions}
+		sessions={localState.gameSessions}
+		pathsMap={localState.pathsMap}
+		{hexGrid}
 	/>
 {/await}

@@ -33,7 +33,7 @@ export class LocalState extends EventEmitter {
 	// Exploration state (NEW)
 	public globalGameTime = $state(0); // Days as float
 	public gameSessions = $state<GameSessionResponse[]>([]);
-	protected pathsMap = new SvelteMap<number, PathResponse>(); // gameSessionId -> PathResponse
+	public pathsMap = new SvelteMap<number, PathResponse>(); // gameSessionId -> PathResponse
 	public partyTokenPosition = $state<TileCoords | null>(null);
 	public partyTokenTile = $derived<string | null>(
 		this.partyTokenPosition ? `${this.partyTokenPosition.x}-${this.partyTokenPosition.y}` : null

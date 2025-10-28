@@ -2,6 +2,7 @@
 	import type { Hex, MapCanvasProps } from '$lib/types';
 	import { Group, Image, Layer, RegularPolygon, Stage, Text } from 'svelte-konva';
 	import PartyToken from './tokens/PartyToken.svelte';
+	import PathLayer from './PathLayer.svelte';
 
 	let {
 		image,
@@ -32,7 +33,12 @@
 		onHexTriggered,
 		onRightClick,
 		canvasHeight,
-		canvasWidth
+		canvasWidth,
+		showPaths = false,
+		visiblePathSessions = new Set<number>(),
+		sessions = [],
+		pathsMap,
+		hexGrid
 	}: MapCanvasProps = $props();
 
 	const calculatePanBounds = (
@@ -350,8 +356,29 @@
 				{@render adjacentTileHighlight(hex)}
 			{/each}
 		</Group>
+	</Layer>
 
-		<!-- 3: Show PartyToken on current position -->
+	<!-- Path Visualization Layer (between UI elements and party token) -->
+	<PathLayer
+		{sessions}
+		{pathsMap}
+		visibleSessionIds={visiblePathSessions}
+		{showPaths}
+		hexRadius={hexRadius}
+		{hexGrid}
+		{xOffset}
+		{yOffset}
+	/>
+
+	<!-- Party Token Layer (always on top) -->
+	<Layer
+		x={xOffset}
+		y={yOffset}
+		clipX={gridClipX}
+		clipY={gridClipY}
+		clipHeight={gridHeight}
+		clipWidth={gridWidth}
+	>
 		<PartyToken tile={partyTokenTile} radius={hexRadius} {onRightClick} />
 	</Layer>
 </Stage>

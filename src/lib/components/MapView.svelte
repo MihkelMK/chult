@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button, buttonVariants } from '$lib/components/ui/button';
-	import { Separator } from '$lib/components/ui/separator';
-	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
+	import { Sheet } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
@@ -25,9 +22,10 @@
 	import SelectionToolbar from './map/overlays/SelectionToolbar.svelte';
 	import ToolModeButtons from './map/overlays/ToolModeButtons.svelte';
 	import ZoomControls from './map/overlays/ZoomControls.svelte';
-	import GlobalTimeDisplay from './map/overlays/GlobalTimeDisplay.svelte';
 	import ConfirmDialog from './general/ConfirmDialog.svelte';
 	import TimeCostDialog from './general/TimeCostDialog.svelte';
+	import MapSidebar from './MapSidebar.svelte';
+	import SessionHistorySheet from './SessionHistorySheet.svelte';
 
 	interface Props {
 		data: PageData;
@@ -46,7 +44,8 @@
 	let ctrlHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Control'));
 
 	// UI State
-	let sidebarOpen = $state(false);
+	let leftSidebarOpen = $state(false);
+	let rightSidebarOpen = $state(false);
 
 	// Get states from context
 	const localState = getLocalState();
@@ -74,6 +73,10 @@
 	let contextMenuType = $state<RightClickEventType | null>(null);
 	// let contextMenuData = $state<any>(null);
 
+	let visiblePathSessions = new SvelteSet<number>(
+		localState.activeSession ? [localState.activeSession.id] : []
+	);
+
 	// Teleport state
 	let teleportMode = $state<'selecting-destination' | null>(null);
 	let teleportOrigin = $state<TileCoords | null>(null);
@@ -92,6 +95,7 @@
 	let showAlwaysRevealed = $state(false);
 	let showRevealed = $state(false);
 	let showUnrevealed = $state(true);
+	let showPaths = $state(true);
 	let tileTransparency = $state('1'); // 0 = transparent, 1 = opaque
 	let layerVisibilityOpen = $state(false);
 
@@ -685,6 +689,19 @@
 		cancelTeleport();
 	}
 
+	// Path visibility handlers
+	function handleTogglePathVisibility(sessionId: number) {
+		if (visiblePathSessions.has(sessionId)) {
+			visiblePathSessions.delete(sessionId);
+		} else {
+			visiblePathSessions.add(sessionId);
+		}
+	}
+
+	function handleOpenHistory() {
+		rightSidebarOpen = true;
+	}
+
 	// Add global event listeners
 	$effect(() => {
 		document.addEventListener('keydown', handleKeyDown);
@@ -708,17 +725,17 @@
 <Tooltip.Provider>
 	<div class="flex fixed inset-0 bg-background">
 		<!-- Collapsible Sidebar -->
-		<Sheet bind:open={sidebarOpen}>
+		<Sheet bind:open={leftSidebarOpen}>
 			<div class="flex relative flex-col flex-1">
 				<!-- Floating Toolbars -->
 				<MainToolbar
 					campaignName={data.campaign?.name || data.session?.campaignSlug}
-					{userRole}
 					{effectiveRole}
 					{hasErrors}
 					activeSession={localState.activeSession}
 					selectedCount={selectedSet.size}
 					showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
+					onOpenHistory={handleOpenHistory}
 				/>
 
 				<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
@@ -789,6 +806,8 @@
 							showAnimations={true}
 							previewMode={false}
 							{zoom}
+							{showPaths}
+							{visiblePathSessions}
 						/>
 					{:else}
 						<div class="flex justify-center items-center h-full">
@@ -839,157 +858,47 @@
 						{showAlwaysRevealed}
 						{showRevealed}
 						{showUnrevealed}
+						{showPaths}
 						{tileTransparency}
 						isOpen={layerVisibilityOpen}
 						onToggleAlwaysRevealed={() => (showAlwaysRevealed = !showAlwaysRevealed)}
 						onToggleRevealed={() => (showRevealed = !showRevealed)}
 						onToggleUnrevealed={() => (showUnrevealed = !showUnrevealed)}
+						onTogglePaths={() => (showPaths = !showPaths)}
 						onTransparencyChange={(value) => (tileTransparency = value)}
 						onToggleOpen={(open) => (layerVisibilityOpen = open)}
 					/>
 				</div>
 			{/if}
 
-			<!-- Sidebar Content -->
-			<SheetContent side="left" class="w-80">
-				<SheetHeader>
-					<SheetTitle>
-						{effectiveRole === 'dm' ? 'DM Controls' : 'Map Info'}
-					</SheetTitle>
-				</SheetHeader>
+			<!-- Left Sidebar Content -->
+			<MapSidebar
+				{effectiveRole}
+				{userRole}
+				campaignSlug={data.campaign.slug}
+				globalGameTime={localState.globalGameTime}
+				revealedTilesCount={localState.revealedTilesSet.size}
+				alwaysRevealedTilesCount={localState.alwaysRevealedTilesSet.size}
+				hasPendingOperations={!!hasPendingOperations}
+				pendingCount={remoteState.pending?.length || 0}
+				{hasActiveSession}
+				activeSession={localState.activeSession}
+				{sessionDuration}
+				onStartSession={handleStartSession}
+				onEndSession={handleEndSession}
+				onFlushPending={flushPendingOperations}
+			/>
+		</Sheet>
 
-				<div class="flex flex-col justify-between p-6 h-full">
-					<div class="space-y-4">
-						<!-- Statistics -->
-						<div>
-							<h3 class="mb-3 text-sm font-medium">Statistics</h3>
-							<div class="space-y-2">
-								<!-- Global Game Time -->
-								<div class="flex justify-between text-sm">
-									<span class="text-muted-foreground">Game Time</span>
-									<GlobalTimeDisplay globalGameTime={localState.globalGameTime} />
-								</div>
-								<div class="flex justify-between text-sm">
-									<span class="text-muted-foreground">Revealed Tiles</span>
-									<span class="font-medium">{localState.revealedTilesSet.size}</span>
-								</div>
-								<div class="flex justify-between text-sm">
-									<span class="text-muted-foreground">Always Revealed Tiles</span>
-									<span class="font-medium">{localState.alwaysRevealedTilesSet.size}</span>
-								</div>
-								<div class="flex justify-between text-sm">
-									<span class="text-muted-foreground">Points of Interest</span>
-									<span class="font-medium">
-										{data.mapMarkers?.filter((m) => m.type === 'poi').length || 0}
-									</span>
-								</div>
-								<div class="flex justify-between text-sm">
-									<span class="text-muted-foreground">Notes</span>
-									<span class="font-medium">
-										{data.mapMarkers?.filter((m) => m.type === 'note').length || 0}
-									</span>
-								</div>
-								{#if hasPendingOperations}
-									<div class="flex justify-between text-sm">
-										<span class="text-orange-600">Pending Changes</span>
-										<Badge variant="secondary">{remoteState.pending?.length}</Badge>
-									</div>
-								{/if}
-							</div>
-						</div>
-
-						<Separator />
-
-						{#if effectiveRole === 'dm'}
-							<!-- DM Controls -->
-							<div>
-								<h3 class="mb-3 text-sm font-medium">Tile Management</h3>
-								<div class="space-y-2">
-									<p class="text-sm text-muted-foreground">
-										Click any tile to add POI or notes. Use multi-select for bulk reveal/hide
-										operations.
-									</p>
-
-									{#if hasPendingOperations}
-										<Button
-											variant="outline"
-											size="sm"
-											class="w-full"
-											onclick={flushPendingOperations}
-										>
-											Save {remoteState.pending?.length} Changes Now
-										</Button>
-									{/if}
-								</div>
-							</div>
-						{:else}
-							<!-- Player Info -->
-							<div>
-								<h3 class="mb-3 text-sm font-medium">How to Explore</h3>
-								<div class="space-y-2 text-sm text-muted-foreground">
-									<p>• Click any tile to view details or add notes</p>
-									<p>• Revealed tiles show explored territory</p>
-									<p>• Look for POI markers on important locations</p>
-									<p>• Travel mode coming soon...</p>
-								</div>
-							</div>
-						{/if}
-
-						<!-- Session Controls (DM Only) -->
-						<Separator />
-						<div>
-							{#if hasActiveSession}
-								<div class="space-y-4">
-									<div class="flex justify-between items-center text-sm">
-										<span class="text-muted-foreground">Active Session</span>
-										<Badge variant="default" class="text-xs">
-											Session {localState.activeSession?.sessionNumber}
-										</Badge>
-									</div>
-									<div class="flex justify-between items-center text-sm">
-										<span class="text-muted-foreground">Duration</span>
-										<span class="font-medium tabular-nums">{sessionDuration}</span>
-									</div>
-									{#if effectiveRole === 'dm'}
-										<Button
-											variant="destructive"
-											size="sm"
-											class="w-full cursor-pointer"
-											onclick={handleEndSession}
-										>
-											End Session
-										</Button>
-									{/if}
-								</div>
-							{:else if effectiveRole === 'dm'}
-								<Button
-									variant="default"
-									size="sm"
-									class="w-full cursor-pointer"
-									onclick={handleStartSession}
-								>
-									Start Session
-								</Button>
-							{/if}
-						</div>
-					</div>
-
-					<div class="space-y-2">
-						{#if effectiveRole === 'dm'}
-							<a
-								href="/{data.campaign.slug}/settings"
-								class={buttonVariants({ size: 'sm', variant: 'secondary', class: 'w-full' })}
-								>Settings</a
-							>
-						{/if}
-						<form action="?/logout" method="POST" class="contents">
-							<Button variant="link" class="w-full cursor-pointer" size="sm" type="submit"
-								>Logout</Button
-							>
-						</form>
-					</div>
-				</div>
-			</SheetContent>
+		<!-- Right Sidebar - Session History -->
+		<Sheet bind:open={rightSidebarOpen}>
+			<SessionHistorySheet
+				sessions={localState.gameSessions}
+				pathsMap={localState.pathsMap}
+				activeSessionId={localState.activeSession?.id || null}
+				visibleSessionIds={visiblePathSessions}
+				onToggleVisibility={handleTogglePathVisibility}
+			/>
 		</Sheet>
 	</div>
 
