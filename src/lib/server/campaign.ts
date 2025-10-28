@@ -16,6 +16,7 @@ import type {
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from './db';
 import { getMapUrls } from './imgproxy';
+import { hasMapImage } from './uploads';
 
 function generateSlug(name: string): string {
 	return name
@@ -135,7 +136,14 @@ export async function getCampaignData(
 	const campaign = await getCampaignById(campaignId);
 	if (!campaign) return null;
 
-	const mapUrlsPromise = getMapUrls(campaign.slug);
+	// Get appropriate map based on role and hasPlayerMap setting
+	const mapType: 'dm' | 'player' = isPlayerView && campaign.hasPlayerMap ? 'player' : 'dm';
+	const mapUrlsPromise = getMapUrls(campaign.slug, mapType);
+
+	// For DM view, also check if player map file exists
+	const hasPlayerMapFilePromise = isPlayerView
+		? Promise.resolve(false)
+		: hasMapImage(campaign.slug, 'player');
 
 	// Get revealed tiles
 	const revealedPromise = db
@@ -211,14 +219,16 @@ export async function getCampaignData(
 				.orderBy(desc(timeAuditLog.timestamp))
 				.limit(100);
 
-	const [mapUrls, revealed, markers, gameSessions, explorationPaths, auditLog] = await Promise.all([
-		mapUrlsPromise,
-		revealedPromise,
-		markersPromise,
-		gameSessionsPromise,
-		pathsPromise,
-		timeAuditLogPromise
-	]);
+	const [mapUrls, hasPlayerMapFile, revealed, markers, gameSessions, explorationPaths, auditLog] =
+		await Promise.all([
+			mapUrlsPromise,
+			hasPlayerMapFilePromise,
+			revealedPromise,
+			markersPromise,
+			gameSessionsPromise,
+			pathsPromise,
+			timeAuditLogPromise
+		]);
 
 	return {
 		campaign: {
@@ -226,6 +236,7 @@ export async function getCampaignData(
 			name: campaign.name,
 			slug: campaign.slug,
 			createdAt: campaign.createdAt,
+			hasPlayerMap: campaign.hasPlayerMap,
 			hexOffsetX: campaign.hexOffsetX,
 			hexOffsetY: campaign.hexOffsetY,
 			hexesPerCol: campaign.hexesPerCol,
@@ -241,7 +252,8 @@ export async function getCampaignData(
 		gameSessions: gameSessions,
 		paths: explorationPaths,
 		timeAuditLog: auditLog,
-		mapUrls: mapUrls
+		mapUrls: mapUrls,
+		hasPlayerMapFile: hasPlayerMapFile
 	};
 }
 

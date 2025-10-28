@@ -1,6 +1,7 @@
 import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
+import crypto from 'crypto';
 import { existsSync } from 'fs';
-import { mkdir, stat, unlink, writeFile } from 'fs/promises';
+import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises';
 import path from 'path';
 
 const UPLOAD_DIR = './uploads';
@@ -83,7 +84,24 @@ function getJPEGDimensions(buffer: Buffer): { width: number; height: number } {
 	return { width: 1000, height: 1000 }; // Fallback
 }
 
-export async function saveMapImage(campaignSlug: string, file: File): Promise<UploadResult> {
+// Compute SHA-256 hash of file for cache busting
+export async function computeFileHash(filepath: string): Promise<string> {
+	try {
+		const buffer = await readFile(filepath);
+		const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+		return hash.slice(0, 12); // First 12 chars is sufficient for cache busting
+	} catch (error) {
+		console.error('Error computing file hash:', error);
+		// Return timestamp-based fallback if file can't be read
+		return Date.now().toString(36);
+	}
+}
+
+export async function saveMapImage(
+	campaignSlug: string,
+	file: File,
+	mapType: 'dm' | 'player' = 'dm'
+): Promise<UploadResult> {
 	try {
 		const validation = await validateImageFile(file);
 		if (!validation.valid) {
@@ -92,8 +110,8 @@ export async function saveMapImage(campaignSlug: string, file: File): Promise<Up
 
 		await ensureUploadDir(campaignSlug);
 
-		// Always save as map.jpg for consistency
-		const filename = 'map.jpg';
+		// Save as map.jpg (DM) or player-map.jpg (player)
+		const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
 		const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
 
 		// Save original file - let imgproxy handle all processing
@@ -111,8 +129,12 @@ export async function saveMapImage(campaignSlug: string, file: File): Promise<Up
 	}
 }
 
-export async function deleteMapImage(campaignSlug: string): Promise<void> {
-	const filepath = path.join(UPLOAD_DIR, campaignSlug, 'map.jpg');
+export async function deleteMapImage(
+	campaignSlug: string,
+	mapType: 'dm' | 'player' = 'dm'
+): Promise<void> {
+	const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
+	const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
 	try {
 		await unlink(filepath);
 	} catch {
@@ -120,8 +142,12 @@ export async function deleteMapImage(campaignSlug: string): Promise<void> {
 	}
 }
 
-export async function hasMapImage(campaignSlug: string): Promise<boolean> {
-	const filepath = path.join(UPLOAD_DIR, campaignSlug, 'map.jpg');
+export async function hasMapImage(
+	campaignSlug: string,
+	mapType: 'dm' | 'player' = 'dm'
+): Promise<boolean> {
+	const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
+	const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
 	try {
 		await stat(filepath);
 		return true;

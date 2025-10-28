@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import MapCanvasWrapper from '$lib/components/map/canvas/MapCanvasWrapper.svelte';
 	import MapUpload from '$lib/components/map/overlays/MapUpload.svelte';
+	import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -28,10 +30,9 @@
 		Settings,
 		Users
 	} from '@lucide/svelte';
+	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
-	import { Debounced } from 'runed';
-	import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -70,6 +71,9 @@
 	let partyTokenX = $state<number | null>(data.campaign?.partyTokenX ?? null);
 	let partyTokenY = $state<number | null>(data.campaign?.partyTokenY ?? null);
 
+	// Player map state
+	let hasPlayerMap = $state(data.campaign?.hasPlayerMap ?? false);
+
 	// Check if any sessions exist - if so, disable manual position setting
 	let hasAnySessions = $derived(localState.gameSessions.length > 0);
 
@@ -104,9 +108,38 @@
 	}
 
 	// Map upload callback
-	function handleMapUploaded() {
-		// Refresh the page data or handle map upload success
-		location.reload();
+	async function handleMapUploaded() {
+		// Invalidate all data to refetch from server
+		await invalidateAll();
+	}
+
+	// Handle player map deletion
+	async function handlePlayerMapDeleted() {
+		// Toggle off hasPlayerMap setting
+		await togglePlayerMap(false);
+	}
+
+	// Handle hasPlayerMap toggle
+	async function togglePlayerMap(enabled: boolean) {
+		try {
+			const response = await fetch(`/api/campaigns/${data.campaign.slug}/map/settings`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ hasPlayerMap: enabled })
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to update player map setting');
+			}
+
+			hasPlayerMap = enabled;
+			// Invalidate data to refetch hasPlayerMapFile
+			await invalidateAll();
+		} catch (err) {
+			console.error('Failed to toggle player map:', err);
+			// Revert the toggle on error
+			hasPlayerMap = !enabled;
+		}
 	}
 
 	// Save hex grid configuration
@@ -589,14 +622,34 @@
 				<Card>
 					<CardHeader>
 						<CardTitle>Map Management</CardTitle>
-						<CardDescription>Upload and manage your campaign map</CardDescription>
+						<CardDescription>Upload and manage the campaign map</CardDescription>
 					</CardHeader>
-					<CardContent>
+					<CardContent class="space-y-6">
 						<MapUpload
 							campaignSlug={data.campaign?.slug}
-							mapUrls={data.mapUrls}
+							mapExists={!!data.mapUrls}
 							onMapUploaded={handleMapUploaded}
+							label="DM Map"
 						/>
+
+						{#if hasPlayerMap}
+							<MapUpload
+								campaignSlug={data.campaign?.slug}
+								mapExists={data.hasPlayerMapFile}
+								onMapUploaded={handleMapUploaded}
+								onDeleted={handlePlayerMapDeleted}
+								mapType="player"
+								label="Player Map"
+							/>
+						{:else}
+							<Button
+								class="w-full cursor-pointer"
+								size="sm"
+								variant="ghost"
+								onclick={() => (hasPlayerMap = true)}
+								>Use separate Player map
+							</Button>
+						{/if}
 					</CardContent>
 				</Card>
 

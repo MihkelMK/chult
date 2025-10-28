@@ -1,43 +1,54 @@
 <script lang="ts">
 	import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
+	import ConfirmDialog from '$lib/components/general/ConfirmDialog.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import type { MapUrlsResponse } from '$lib/types';
-	import { CircleAlert, CircleCheck, Image, LoaderCircle, Trash2, Upload } from '@lucide/svelte';
+	import { Image, LoaderCircle, Trash2, Upload } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
 
 	interface Props {
-		mapUrls?: MapUrlsResponse;
+		mapExists: boolean;
 		campaignSlug: string;
 		onMapUploaded?: () => void;
+		onDeleted?: () => void;
+		mapType?: 'dm' | 'player';
+		label?: string;
 	}
 
-	let { mapUrls, campaignSlug, onMapUploaded }: Props = $props();
+	let {
+		mapExists,
+		campaignSlug,
+		onMapUploaded,
+		onDeleted,
+		mapType = 'dm',
+		label
+	}: Props = $props();
 
 	// Upload state
 	let fileInput: HTMLInputElement;
 	let dragActive = $state(false);
 	let uploading = $state(false);
-	let uploadError = $state('');
-	let uploadSuccess = $state('');
 	let previewUrl = $state('');
-	let showUploadInterface = $state(!mapUrls);
-	let mapExists = $state(mapUrls || false);
+	let showUploadInterface = $state(!mapExists);
+
+	// Dialog state
+	let confirmDeleteDialogOpen = $state(false);
 
 	function handleFileSelect(file: File) {
 		if (!file) return;
 
-		// Reset states
-		uploadError = '';
-		uploadSuccess = '';
-
 		// Validate file
 		if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-			uploadError = 'Please select a JPEG, PNG, or WebP image';
+			toast.error('Invalid file type', {
+				description: 'Please select a JPEG, PNG, or WebP image'
+			});
 			return;
 		}
 
 		if (file.size > Number(PUBLIC_MAX_IMAGE_SIZE)) {
-			uploadError = 'File size must be less than 50MB';
+			toast.error('File too large', {
+				description: 'File size must be less than 50MB'
+			});
 			return;
 		}
 
@@ -54,14 +65,13 @@
 
 	async function uploadFile(file: File) {
 		uploading = true;
-		uploadError = '';
-		uploadSuccess = '';
 
 		try {
 			const formData = new FormData();
 			formData.append('map', file);
 
-			const response = await fetch(`/api/campaigns/${campaignSlug}/map/upload`, {
+			const url = `/api/campaigns/${campaignSlug}/map/upload${mapType === 'player' ? '?mapType=player' : ''}`;
+			const response = await fetch(url, {
 				method: 'POST',
 				body: formData
 			});
@@ -73,13 +83,16 @@
 			}
 
 			// Success!
-			let message = 'Map uploaded successfully!';
+			const mapLabel = label || (mapType === 'player' ? 'Player map' : 'Map');
+			let message = `${mapLabel} uploaded successfully!`;
 			if (result.wasResized) {
-				message += ` Resized from ${result.originalDimensions?.width}×${result.originalDimensions?.height} to ${result.finalDimensions?.width}×${result.finalDimensions?.height} for optimal processing.`;
+				message = `Resized from ${result.originalDimensions?.width}×${result.originalDimensions?.height} to ${result.finalDimensions?.width}×${result.finalDimensions?.height} for optimal processing.`;
 			}
 
-			uploadSuccess = message;
-			mapExists = true;
+			toast.success('Upload successful', {
+				description: message
+			});
+
 			showUploadInterface = false;
 
 			// Clear preview
@@ -89,7 +102,9 @@
 
 			onMapUploaded?.();
 		} catch (error) {
-			uploadError = error instanceof Error ? error.message : 'Upload failed';
+			toast.error('Upload failed', {
+				description: error instanceof Error ? error.message : 'An unknown error occurred'
+			});
 			previewUrl = '';
 		} finally {
 			uploading = false;
@@ -97,26 +112,33 @@
 	}
 
 	async function deleteExistingMap() {
-		if (!confirm('Are you sure you want to delete the current map? This cannot be undone.')) {
-			return;
-		}
-
 		try {
-			const response = await fetch(`/api/campaigns/${campaignSlug}/map/upload`, {
+			const url = `/api/campaigns/${campaignSlug}/map/upload${mapType === 'player' ? '?mapType=player' : ''}`;
+			const response = await fetch(url, {
 				method: 'DELETE'
 			});
 
 			if (response.ok) {
-				mapExists = false;
 				showUploadInterface = true;
-				uploadSuccess = 'Map deleted successfully';
+				const mapLabel = label || (mapType === 'player' ? 'Player map' : 'Map');
+				toast.success('Map deleted', {
+					description: `${mapLabel} deleted successfully`
+				});
+
+				onDeleted?.(); // Notify parent of deletion
 				onMapUploaded?.(); // Refresh parent
 			} else {
-				uploadError = 'Failed to delete map';
+				throw new Error('Failed to delete map');
 			}
-		} catch {
-			uploadError = 'Failed to delete map';
+		} catch (error) {
+			toast.error('Delete failed', {
+				description: error instanceof Error ? error.message : 'Failed to delete map'
+			});
 		}
+	}
+
+	function openDeleteConfirmDialog() {
+		confirmDeleteDialogOpen = true;
 	}
 
 	// Drag and drop handlers
@@ -142,41 +164,26 @@
 </script>
 
 <div class="space-y-4">
-	<!-- Status Messages -->
-	{#if uploadError}
-		<div class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive">
-			<CircleAlert class="w-4 h-4" />
-			<span>{uploadError}</span>
-		</div>
-	{/if}
-
-	{#if uploadSuccess}
-		<div class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
-			<CircleCheck class="w-4 h-4" />
-			<div>
-				<p class="font-medium">Success!</p>
-				<p class="text-xs opacity-90">{uploadSuccess}</p>
-			</div>
-		</div>
-	{/if}
-
 	<!-- Map Status -->
 	{#if mapExists && !showUploadInterface}
 		<div class="flex justify-between items-center rounded-lg">
-			<div class="flex gap-3 items-center">
-				<div class="flex justify-center items-center w-10 h-10 bg-green-100 rounded-full">
-					<Image class="w-5 h-5 text-green-600" />
+			<div class="flex gap-2 items-center">
+				<div
+					class="flex h-10 w-10 items-center justify-center {mapType === 'dm'
+						? 'bg-green-100'
+						: 'bg-orange-100'} rounded-full"
+				>
+					<Image class="h-5 w-5 {mapType === 'dm' ? 'text-green-600' : 'text-orange-600'}" />
 				</div>
 				<div>
-					<p class="font-medium">Map Uploaded</p>
-					<p class="text-sm text-muted-foreground">Ready for campaign use</p>
+					<p class="font-medium">{label || 'Map Uploaded'}</p>
 				</div>
 			</div>
 			<div class="flex gap-2">
 				<Button variant="outline" size="sm" onclick={() => (showUploadInterface = true)}>
 					Replace
 				</Button>
-				<Button variant="outline" size="sm" onclick={deleteExistingMap}>
+				<Button variant="outline" size="sm" onclick={openDeleteConfirmDialog}>
 					<Trash2 class="w-4 h-4" />
 				</Button>
 			</div>
@@ -189,7 +196,7 @@
 			<div>
 				{#if mapExists}
 					<div class="flex justify-between items-center mb-4">
-						<h4 class="font-medium">Replace Map</h4>
+						<h4 class="font-medium">{label ? `Replace ${label}` : 'Replace Map'}</h4>
 						<Button variant="ghost" size="sm" onclick={() => (showUploadInterface = false)}>
 							Cancel
 						</Button>
@@ -225,7 +232,9 @@
 						<div class="space-y-4">
 							<Upload class="mx-auto w-12 h-12 text-muted-foreground" />
 							<div>
-								<p class="mb-2 font-medium">Drop your D&D map here</p>
+								<p class="mb-2 font-medium">
+									{label ? `Drop ${label} here` : 'Drop your D&D map here'}
+								</p>
 								<p class="mb-4 text-sm text-muted-foreground">or click to browse files</p>
 								<Button onclick={() => fileInput.click()}>
 									<Upload class="mr-2 w-4 h-4" />
@@ -255,3 +264,22 @@
 		class="hidden"
 	/>
 </div>
+
+<!-- Confirm Delete Dialog -->
+<ConfirmDialog
+	bind:open={confirmDeleteDialogOpen}
+	title="Delete Map"
+	description={`Are you sure you want to delete the current ${label || (mapType === 'player' ? 'player map' : 'map')}? This cannot be undone.`}
+	actions={[
+		{
+			label: 'Cancel',
+			variant: 'outline',
+			action: () => {}
+		},
+		{
+			label: 'Delete',
+			variant: 'destructive',
+			action: deleteExistingMap
+		}
+	]}
+/>

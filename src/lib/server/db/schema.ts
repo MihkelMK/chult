@@ -27,6 +27,7 @@ export const campaigns = pgTable(
 		hexOffsetY: integer('hex_offset_y').notNull().default(58),
 		imageWidth: integer('image_width').notNull().default(0),
 		imageHeight: integer('image_height').notNull().default(0),
+		hasPlayerMap: boolean('has_player_map').notNull().default(false), // Whether separate player map exists
 		// Exploration state (NEW)
 		globalGameTime: doublePrecision('global_game_time').notNull().default(0), // Days as float
 		partyTokenX: integer('party_token_x'), // null until first session

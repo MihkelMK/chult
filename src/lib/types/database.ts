@@ -12,7 +12,7 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type { MapUrlsResponse } from './imgproxy';
 
 // Export PathStep types from schema
-export type { PathStep, PlayerMove, DMTeleport, DMPath } from '$lib/server/db/schema';
+export type { DMPath, DMTeleport, PathStep, PlayerMove } from '$lib/server/db/schema';
 
 // Full model types
 export type Campaign = InferSelectModel<typeof campaigns>;
@@ -47,6 +47,7 @@ export type CampaignSummary = Pick<
 	| 'hexOffsetY'
 	| 'imageHeight'
 	| 'imageWidth'
+	| 'hasPlayerMap'
 	| 'globalGameTime'
 	| 'partyTokenX'
 	| 'partyTokenY'
@@ -125,12 +126,14 @@ export interface PlayerCampaignDataResponse {
 		| 'globalGameTime'
 		| 'partyTokenX'
 		| 'partyTokenY'
+		| 'hasPlayerMap'
 	>;
 	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
 	mapMarkers: MapMarkerResponse[];
 	gameSessions: GameSessionResponse[];
 	paths: PathResponse[];
 	mapUrls: MapUrlsResponse | undefined;
+	hasPlayerMapFile: boolean;
 }
 
 export interface CampaignTokenResponse {

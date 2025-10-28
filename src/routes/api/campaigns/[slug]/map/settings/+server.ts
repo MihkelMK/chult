@@ -22,10 +22,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { hexesPerRow, hexesPerCol, hexOffsetX, hexOffsetY, partyTokenX, partyTokenY } = body;
+		const {
+			hexesPerRow,
+			hexesPerCol,
+			hexOffsetX,
+			hexOffsetY,
+			partyTokenX,
+			partyTokenY,
+			hasPlayerMap
+		} = body;
 
 		// Build update object dynamically based on what was provided
-		const updateData: Record<string, number | Date | null> = {
+		const updateData: Record<string, number | Date | null | boolean> = {
 			updatedAt: new Date()
 		};
 
@@ -73,6 +81,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.partyTokenY = partyTokenY;
 		}
 
+		// Validate and add hasPlayerMap flag if provided
+		if (hasPlayerMap !== undefined) {
+			if (typeof hasPlayerMap !== 'boolean') {
+				throw error(400, 'Invalid hasPlayerMap value');
+			}
+			updateData.hasPlayerMap = hasPlayerMap;
+		}
+
 		// Update the campaign in database
 		const result = await db
 			.update(campaigns)
@@ -84,7 +100,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				hexOffsetX: campaigns.hexOffsetX,
 				hexOffsetY: campaigns.hexOffsetY,
 				partyTokenX: campaigns.partyTokenX,
-				partyTokenY: campaigns.partyTokenY
+				partyTokenY: campaigns.partyTokenY,
+				hasPlayerMap: campaigns.hasPlayerMap
 			});
 
 		if (result.length === 0) {

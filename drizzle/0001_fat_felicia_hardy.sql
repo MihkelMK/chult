@@ -1,0 +1,1 @@
+ALTER TABLE "campaigns" ADD COLUMN "has_player_map" boolean DEFAULT false NOT NULL;

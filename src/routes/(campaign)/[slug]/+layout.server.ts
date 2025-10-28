@@ -14,9 +14,10 @@ export const load: LayoutServerLoad = async ({ locals, params, depends }) => {
 
 	depends('campaign:data');
 
+	const isPlayerView = locals.session.viewAs === 'player';
 	const campaignData = (await getCampaignData(
 		locals.session.campaignId,
-		true
+		isPlayerView
 	)) as PlayerCampaignDataResponse;
 
 	if (!campaignData) {
