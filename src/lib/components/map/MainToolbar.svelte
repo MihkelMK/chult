@@ -32,7 +32,7 @@
 	<div
 		class="grid grid-cols-3 items-center p-2 w-full rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 	>
-		<div class="flex justify-between items-center min-w-80">
+		<div class="flex items-center">
 			<div class="flex gap-2 items-center">
 				<SheetTrigger>
 					{#snippet child({ props })}
@@ -51,31 +51,37 @@
 					</Badge>
 				</div>
 			</div>
-
-			<div class="flex gap-2 items-center">
-				{#if hasErrors}
-					<Badge variant="destructive" class="text-xs">Error</Badge>
-				{/if}
-
-				{#if showSelectedCount}
-					<Badge variant="secondary" class="justify-self-end text-xs">
-						{selectedCount} selected
-					</Badge>
-				{/if}
-			</div>
 		</div>
 
-		<h2 class="justify-self-center text-sm font-medium">
-			{#if activeSession && activeSession.isActive}
-				{activeSession.name}
-			{:else}
-				No active session
+		<div class="flex gap-2 justify-self-center items-center">
+			{#if hasErrors}
+				<Badge variant="destructive" class="text-xs">Error</Badge>
 			{/if}
-		</h2>
 
-		<!-- History Button -->
-		<Button variant="ghost" size="sm" onclick={onOpenHistory} class="justify-self-end w-fit">
-			<Clock class="w-4 h-4" />
-		</Button>
+			{#if showSelectedCount}
+				<Badge variant="secondary" class="justify-self-end text-xs">
+					{selectedCount} selected
+				</Badge>
+			{/if}
+		</div>
+
+		<div class="flex justify-self-end items-center">
+			<div class="flex gap-2 items-center">
+				<div class="flex gap-2 items-center">
+					<div class="text-sm font-medium">
+						{#if activeSession && activeSession.isActive}
+							{activeSession.name}
+						{:else}
+							Session not active
+						{/if}
+					</div>
+				</div>
+
+				<!-- History Button -->
+				<Button variant="ghost" size="sm" onclick={onOpenHistory}>
+					<Clock class="w-4 h-4" />
+				</Button>
+			</div>
+		</div>
 	</div>
 </div>
