@@ -6,6 +6,7 @@
 	import GlobalTimeDisplay from './map/overlays/GlobalTimeDisplay.svelte';
 	import type { GameSessionResponse, MapMarker } from '$lib/types';
 	import { User, Users } from '@lucide/svelte';
+	import { enhance } from '$app/forms';
 
 	interface Props {
 		effectiveRole: 'player' | 'dm';
@@ -56,7 +57,7 @@
 			<!-- Player/DM View Toggle -->
 			{#if userRole === 'dm'}
 				<div>
-					<form action="?/toggleView" method="POST" class="contents">
+					<form action="?/toggleView" method="POST" class="contents" use:enhance>
 						<Button variant="outline" size="sm" type="submit" class="w-full">
 							{#if effectiveRole === 'dm'}
 								<Users class="mr-2 w-4 h-4" />
@@ -187,7 +188,7 @@
 					class={buttonVariants({ size: 'sm', variant: 'secondary', class: 'w-full' })}>Settings</a
 				>
 			{/if}
-			<form action="?/logout" method="POST" class="contents">
+			<form action="?/logout" method="POST" class="contents" use:enhance>
 				<Button variant="link" class="w-full cursor-pointer" size="sm" type="submit">Logout</Button>
 			</form>
 		</div>
