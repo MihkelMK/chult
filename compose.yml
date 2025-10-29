@@ -12,7 +12,7 @@ services:
         PRIVATE_DM_TOKEN: '${PRIVATE_DM_TOKEN}'
         IMGPROXY_KEY: '${IMGPROXY_KEY}'
         IMGPROXY_SALT: '${IMGPROXY_SALT}'
-        IMGPROXY_URL: 'http://imgproxy:8080'
+        IMGPROXY_URL: '${IMGPROXY_URL}'
     restart: unless-stopped
     environment:
       # Database (via PgBouncer)
@@ -24,7 +24,7 @@ services:
       # Imgproxy configuration
       IMGPROXY_KEY: '${IMGPROXY_KEY}'
       IMGPROXY_SALT: '${IMGPROXY_SALT}'
-      IMGPROXY_URL: 'http://imgproxy:8080'
+      IMGPROXY_URL: '${IMGPROXY_URL}'
 
       # File uploads
       PUBLIC_MAX_IMAGE_SIZE: '${PUBLIC_MAX_IMAGE_SIZE}'
@@ -195,9 +195,6 @@ services:
       -c max_connections=100
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # DO NOT expose port in production - internal network only
-    # ports:
-    #   - '5432:5432'
     networks:
       - backend
     restart: unless-stopped
@@ -242,6 +239,7 @@ services:
     networks:
       - backend
     restart: unless-stopped
+    user: postgres:postgres
     logging:
       driver: 'json-file'
       options:
@@ -257,4 +255,4 @@ networks:
     name: chult_frontend
   backend:
     name: chult_backend
-    internal: true # No external access to database
+    internal: true
