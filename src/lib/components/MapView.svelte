@@ -739,6 +739,7 @@
 					activeSession={localState.activeSession}
 					selectedCount={selectedSet.size}
 					showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
+					partyTokenPosition={localState.partyTokenPosition}
 					onOpenHistory={handleOpenHistory}
 				/>
 

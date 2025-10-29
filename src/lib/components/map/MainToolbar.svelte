@@ -12,6 +12,7 @@
 		hasErrors?: boolean;
 		selectedCount?: number;
 		showSelectedCount?: boolean;
+		partyTokenPosition?: { x: number; y: number } | null;
 		onOpenHistory?: () => void;
 	}
 
@@ -22,6 +23,7 @@
 		hasErrors = false,
 		selectedCount = 0,
 		showSelectedCount = false,
+		partyTokenPosition,
 		onOpenHistory
 	}: Props = $props();
 </script>
@@ -61,6 +63,12 @@
 			{#if showSelectedCount}
 				<Badge variant="secondary" class="justify-self-end text-xs">
 					{selectedCount} selected
+				</Badge>
+			{:else if effectiveRole === 'player' && partyTokenPosition}
+				<Badge variant="secondary" class="justify-self-end text-xs">
+					Party at: {partyTokenPosition.x.toString().padStart(2, '0')}{partyTokenPosition.y
+						.toString()
+						.padStart(2, '0')}
 				</Badge>
 			{/if}
 		</div>
