@@ -15,6 +15,7 @@
 	} from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Slider } from '$lib/components/ui/slider';
+	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState } from '$lib/contexts/campaignContext';
 	import type { UserRole } from '$lib/types';
@@ -28,7 +29,6 @@
 		Flag,
 		Hand,
 		Map,
-		Settings,
 		Users
 	} from '@lucide/svelte';
 	import { Debounced } from 'runed';
@@ -39,7 +39,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Welcome message state
-	const isNewCampaign = page.params.created === 'created';
+	const isNewCampaign = page.url.searchParams.get('created');
 	const localState = getLocalState();
 
 	// Token visibility state
@@ -318,33 +318,16 @@
 
 <Tooltip.Provider>
 	<div class="container p-6 mx-auto space-y-8 max-w-4xl">
-		<!-- Welcome Message for New Campaigns -->
-		{#if isNewCampaign}
-			<Card class="bg-green-50 border-green-200">
-				<CardHeader>
-					<div class="flex gap-2 items-center">
-						<Crown class="w-5 h-5 text-green-600" />
-						<CardTitle class="text-green-800">Welcome, Dungeon Master!</CardTitle>
-					</div>
-					<CardDescription class="text-green-700">
-						Your campaign "{data.campaign?.name}" has been created successfully. Get started by
-						uploading a map and configuring your hex grid settings.
-					</CardDescription>
-				</CardHeader>
-			</Card>
-		{/if}
-
 		<!-- Page Header -->
-		<div class="flex justify-between">
+		<div class="flex justify-between items-center">
 			<div class="flex gap-3 items-center">
-				<Settings class="w-6 h-6 text-muted-foreground" />
 				<div>
 					<h1 class="text-2xl font-bold">Campaign Settings</h1>
 					<p class="text-muted-foreground">Configure your campaign map and access tokens</p>
 				</div>
 			</div>
 			<div
-				class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
+				class="flex items-center p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
 			>
 				<Button href="/{data.campaign.slug}" variant="link" size="sm" type="submit">
 					<Map class="mr-2 w-4 h-4" />
@@ -354,6 +337,22 @@
 		</div>
 
 		<div class="grid gap-8 md:grid-cols-2">
+			<!-- Welcome Message for New Campaigns -->
+			{#if isNewCampaign}
+				<Alert.Root class="col-span-2 bg-green-50 border-green-200">
+					<Crown class="w-5 h-5 text-green-600" />
+					<Alert.Title class="text-green-700">Welcome, Dungeon Master!</Alert.Title>
+					<Alert.Description>
+						<p>
+							Your campaign "{data.campaign?.name}" has been created successfully.
+							<br />
+							Get started by
+							<strong>uploading a map</strong>
+							and configuring your <strong>hex grid settings. </strong>
+						</p>
+					</Alert.Description>
+				</Alert.Root>
+			{/if}
 			<!-- Left Column: Map Upload and Configuration -->
 			<div class="space-y-6">
 				<!-- Access Tokens Section -->
@@ -375,8 +374,10 @@
 							</div>
 
 							<div class="flex gap-2">
-								<div class="flex-1 p-3 font-mono text-sm rounded-md bg-muted">
-									{showDmToken ? data.dmToken : '****************'}
+								<div class="flex flex-1 items-center rounded-md bg-muted">
+									<p class="p-1 font-mono text-sm">
+										{showDmToken ? data.dmToken : '--------'}
+									</p>
 								</div>
 								<Button variant="outline" size="sm" onclick={() => (showDmToken = !showDmToken)}>
 									{#if showDmToken}
@@ -411,8 +412,10 @@
 							</div>
 
 							<div class="flex gap-2">
-								<div class="flex-1 p-3 font-mono text-sm rounded-md bg-muted">
-									{showPlayerToken ? data.playerToken : '****************'}
+								<div class="flex flex-1 items-center rounded-md bg-muted">
+									<p class="p-1 font-mono text-sm">
+										{showPlayerToken ? data.playerToken : '--------'}
+									</p>
 								</div>
 								<Button
 									variant="outline"
