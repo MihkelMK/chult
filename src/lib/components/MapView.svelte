@@ -88,6 +88,9 @@
 	let showTimeCostDialog = $state(false);
 	let pendingTeleportDestination = $state<TileCoords | null>(null);
 
+	// Pan to tile state
+	let panToCoords = $state<TileCoords | null>(null);
+
 	// Use these values to determine actual expected action
 	let activeTool = $derived(shiftHeld ? 'pan' : _selectedTool);
 	let activeSelectMode = $derived<SelectMode>(
@@ -706,6 +709,17 @@
 		rightSidebarOpen = true;
 	}
 
+	function handlePanToParty() {
+		if (localState.partyTokenPosition) {
+			// Trigger pan by setting the tile coordinates
+			panToCoords = { ...localState.partyTokenPosition };
+			// Reset after a short delay to allow re-triggering
+			setTimeout(() => {
+				panToCoords = null;
+			}, 100);
+		}
+	}
+
 	// Add global event listeners
 	$effect(() => {
 		document.addEventListener('keydown', handleKeyDown);
@@ -741,6 +755,7 @@
 					showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
 					partyTokenPosition={localState.partyTokenPosition}
 					onOpenHistory={handleOpenHistory}
+					onPanToParty={handlePanToParty}
 				/>
 
 				<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
@@ -821,6 +836,7 @@
 							{zoom}
 							{showPaths}
 							{visiblePathSessions}
+							{panToCoords}
 						/>
 					{:else}
 						<div class="flex justify-center items-center h-full">

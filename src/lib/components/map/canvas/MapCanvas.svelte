@@ -38,7 +38,8 @@
 		visiblePathSessions = new Set<number>(),
 		sessions = [],
 		pathsMap,
-		hexGrid
+		hexGrid,
+		panToTile = null
 	}: MapCanvasProps = $props();
 
 	const calculatePanBounds = (
@@ -140,6 +141,28 @@
 				y: Math.max(Math.min(maxYPos, newY), minYPos)
 			};
 			previousZoom = zoom;
+		}
+	});
+
+	// Pan to tile when panToTile changes
+	$effect(() => {
+		if (panToTile) {
+			const centerX = canvasWidth / 2;
+			const centerY = canvasHeight / 2;
+
+			// Calculate scaled position of the tile
+			const scaledTileX = (panToTile.centerX + xOffset) * scale;
+			const scaledTileY = (panToTile.centerY + yOffset) * scale;
+
+			// Calculate new position to center the tile
+			const newX = centerX - scaledTileX;
+			const newY = centerY - scaledTileY;
+
+			// Set new position, clamped to bounds
+			position = {
+				x: Math.max(Math.min(maxXPos, newX), minXPos),
+				y: Math.max(Math.min(maxYPos, newY), minYPos)
+			};
 		}
 	});
 </script>

@@ -2,6 +2,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { SheetTrigger } from '$lib/components/ui/sheet';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 	import type { GameSessionResponse } from '$lib/types';
 	import { Clock, Menu } from '@lucide/svelte';
 
@@ -14,6 +15,7 @@
 		showSelectedCount?: boolean;
 		partyTokenPosition?: { x: number; y: number } | null;
 		onOpenHistory?: () => void;
+		onPanToParty?: () => void;
 	}
 
 	let {
@@ -24,7 +26,8 @@
 		selectedCount = 0,
 		showSelectedCount = false,
 		partyTokenPosition,
-		onOpenHistory
+		onOpenHistory,
+		onPanToParty
 	}: Props = $props();
 </script>
 
@@ -65,11 +68,20 @@
 					{selectedCount} selected
 				</Badge>
 			{:else if effectiveRole === 'player' && partyTokenPosition}
-				<Badge variant="secondary" class="justify-self-end text-xs">
-					Party at: {partyTokenPosition.x.toString().padStart(2, '0')}{partyTokenPosition.y
-						.toString()
-						.padStart(2, '0')}
-				</Badge>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						{#snippet child({ props })}
+							<button {...props} onclick={onPanToParty} class="transition-opacity hover:opacity-80">
+								<Badge variant="secondary" class="justify-self-end text-xs cursor-pointer">
+									Party at: {partyTokenPosition.x.toString().padStart(2, '0')}{partyTokenPosition.y
+										.toString()
+										.padStart(2, '0')}
+								</Badge>
+							</button>
+						{/snippet}
+					</Tooltip.Trigger>
+					<Tooltip.Content side="bottom">Click to pan to party token</Tooltip.Content>
+				</Tooltip.Root>
 			{/if}
 		</div>
 

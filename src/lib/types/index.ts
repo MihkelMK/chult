@@ -104,6 +104,7 @@ export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 	selectedSet: SvelteSet<string>;
 	showPaths?: boolean;
 	visiblePathSessions?: Set<number>;
+	panToCoords?: TileCoords | null;
 }
 
 export interface MapCanvasProps extends MapCanvasSharedProps {
@@ -120,4 +121,5 @@ export interface MapCanvasProps extends MapCanvasSharedProps {
 	sessions: GameSessionResponse[];
 	pathsMap: SvelteMap<number, Path>;
 	hexGrid: readonly Hex[];
+	panToTile?: Hex | null;
 }

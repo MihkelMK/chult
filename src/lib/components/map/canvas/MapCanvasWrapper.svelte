@@ -39,7 +39,8 @@
 		hasPoI = () => false,
 		hasNotes = () => false,
 		showPaths = false,
-		visiblePathSessions = new Set<number>()
+		visiblePathSessions = new Set<number>(),
+		panToCoords = null
 	}: MapCanvasWrapperProps = $props();
 
 	function generateHexGrid(
@@ -199,6 +200,13 @@
 		}
 		return tiles;
 	});
+
+	// Convert panToTile coordinates to Hex object
+	let panToTile = $derived.by(() => {
+		if (!panToCoords) return null;
+		const key = `${panToCoords.x}-${panToCoords.y}`;
+		return hexMap.get(key) || null;
+	});
 </script>
 
 {#await MapCanvasLoader}
@@ -248,6 +256,7 @@
 			sessions={localState.gameSessions}
 			pathsMap={localState.pathsMap}
 			{hexGrid}
+			{panToTile}
 		/>
 	{/if}
 {/await}
