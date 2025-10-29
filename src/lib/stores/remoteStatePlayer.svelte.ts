@@ -20,14 +20,14 @@ export class RemoteStatePlayer {
 
 		// Connect to local state events if available
 		if (localState) {
-			localState.addEventListener('tile-revealed', (tile: Pick<TileCoords, 'x' | 'y'>) => {
+			localState.addEventListener('tile:revealed', (tile: Pick<TileCoords, 'x' | 'y'>) => {
 				// Only add if not already revealed and not from our own optimistic update
 				if (!this.revealed.some((t) => t.x === tile.x && t.y === tile.y)) {
 					this.revealed = [...this.revealed, { x: tile.x, y: tile.y }];
 				}
 			});
 
-			localState.addEventListener('tile-hidden', (tile: Pick<TileCoords, 'x' | 'y'>) => {
+			localState.addEventListener('tile:hidden', (tile: Pick<TileCoords, 'x' | 'y'>) => {
 				this.revealed = this.revealed.filter((t) => !(t.x === tile.x && t.y === tile.y));
 			});
 		}

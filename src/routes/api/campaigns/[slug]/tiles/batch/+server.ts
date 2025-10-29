@@ -54,7 +54,7 @@ export const POST: RequestHandler = async (event) => {
 						}))
 					);
 					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
-						event: 'tile-revealed',
+						event: 'tile:revealed',
 						data: newTiles.map((tile) => ({ ...tile, alwaysRevealed })),
 						role: 'all' // Send to both DM and players
 					});
@@ -77,7 +77,7 @@ export const POST: RequestHandler = async (event) => {
 
 				if (deletedTiles.length > 0) {
 					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
-						event: 'tile-hidden',
+						event: 'tile:hidden',
 						data: deletedTiles,
 						role: 'all' // Send to both DM and players
 					});

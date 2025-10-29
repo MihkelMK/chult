@@ -79,7 +79,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 					[-1, -1]
 				]; // Even column
 
-		const isAdjacent = adjacentOffsets.some(([dx, dy]) => currentX + dx === col && currentY + dy === row);
+		const isAdjacent = adjacentOffsets.some(
+			([dx, dy]) => currentX + dx === col && currentY + dy === row
+		);
 
 		if (!isAdjacent) {
 			throw error(400, 'Tile is not adjacent to party position');
@@ -135,8 +137,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			});
 			tilesToReveal.push(tileKey);
 
-			// Emit tile-revealed event
-			emitEvent(params.slug, 'tile-revealed', [{ x: col, y: row, alwaysRevealed: false }]);
+			// Emit tile:revealed event
+			emitEvent(params.slug, 'tile:revealed', [{ x: col, y: row, alwaysRevealed: false }]);
 		}
 
 		// Update path with new step and revealed tiles

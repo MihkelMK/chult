@@ -20,7 +20,14 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const { from, to, timeCost } = await request.json();
 
 		// Validate input
-		if (!from || !to || typeof from.x !== 'number' || typeof from.y !== 'number' || typeof to.x !== 'number' || typeof to.y !== 'number') {
+		if (
+			!from ||
+			!to ||
+			typeof from.x !== 'number' ||
+			typeof from.y !== 'number' ||
+			typeof to.x !== 'number' ||
+			typeof to.y !== 'number'
+		) {
 			throw error(400, 'Invalid from/to coordinates');
 		}
 
@@ -109,8 +116,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			});
 			tilesToReveal.push(toTile);
 
-			// Emit tile-revealed event
-			emitEvent(params.slug, 'tile-revealed', [{ x: to.x, y: to.y, alwaysRevealed: false }]);
+			// Emit tile:revealed event
+			emitEvent(params.slug, 'tile:revealed', [{ x: to.x, y: to.y, alwaysRevealed: false }]);
 		}
 
 		// Update path with new step and revealed tiles

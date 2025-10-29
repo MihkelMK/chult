@@ -21,19 +21,19 @@ export class LocalStatePlayer extends LocalState {
 		this.initializeMarkersMap(initialData.mapMarkers);
 
 		// Event listeners for synchronization
-		this.addEventListener('tiles-revealed-batch', (tiles) =>
+		this.addEventListener('tiles:revealed:batch', (tiles) =>
 			this.handleTilesRevealedBatch(tiles as RevealedTile[])
 		);
-		this.addEventListener('tile-hidden', (tile) =>
+		this.addEventListener('tile:hidden', (tile) =>
 			super.handleTileHidden(tile as Pick<RevealedTile, 'x' | 'y'>)
 		);
-		this.addEventListener('marker-created', (marker) =>
+		this.addEventListener('marker:created', (marker) =>
 			super.handleMarkerCreated(marker as MapMarkerResponse)
 		);
-		this.addEventListener('marker-updated', (marker) =>
+		this.addEventListener('marker:updated', (marker) =>
 			super.handleMarkerUpdated(marker as MapMarkerResponse)
 		);
-		this.addEventListener('marker-deleted', (data) =>
+		this.addEventListener('marker:deleted', (data) =>
 			super.handleMarkerDeleted((data as { id: number }).id)
 		);
 

@@ -128,53 +128,53 @@ export class LocalState extends EventEmitter {
 		};
 
 		// Register listeners for specific event types
-		this.eventSource.addEventListener('tile-revealed', (event) => {
+		this.eventSource.addEventListener('tile:revealed', (event) => {
 			try {
 				const tiles = JSON.parse(event.data);
 				// Handle both single tiles and arrays for backwards compatibility
 				const tilesArray = Array.isArray(tiles) ? tiles : [tiles];
 				// Emit the entire array at once for batch processing
-				this.emit('tiles-revealed-batch', tilesArray);
+				this.emit('tiles:revealed:batch', tilesArray);
 			} catch (error) {
-				console.error('Failed to parse tile-revealed event:', error);
+				console.error('Failed to parse tile:revealed event:', error);
 			}
 		});
 
-		this.eventSource.addEventListener('marker-created', (event) => {
+		this.eventSource.addEventListener('marker:created', (event) => {
 			try {
 				const marker = JSON.parse(event.data);
-				this.emit('marker-created', marker);
+				this.emit('marker:created', marker);
 			} catch (error) {
-				console.error('Failed to parse marker-created event:', error);
+				console.error('Failed to parse marker:created event:', error);
 			}
 		});
 
-		this.eventSource.addEventListener('marker-updated', (event) => {
+		this.eventSource.addEventListener('marker:updated', (event) => {
 			try {
 				const marker = JSON.parse(event.data);
-				this.emit('marker-updated', marker);
+				this.emit('marker:updated', marker);
 			} catch (error) {
-				console.error('Failed to parse marker-updated event:', error);
+				console.error('Failed to parse marker:updated event:', error);
 			}
 		});
 
-		this.eventSource.addEventListener('marker-deleted', (event) => {
+		this.eventSource.addEventListener('marker:deleted', (event) => {
 			try {
 				const data = JSON.parse(event.data);
-				this.emit('marker-deleted', data);
+				this.emit('marker:deleted', data);
 			} catch (error) {
-				console.error('Failed to parse marker-deleted event:', error);
+				console.error('Failed to parse marker:deleted event:', error);
 			}
 		});
 
-		this.eventSource.addEventListener('tile-hidden', (event) => {
+		this.eventSource.addEventListener('tile:hidden', (event) => {
 			try {
 				const tiles = JSON.parse(event.data);
 				// Handle both single tiles and arrays for consistency
 				const tilesArray = Array.isArray(tiles) ? tiles : [tiles];
-				tilesArray.forEach((tile) => this.emit('tile-hidden', tile));
+				tilesArray.forEach((tile) => this.emit('tile:hidden', tile));
 			} catch (error) {
-				console.error('Failed to parse tile-hidden event:', error);
+				console.error('Failed to parse tile:hidden event:', error);
 			}
 		});
 

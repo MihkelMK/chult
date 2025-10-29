@@ -26,19 +26,19 @@ export class LocalStateDM extends LocalState {
 		this.timeAuditLog = initialData.timeAuditLog || [];
 
 		// Event listeners for synchronization
-		this.addEventListener('tiles-revealed-batch', (tiles) =>
+		this.addEventListener('tiles:revealed:batch', (tiles) =>
 			this.handleTilesRevealedBatch(tiles as RevealedTileResponse[])
 		);
-		this.addEventListener('tile-hidden', (tile) =>
+		this.addEventListener('tile:hidden', (tile) =>
 			super.handleTileHidden(tile as Pick<RevealedTileResponse, 'x' | 'y'>)
 		);
-		this.addEventListener('marker-created', (marker) =>
+		this.addEventListener('marker:created', (marker) =>
 			super.handleMarkerCreated(marker as MapMarkerResponse)
 		);
-		this.addEventListener('marker-updated', (marker) =>
+		this.addEventListener('marker:updated', (marker) =>
 			super.handleMarkerUpdated(marker as MapMarkerResponse)
 		);
-		this.addEventListener('marker-deleted', (data) =>
+		this.addEventListener('marker:deleted', (data) =>
 			super.handleMarkerDeleted((data as { id: number }).id)
 		);
 

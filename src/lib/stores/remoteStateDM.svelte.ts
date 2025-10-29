@@ -35,14 +35,14 @@ export class RemoteStateDM {
 
 		// Connect to local state events if available
 		if (localState) {
-			localState.addEventListener('tile-revealed', (tile: TileCoords | RevealedTile) => {
+			localState.addEventListener('tile:revealed', (tile: TileCoords | RevealedTile) => {
 				// Remove from pending if this was from our optimistic update
 				this.pending = this.pending.filter(
 					(op) => !(op.coords.x === tile.x && op.coords.y === tile.y && op.type === 'reveal')
 				);
 			});
 
-			localState.addEventListener('tile-hidden', (tile: Pick<TileCoords, 'x' | 'y'>) => {
+			localState.addEventListener('tile:hidden', (tile: Pick<TileCoords, 'x' | 'y'>) => {
 				// Remove any pending operations for this tile since it's now definitively hidden
 				this.pending = this.pending.filter(
 					(op) => !(op.coords.x === tile.x && op.coords.y === tile.y)
