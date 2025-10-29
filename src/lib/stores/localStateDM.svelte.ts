@@ -3,7 +3,8 @@ import type {
 	GameSessionResponse,
 	MapMarkerResponse,
 	PathStep,
-	RevealedTileResponse
+	RevealedTileResponse,
+	TimeAuditLogResponse
 } from '$lib/types';
 import { untrack } from 'svelte';
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -20,6 +21,9 @@ export class LocalStateDM extends LocalState {
 		// Initialize Sets and markers map using base class methods
 		this.initializeRevealedTileSets(initialData.revealedTiles);
 		this.initializeMarkersMap(initialData.mapMarkers);
+
+		// Initialize time audit log (DM only)
+		this.timeAuditLog = initialData.timeAuditLog || [];
 
 		// Event listeners for synchronization
 		this.addEventListener('tiles-revealed-batch', (tiles) =>
@@ -43,7 +47,7 @@ export class LocalStateDM extends LocalState {
 			super.handleMovementStepAdded(data as { sessionId: number; step: PathStep; tiles: string[] })
 		);
 		this.addEventListener('time:updated', (data) =>
-			super.handleTimeUpdated(data as { globalGameTime: number })
+			this.handleTimeUpdated(data as { globalGameTime: number; auditEntry?: TimeAuditLogResponse })
 		);
 		this.addEventListener('session:started', (session) =>
 			super.handleSessionStarted(session as GameSessionResponse)
@@ -54,6 +58,24 @@ export class LocalStateDM extends LocalState {
 		this.addEventListener('session:deleted', (data) =>
 			super.handleSessionDeleted(data as { id: number })
 		);
+	}
+
+	// Override handleTimeUpdated to also handle audit log entries (DM only)
+	protected handleTimeUpdated(data: { globalGameTime: number; auditEntry?: TimeAuditLogResponse }) {
+		console.log('[localStateDM] SSE time:updated', data);
+		this.globalGameTime = data.globalGameTime;
+
+		// Add audit log entry (avoiding duplicates from API response)
+		if (data.auditEntry) {
+			const exists = this.timeAuditLog.some((entry) => entry.id === data.auditEntry!.id);
+
+			if (!exists) {
+				console.log('[localStateDM] Adding audit entry from SSE');
+				this.timeAuditLog = [data.auditEntry, ...this.timeAuditLog];
+			} else {
+				console.log('[localStateDM] Skipping duplicate audit entry (already added from API)');
+			}
+		}
 	}
 
 	// Local state update methods (no API calls - used by remoteState and SSE)

@@ -605,6 +605,18 @@
 		}
 	}
 
+	async function handleAdjustTime(delta: number, notes: string) {
+		if (effectiveRole === 'dm' && 'adjustGlobalTime' in remoteState) {
+			try {
+				await remoteState.adjustGlobalTime(delta, notes);
+				toast.success(`Time adjusted by ${delta > 0 ? '+' : ''}${delta} days`);
+			} catch (error) {
+				console.error('Failed to adjust time:', error);
+				toast.error('Failed to adjust time');
+			}
+		}
+	}
+
 	function isAdjacentToParty(tileKey: string): boolean {
 		if (!localState.partyTokenPosition) return false;
 
@@ -939,6 +951,7 @@
 				globalGameTime={localState.globalGameTime}
 				revealedTilesCount={localState.revealedTilesSet.size}
 				alwaysRevealedTilesCount={localState.alwaysRevealedTilesSet.size}
+				timeAuditLog={localState.timeAuditLog}
 				hasPendingOperations={!!hasPendingOperations}
 				pendingCount={remoteState.pending?.length || 0}
 				{hasActiveSession}
@@ -947,6 +960,7 @@
 				onStartSession={handleStartSession}
 				onEndSession={handleEndSession}
 				onFlushPending={flushPendingOperations}
+				onAdjustTime={handleAdjustTime}
 			/>
 		</Sheet>
 

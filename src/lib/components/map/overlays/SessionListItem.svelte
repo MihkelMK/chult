@@ -55,7 +55,7 @@
 </script>
 
 <Collapsible.Root bind:open>
-	<div class="p-3 space-y-2 rounded-lg border">
+	<div class="p-2 rounded-lg border">
 		<!-- Header -->
 		<div class="flex gap-2 justify-between items-center">
 			<Collapsible.Trigger class="flex flex-1 gap-2 items-center text-left hover:opacity-70">

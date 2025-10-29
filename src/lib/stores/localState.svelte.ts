@@ -8,6 +8,7 @@ import type {
 	PlayerCampaignDataResponse,
 	RevealedTile,
 	TileCoords,
+	TimeAuditLogResponse,
 	UserRole
 } from '$lib/types';
 import EventEmitter from 'eventemitter3';
@@ -39,6 +40,9 @@ export class LocalState extends EventEmitter {
 	public partyTokenTile = $derived<string | null>(
 		this.partyTokenPosition ? `${this.partyTokenPosition.x}-${this.partyTokenPosition.y}` : null
 	);
+
+	// Empty array for typescript (overridden in localStateDM)
+	public timeAuditLog = $state<TimeAuditLogResponse[]>([]);
 
 	// Hex grid configuration (reactive so we can update if settings change)
 	protected hexesPerRow = $state(0);

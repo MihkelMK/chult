@@ -444,6 +444,47 @@ export class RemoteStateDM {
 		}
 	}
 
+	async adjustGlobalTime(delta: number, notes: string = '') {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		// Optimistic update - update global game time immediately
+		const originalGameTime = this.localState.globalGameTime;
+		this.localState.globalGameTime += delta;
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/time/adjust`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ delta, notes })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to adjust time');
+			}
+
+			const result = await response.json();
+			console.log('[remoteStateDM] Time adjustment successful:', result);
+
+			// Add the audit entry immediately from API response (SSE will be deduplicated)
+			const exists = this.localState.timeAuditLog.some(
+				(entry) => entry.id === result.auditEntry.id
+			);
+			if (!exists) {
+				this.localState.timeAuditLog = [result.auditEntry, ...this.localState.timeAuditLog];
+			}
+
+			return result;
+		} catch (error) {
+			// Rollback optimistic update on failure
+			this.localState.globalGameTime = originalGameTime;
+			console.error('[remoteStateDM] Failed to adjust time:', error);
+			throw error;
+		}
+	}
+
 	flush() {
 		if (this.batchTimeout) {
 			clearTimeout(this.batchTimeout);
