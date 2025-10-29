@@ -309,14 +309,13 @@
 		switch (activeTool) {
 			case 'interact':
 				// TODO: open tile content modal
-				// TODO: maybe add a context menu
 				break;
 			case 'explore':
 				// Player exploration mode - check if tile is adjacent and if there's an active session
 				if (canExplore && isAdjacentToParty(clickedKey)) {
 					showMovementConfirmation(clickedKey);
 				} else if (!canExplore) {
-					toast.error('No active session');
+					toast.error('Can only explore when in active session');
 				} else if (!isAdjacentToParty(clickedKey)) {
 					toast.error('Tile is not adjacent to party position');
 				}
@@ -859,7 +858,6 @@
 						{brushSize}
 						showDMTools={effectiveRole === 'dm'}
 						showExploreTool={effectiveRole === 'player'}
-						{canExplore}
 						onSelectTool={setSelectedTool}
 					/>
 				</div>

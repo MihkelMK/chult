@@ -10,7 +10,6 @@
 		brushSize: number;
 		showDMTools?: boolean;
 		showExploreTool?: boolean;
-		canExplore?: boolean;
 		onSelectTool: (tool: UITool) => void;
 	}
 
@@ -20,7 +19,6 @@
 		brushSize,
 		showDMTools = false,
 		showExploreTool = false,
-		canExplore = false,
 		onSelectTool
 	}: Props = $props();
 </script>
@@ -70,15 +68,12 @@
 						size="sm"
 						class="cursor-pointer"
 						onclick={() => onSelectTool('explore')}
-						disabled={!canExplore}
 					>
 						<Navigation class="w-4 h-4" />
 					</Button>
 				{/snippet}
 			</Tooltip.Trigger>
-			<Tooltip.Content side="top">
-				{canExplore ? 'Explore Mode - Move party token' : 'No active session'}
-			</Tooltip.Content>
+			<Tooltip.Content side="top">Explore Mode - Move party token</Tooltip.Content>
 		</Tooltip.Root>
 	{/if}
 
