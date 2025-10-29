@@ -111,29 +111,30 @@
 			{#if effectiveRole === 'dm'}
 				<!-- DM Controls -->
 				<div>
-					<h3 class="mb-3 text-sm font-medium">Tile Management</h3>
-					<div class="space-y-2">
-						<p class="text-sm text-muted-foreground">
-							Click any tile to add POI or notes. Use multi-select for bulk reveal/hide operations.
-						</p>
+					<h3 class="mb-3 text-sm font-medium">DM Tools</h3>
+					<ul class="my-4 ml-6 list-disc text-sm text-muted-foreground [&>li]:mt-2">
+						<li>Use Select/Paint tools for bulk reveal/hide</li>
+						<li>Right-click party token to teleport</li>
+						<li class="italic">Points of Interest and notes coming soon...</li>
+					</ul>
 
-						{#if hasPendingOperations}
-							<Button variant="outline" size="sm" class="w-full" onclick={onFlushPending}>
-								Save {pendingCount} Changes Now
-							</Button>
-						{/if}
-					</div>
+					{#if hasPendingOperations}
+						<Button variant="outline" size="sm" class="w-full" onclick={onFlushPending}>
+							Save {pendingCount} Changes Now
+						</Button>
+					{/if}
 				</div>
 			{:else}
 				<!-- Player Info -->
 				<div>
 					<h3 class="mb-3 text-sm font-medium">How to Explore</h3>
-					<div class="space-y-2 text-sm text-muted-foreground">
-						<p>• Click any tile to view details or add notes</p>
-						<p>• Revealed tiles show explored territory</p>
-						<p>• Look for POI markers on important locations</p>
-						<p>• Travel mode coming soon...</p>
-					</div>
+					<ul class="my-4 ml-6 list-disc text-sm text-muted-foreground [&>li]:mt-2">
+						<li>Wait for the DM to start a session</li>
+						<li>Use the Explore tool to move between adjacent tiles</li>
+						<li>Each move takes 0.5 days of game time</li>
+						<li>Revealed tiles show your party's explored territory</li>
+						<li class="italic">Points of Interest and notes coming soon...</li>
+					</ul>
 				</div>
 			{/if}
 
