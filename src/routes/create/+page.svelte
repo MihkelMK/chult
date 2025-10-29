@@ -1,82 +1,118 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { Button } from '$lib/components/ui/button';
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle
+	} from '$lib/components/ui/card';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Eye, EyeOff, Plus } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
 
 	let campaignName = $state('');
 	let accessToken = $state('');
 	let loading = $state(false);
-	let error = $state('');
+	let createFailed = $state(false);
+	let showToken = $state(false);
 
 	// Form is valid when both fields have values
 	let isValid = $derived(campaignName.trim() && accessToken.trim());
 </script>
 
-<div class="flex justify-center items-center min-h-screen bg-gray-100">
-	<div class="p-6 w-full max-w-md bg-white rounded-lg shadow-md">
-		<h1 class="mb-6 text-2xl font-bold text-center">Create campaign</h1>
+<svelte:head>
+	<title>Create Campaign - Chult</title>
+</svelte:head>
 
-		<form
-			method="POST"
-			action="?/create"
-			use:enhance={() => {
-				loading = true;
-				error = '';
-				return async ({ result }) => {
-					loading = false;
-					if (result.type === 'redirect') {
-						goto(result.location);
-					} else if (result.type === 'failure') {
-						interface FailureData {
-							error?: string;
-						}
-						const failureData = result.data as FailureData | undefined;
-						error = failureData?.error || 'Access denied';
-					}
-				};
-			}}
-		>
-			<div class="mb-4">
-				<label for="campaignName" class="block mb-2 text-sm font-medium text-gray-700">
-					Campaign Name
-				</label>
-				<input
-					id="campaignName"
-					name="campaignName"
-					type="text"
-					required
-					bind:value={campaignName}
-					class="py-2 px-3 w-full rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-					placeholder="Enter campaign name"
-				/>
-			</div>
-			<div class="mb-6">
-				<label for="accessToken" class="block mb-2 text-sm font-medium text-gray-700">
-					Super Secret DM Code
-				</label>
-				<input
-					id="accessToken"
-					name="accessToken"
-					type="password"
-					required
-					bind:value={accessToken}
-					class="py-2 px-3 w-full rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-					placeholder="Enter DM Code"
-				/>
-			</div>
-
-			{#if error}
-				<div class="p-3 mb-4 text-red-700 bg-red-100 rounded border border-red-400">
-					{error}
+<div class="flex justify-center items-center min-h-screen bg-muted/20">
+	<div class="container p-6 mx-auto max-w-md">
+		<Card>
+			<CardHeader class="text-center">
+				<div class="flex justify-center mb-4">
+					<div class="p-3 rounded-full bg-primary/10">
+						<Plus class="w-8 h-8 text-primary" />
+					</div>
 				</div>
-			{/if}
+				<CardTitle class="text-2xl">Create Campaign</CardTitle>
+				<CardDescription>Set up a new D&D campaign map</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<form
+					method="POST"
+					action="?/create"
+					class="space-y-4"
+					use:enhance={() => {
+						loading = true;
+						createFailed = false;
+						return async ({ result }) => {
+							loading = false;
+							if (result.type === 'redirect') {
+								goto(result.location);
+							} else if (result.type === 'failure') {
+								createFailed = true;
+								interface FailureData {
+									error?: string;
+								}
+								const failureData = result.data as FailureData | undefined;
+								const errorMessage = failureData?.error || 'Failed to create campaign';
+								toast.error(errorMessage);
+							}
+						};
+					}}
+				>
+					<div class="space-y-2">
+						<Label for="campaignName">Campaign Name</Label>
+						<Input
+							id="campaignName"
+							name="campaignName"
+							type="text"
+							required
+							bind:value={campaignName}
+							placeholder="Enter campaign name"
+							disabled={loading}
+							aria-invalid={createFailed}
+						/>
+					</div>
 
-			<button
-				type="submit"
-				disabled={loading || !isValid}
-				class="py-2 px-4 w-full text-white bg-blue-600 rounded-md transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-			>
-				{loading ? 'Creating...' : 'Create campaign'}
-			</button>
-		</form>
+					<div class="space-y-2">
+						<Label for="accessToken">Super Secret DM Code</Label>
+						<div class="flex gap-2">
+							<Input
+								id="accessToken"
+								name="accessToken"
+								type={showToken ? 'text' : 'password'}
+								required
+								bind:value={accessToken}
+								placeholder="Enter DM Code"
+								disabled={loading}
+								class="flex-1"
+								aria-invalid={createFailed}
+							/>
+							<Button
+								type="button"
+								variant="outline"
+								size="icon"
+								onclick={() => (showToken = !showToken)}
+								disabled={loading}
+							>
+								{#if showToken}
+									<EyeOff class="w-4 h-4" />
+								{:else}
+									<Eye class="w-4 h-4" />
+								{/if}
+							</Button>
+						</div>
+					</div>
+
+					<Button type="submit" disabled={loading || !isValid} class="w-full">
+						{loading ? 'Creating...' : 'Create Campaign'}
+					</Button>
+				</form>
+			</CardContent>
+		</Card>
 	</div>
 </div>
