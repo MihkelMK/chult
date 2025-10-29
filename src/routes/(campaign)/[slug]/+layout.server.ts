@@ -14,7 +14,9 @@ export const load: LayoutServerLoad = async ({ locals, params, depends }) => {
 
 	depends('campaign:data');
 
-	const isPlayerView = locals.session.viewAs === 'player';
+	// Determine effective role: viewAs takes precedence over role
+	const effectiveRole = locals.session.viewAs || locals.session.role;
+	const isPlayerView = effectiveRole === 'player';
 	const campaignData = (await getCampaignData(
 		locals.session.campaignId,
 		isPlayerView
