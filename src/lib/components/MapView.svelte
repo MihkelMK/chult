@@ -46,10 +46,6 @@
 	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
 
 	const heldKeyboardKeys = new PressedKeys();
-	let shouldCaptureKeyboard = $state(true);
-
-	let shiftHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Shift'));
-	let ctrlHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Control'));
 
 	// UI State
 	let leftSidebarOpen = $state(false);
@@ -90,6 +86,14 @@
 	let teleportOrigin = $state<TileCoords | null>(null);
 	let showTimeCostDialog = $state(false);
 	let pendingTeleportDestination = $state<TileCoords | null>(null);
+
+	// Keyboard capture - disabled when any dialog or sidebar is open
+	let shouldCaptureKeyboard = $derived(
+		!leftSidebarOpen && !rightSidebarOpen && !showDialog && !showTimeCostDialog && !contextMenuOpen
+	);
+
+	let shiftHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Shift'));
+	let ctrlHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Control'));
 
 	// Pan to tile state
 	let panToCoords = $state<TileCoords | null>(null);
