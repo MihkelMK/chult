@@ -63,7 +63,10 @@ export interface CanvasImage {
 	status: 'loading' | 'loaded' | 'failed';
 }
 
-export type UITool = 'interact' | 'pan' | 'select' | 'paint' | 'explore' | 'set-position';
+export type UIToolGeneric = 'interact' | 'pan';
+export type UIToolPlayer = 'explore';
+export type UIToolDM = 'select' | 'paint' | 'set-position';
+export type UITool = UIToolGeneric | UIToolDM | UIToolPlayer;
 export type SelectMode = 'add' | 'remove';
 
 interface MapCanvasSharedProps {

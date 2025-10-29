@@ -22,6 +22,8 @@
 		SelectMode,
 		TileCoords,
 		UITool,
+		UIToolDM,
+		UIToolPlayer,
 		UserRole
 	} from '$lib/types';
 	import { Map } from '@lucide/svelte';
@@ -31,6 +33,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
+	import KeyboardShortcutsDialog from './map/overlays/KeyboardShortcutsDialog.svelte';
 
 	interface Props {
 		data: PageData;
@@ -458,11 +461,26 @@
 				event.preventDefault();
 				setSelectedTool('pan');
 				break;
+
+			case 'KeyE':
+				event.preventDefault();
+				setSelectedTool('explore');
+				break;
 		}
 	}
 
 	// Cursor mode functions
 	function setSelectedTool(tool: UITool) {
+		const dmOnly = ['select', 'paint', 'set-position'] satisfies UIToolDM[];
+		const playerOnly = ['explore'] satisfies UIToolPlayer[];
+
+		if (effectiveRole === 'player' && dmOnly.includes(tool as UIToolDM)) {
+			return;
+		}
+		if (effectiveRole === 'dm' && playerOnly.includes(tool as UIToolPlayer)) {
+			return;
+		}
+
 		_selectedTool = tool;
 		if (tool !== 'select' && tool !== 'paint') {
 			clearSelection();
@@ -786,6 +804,11 @@
 					<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
 				</div>
 
+				<!-- Keyboard Shortcuts Button -->
+				<div class="absolute right-6 bottom-36 z-20 -mr-px">
+					<KeyboardShortcutsDialog {effectiveRole} />
+				</div>
+
 				<!-- Map Container with native scroll -->
 				<div
 					class="overflow-auto flex-1 max-w-screen bg-muted/20"
@@ -862,7 +885,7 @@
 										class="cursor-pointer">Go to settings</Button
 									>
 								</Empty.Content>
-							</Empty.Root>
+							</Empty.Root>pnpm dlx shadcn-svelte@latest add kbd
 						</div>
 					{/if}
 				</div>
