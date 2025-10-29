@@ -67,7 +67,7 @@
 				<Badge variant="secondary" class="justify-self-end text-xs">
 					{selectedCount} selected
 				</Badge>
-			{:else if effectiveRole === 'player' && partyTokenPosition}
+			{:else if partyTokenPosition}
 				<Tooltip.Root>
 					<Tooltip.Trigger>
 						{#snippet child({ props })}
