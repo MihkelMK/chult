@@ -1,15 +1,22 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import TimeAdjustmentDialog from '$lib/components/dialogs/TimeAdjustmentDialog.svelte';
+	import TimeAuditDialog from '$lib/components/dialogs/TimeAuditDialog.svelte';
+	import ViewAsToggle from '$lib/components/forms/ViewAsToggle.svelte';
 	import GlobalTimeDisplay from '$lib/components/map/overlays/GlobalTimeDisplay.svelte';
-	import TimeAdjustmentDialog from '$lib/components/map/overlays/TimeAdjustmentDialog.svelte';
-	import TimeAuditLog from '$lib/components/map/overlays/TimeAuditLog.svelte';
-	import ViewAsToggle from '$lib/components/map/overlays/ViewAsToggle.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { Separator } from '$lib/components/ui/separator';
 	import { SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
-	import type { GameSessionResponse, MapMarker, TimeAuditLogResponse } from '$lib/types';
+	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
+	import type {
+		DialogConfig,
+		GameSessionResponse,
+		MapMarker,
+		TimeAuditLogResponse
+	} from '$lib/types';
+	import { toast } from 'svelte-sonner';
 
 	interface Props {
 		effectiveRole: 'player' | 'dm';
@@ -25,10 +32,9 @@
 		hasActiveSession: boolean;
 		activeSession: GameSessionResponse | null;
 		sessionDuration: string | null;
+		showDialog: boolean;
+		dialogConfig: DialogConfig;
 		onFlushPending: () => void;
-		onStartSession: () => void;
-		onEndSession: () => void;
-		onAdjustTime?: (delta: number, notes: string) => void;
 	}
 
 	let {
@@ -45,13 +51,110 @@
 		hasActiveSession,
 		activeSession,
 		sessionDuration,
-		onFlushPending,
-		onStartSession,
-		onEndSession,
-		onAdjustTime
+		showDialog = $bindable(),
+		dialogConfig = $bindable(),
+		onFlushPending
 	}: Props = $props();
 
 	let toggleForm: HTMLFormElement | undefined = $state();
+
+	const remoteState = getRemoteState();
+	const localState = getLocalState();
+
+	async function handleStartSession() {
+		if (effectiveRole === 'dm' && 'startSession' in remoteState) {
+			try {
+				await remoteState.startSession();
+				toast.success('Session started');
+			} catch (error) {
+				console.error('Failed to start session:', error);
+				toast.error('Failed to start session');
+			}
+		}
+	}
+
+	function showEndSessionConfirmation(sessionId: number, durationSeconds: number) {
+		dialogConfig = {
+			title: 'End Short Session?',
+			description: `This session has only been active for ${Math.floor(durationSeconds)} seconds. Would you like to end it or delete it?`,
+			actions: [
+				{
+					label: 'Cancel',
+					variant: 'outline',
+					action: () => {}
+				},
+				{
+					label: 'Delete Session',
+					variant: 'destructive',
+					action: async () => {
+						try {
+							if ('deleteSession' in remoteState) {
+								await remoteState.deleteSession(sessionId);
+								toast.success('Session deleted');
+							}
+						} catch (error) {
+							console.error('Failed to delete session:', error);
+							toast.error('Failed to delete session');
+						}
+					}
+				},
+				{
+					label: 'End Session',
+					variant: 'default',
+					action: async () => {
+						try {
+							if ('endSession' in remoteState) {
+								await remoteState.endSession();
+								toast.success('Session ended');
+							}
+						} catch (error) {
+							console.error('Failed to end session:', error);
+							toast.error('Failed to end session');
+						}
+					}
+				}
+			]
+		};
+		showDialog = true;
+	}
+
+	async function handleEndSession() {
+		if (effectiveRole === 'dm' && 'endSession' in remoteState) {
+			const activeSession = localState.activeSession;
+			if (!activeSession) return;
+
+			// Calculate session duration in minutes
+			const now = new Date();
+			const startTime = new Date(activeSession.startedAt);
+			const durationMinutes = (now.getTime() - startTime.getTime()) / 60000;
+
+			// If session is less than 1 minute, ask if they want to delete it
+			if (durationMinutes < 1) {
+				showEndSessionConfirmation(activeSession.id, durationMinutes * 60);
+			} else {
+				// Session is longer than 1 minute, end it directly
+				try {
+					await remoteState.endSession();
+					toast.success('Session ended');
+				} catch (error) {
+					console.error('Failed to end session:', error);
+					toast.error('Failed to end session');
+				}
+			}
+		}
+	}
+
+	async function handleAdjustTime(delta: number, notes: string) {
+		if (effectiveRole === 'dm' && 'adjustGlobalTime' in remoteState) {
+			try {
+				await remoteState.adjustGlobalTime(delta, notes);
+				toast.success(`Time adjusted by ${delta > 0 ? '+' : ''}${delta} days`);
+			} catch (error) {
+				console.error('Failed to adjust time:', error);
+				toast.error('Failed to adjust time');
+			}
+		}
+	}
 </script>
 
 <SheetContent side="left" class="flex flex-col p-0 w-80 h-full">
@@ -167,7 +270,7 @@
 									variant="destructive"
 									size="sm"
 									class="w-full cursor-pointer"
-									onclick={onEndSession}
+									onclick={handleEndSession}
 								>
 									End Session
 								</Button>
@@ -178,7 +281,7 @@
 							variant="default"
 							size="sm"
 							class="w-full cursor-pointer"
-							onclick={onStartSession}
+							onclick={handleStartSession}
 						>
 							Start Session
 						</Button>
@@ -186,17 +289,17 @@
 				</div>
 
 				<!-- Time Management (DM Only) -->
-				{#if effectiveRole === 'dm' && onAdjustTime}
+				{#if effectiveRole === 'dm'}
 					<Separator />
 					<div class="space-y-3">
 						<h3 class="text-sm font-medium">Time Management</h3>
 
 						<div class="flex justify-between">
 							<!-- Adjust Time Button/Dialog -->
-							<TimeAdjustmentDialog {onAdjustTime} />
+							<TimeAdjustmentDialog onAdjustTime={handleAdjustTime} />
 
 							<!-- Time Audit Log -->
-							<TimeAuditLog {timeAuditLog} {globalGameTime} />
+							<TimeAuditDialog {timeAuditLog} {globalGameTime} />
 						</div>
 					</div>
 				{/if}
@@ -209,8 +312,10 @@
 		{#if effectiveRole === 'dm'}
 			<a
 				href="/{campaignSlug}/settings"
-				class={buttonVariants({ size: 'sm', variant: 'secondary', class: 'w-full' })}>Settings</a
+				class={buttonVariants({ size: 'sm', variant: 'secondary', class: 'w-full' })}
 			>
+				Settings
+			</a>
 		{/if}
 		<form action="?/logout" method="POST" class="contents" use:enhance>
 			<Button variant="link" class="w-full cursor-pointer" size="sm" type="submit">Logout</Button>

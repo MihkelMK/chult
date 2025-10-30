@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import MapCanvasWrapper from '$lib/components/map/canvas/MapCanvasWrapper.svelte';
-	import MapUpload from '$lib/components/map/overlays/MapUpload.svelte';
+	import MapCanvasWrapper from '$lib/components/canvas/MapCanvasWrapper.svelte';
+	import MapUpload from '$lib/components/forms/MapUpload.svelte';
+	import ViewAsToggle from '$lib/components/forms/ViewAsToggle.svelte';
 	import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
+	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -15,7 +17,6 @@
 	} from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Slider } from '$lib/components/ui/slider';
-	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState } from '$lib/contexts/campaignContext';
 	import type { UserRole } from '$lib/types';
@@ -34,7 +35,6 @@
 	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
-	import ViewAsToggle from '$lib/components/map/overlays/ViewAsToggle.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -327,8 +327,7 @@
 				</div>
 			</div>
 			<div
-				class="flex items-center p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
-			>
+				class="flex items-center p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm">
 				<Button href="/{data.campaign.slug}" variant="link" size="sm" type="submit">
 					<Map class="mr-2 w-4 h-4" />
 					Back
@@ -348,7 +347,8 @@
 							<br />
 							Get started by
 							<strong>uploading a map</strong>
-							and configuring your <strong>hex grid settings. </strong>
+							and configuring your
+							<strong>hex grid settings.</strong>
 						</p>
 					</Alert.Description>
 				</Alert.Root>
@@ -389,8 +389,7 @@
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => copyToken(data.dmToken || '', 'dm')}
-								>
+									onclick={() => copyToken(data.dmToken || '', 'dm')}>
 									{#if dmTokenCopied}
 										<Check class="w-4 h-4 text-green-600" />
 									{:else}
@@ -420,8 +419,7 @@
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => (showPlayerToken = !showPlayerToken)}
-								>
+									onclick={() => (showPlayerToken = !showPlayerToken)}>
 									{#if showPlayerToken}
 										<EyeOff class="w-4 h-4" />
 									{:else}
@@ -431,8 +429,7 @@
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => copyToken(data.playerToken || '', 'player')}
-								>
+									onclick={() => copyToken(data.playerToken || '', 'player')}>
 									{#if playerTokenCopied}
 										<Check class="w-4 h-4 text-green-600" />
 									{:else}
@@ -463,8 +460,7 @@
 									min={5}
 									max={100}
 									step={1}
-									class="w-full"
-								/>
+									class="w-full" />
 							</div>
 
 							<div>
@@ -478,8 +474,7 @@
 									min={5}
 									max={100}
 									step={1}
-									class="w-full"
-								/>
+									class="w-full" />
 							</div>
 						</div>
 
@@ -498,8 +493,7 @@
 									min={-200}
 									max={200}
 									step={1}
-									class="w-full"
-								/>
+									class="w-full" />
 							</div>
 
 							<div>
@@ -513,16 +507,14 @@
 									min={-200}
 									max={200}
 									step={1}
-									class="w-full"
-								/>
+									class="w-full" />
 							</div>
 						</div>
 
 						<!-- Save Status and Button -->
 						{#if saveError}
 							<div
-								class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive"
-							>
+								class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive">
 								<CircleAlert class="w-4 h-4" />
 								<span>{saveError}</span>
 							</div>
@@ -530,8 +522,7 @@
 
 						{#if saveSuccess}
 							<div
-								class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md"
-							>
+								class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
 								<Check class="w-4 h-4" />
 								<span>Hex grid configuration saved successfully!</span>
 							</div>
@@ -541,8 +532,7 @@
 						<Button
 							onclick={saveHexGridConfig}
 							disabled={!hasUnsavedChanges || saving}
-							class="w-full"
-						>
+							class="w-full">
 							{#if saving}
 								Saving...
 							{:else if hasUnsavedChanges}
@@ -577,9 +567,9 @@
 										<span class="font-mono text-sm">
 											Column: {partyTokenX}, Row: {partyTokenY}
 										</span>
-										<Button variant="ghost" size="sm" onclick={clearPartyTokenPosition}
-											>Clear</Button
-										>
+										<Button variant="ghost" size="sm" onclick={clearPartyTokenPosition}>
+											Clear
+										</Button>
 									</div>
 								{:else}
 									<div class="p-3 text-sm rounded-md bg-muted text-muted-foreground">
@@ -602,8 +592,7 @@
 							<!-- Save Status and Button -->
 							{#if savePartyPositionError}
 								<div
-									class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive"
-								>
+									class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive">
 									<CircleAlert class="w-4 h-4" />
 									<span>{savePartyPositionError}</span>
 								</div>
@@ -611,8 +600,7 @@
 
 							{#if savePartyPositionSuccess}
 								<div
-									class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md"
-								>
+									class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
 									<Check class="w-4 h-4" />
 									<span>Party token position saved successfully!</span>
 								</div>
@@ -622,8 +610,7 @@
 							<Button
 								onclick={savePartyTokenPosition}
 								disabled={!hasUnsavedPartyPosition || savingPartyPosition}
-								class="w-full"
-							>
+								class="w-full">
 								{#if savingPartyPosition}
 									Saving...
 								{:else if hasUnsavedPartyPosition}
@@ -650,8 +637,7 @@
 							campaignSlug={data.campaign?.slug}
 							mapExists={!!data.mapUrls}
 							onMapUploaded={handleMapUploaded}
-							label="DM Map"
-						/>
+							label="DM Map" />
 
 						{#if hasPlayerMap}
 							<MapUpload
@@ -660,15 +646,14 @@
 								onMapUploaded={handleMapUploaded}
 								onDeleted={handlePlayerMapDeleted}
 								mapType="player"
-								label="Player Map"
-							/>
+								label="Player Map" />
 						{:else}
 							<Button
 								class="w-full cursor-pointer"
 								size="sm"
 								variant="ghost"
-								onclick={() => (hasPlayerMap = true)}
-								>Use separate Player map
+								onclick={() => (hasPlayerMap = true)}>
+								Use separate Player map
 							</Button>
 						{/if}
 					</CardContent>
@@ -697,8 +682,7 @@
 									? isDragging
 										? 'grabbing'
 										: 'grab'
-									: 'crosshair'};"
-							>
+									: 'crosshair'};">
 								<MapCanvasWrapper
 									bind:isDragging
 									mapUrls={displayMapUrls}
@@ -719,20 +703,16 @@
 									zoom={previewZoom}
 									activeTool={previewTool}
 									selectedTool={previewTool}
-									hasPoI={() => false}
-									hasNotes={() => false}
 									onHexTriggered={handleHexClickForPartyPosition}
 									selectedSet={new SvelteSet<string>()}
 									showAlwaysRevealed={true}
 									showRevealed={true}
-									isDM={true}
-								/>
+									isDM={true} />
 
 								<!-- Toolbar Overlay -->
 								{#if !hasAnySessions}
 									<div
-										class="flex absolute bottom-4 left-4 gap-1 p-1 rounded-lg border shadow-sm bg-background/95 backdrop-blur-sm"
-									>
+										class="flex absolute bottom-4 left-4 gap-1 p-1 rounded-lg border shadow-sm bg-background/95 backdrop-blur-sm">
 										<!-- Pan Tool -->
 										<Tooltip.Root>
 											<Tooltip.Trigger>
@@ -740,8 +720,7 @@
 													variant={previewTool === 'pan' ? 'default' : 'ghost'}
 													size="sm"
 													onclick={() => (previewTool = 'pan')}
-													class="p-0 w-8 h-8"
-												>
+													class="p-0 w-8 h-8">
 													<Hand class="w-4 h-4" />
 												</Button>
 											</Tooltip.Trigger>
@@ -757,8 +736,7 @@
 													variant={previewTool === 'set-position' ? 'default' : 'ghost'}
 													size="sm"
 													onclick={() => (previewTool = 'set-position')}
-													class="p-0 w-8 h-8"
-												>
+													class="p-0 w-8 h-8">
 													<Flag class="w-4 h-4" />
 												</Button>
 											</Tooltip.Trigger>
@@ -775,8 +753,7 @@
 										zoom={previewZoom}
 										onResetZoom={resetZoomPreview}
 										onZoomIn={zoomInPreview}
-										onZoomOut={zoomOutPreview}
-									/>
+										onZoomOut={zoomOutPreview} />
 								</div>
 							</div>
 						</CardContent>

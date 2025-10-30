@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import { SheetTrigger } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import type { GameSessionResponse } from '$lib/types';
 	import { Clock, Menu } from '@lucide/svelte';
@@ -14,6 +13,7 @@
 		selectedCount?: number;
 		showSelectedCount?: boolean;
 		partyTokenPosition?: { x: number; y: number } | null;
+		onOpenCampaign?: () => void;
 		onOpenHistory?: () => void;
 		onPanToParty?: () => void;
 	}
@@ -26,6 +26,7 @@
 		selectedCount = 0,
 		showSelectedCount = false,
 		partyTokenPosition,
+		onOpenCampaign,
 		onOpenHistory,
 		onPanToParty
 	}: Props = $props();
@@ -39,13 +40,9 @@
 	>
 		<div class="flex items-center">
 			<div class="flex gap-2 items-center">
-				<SheetTrigger>
-					{#snippet child({ props })}
-						<Button {...props} variant="ghost" size="sm">
-							<Menu class="w-4 h-4" />
-						</Button>
-					{/snippet}
-				</SheetTrigger>
+				<Button variant="ghost" size="sm" class="cursor-pointer" onclick={onOpenCampaign}>
+					<Menu class="w-4 h-4" />
+				</Button>
 
 				<div class="flex gap-2 items-center">
 					<div class="text-sm font-medium">

@@ -11,30 +11,24 @@
 		showRevealed: boolean;
 		showUnrevealed: boolean;
 		showPaths: boolean;
+		showDMMarkers?: boolean;
+		showPlayerMarkers?: boolean;
 		tileTransparency: string;
-		isOpen: boolean;
-		onToggleAlwaysRevealed: () => void;
-		onToggleRevealed: () => void;
-		onToggleUnrevealed: () => void;
-		onTogglePaths: () => void;
 		onTransparencyChange: (value: string) => void;
-		onToggleOpen: (open: boolean) => void;
 	}
 
 	let {
-		showAlwaysRevealed,
-		showRevealed,
-		showUnrevealed,
-		showPaths,
+		showAlwaysRevealed = $bindable(),
+		showRevealed = $bindable(),
+		showUnrevealed = $bindable(),
+		showPaths = $bindable(),
+		showDMMarkers = $bindable(),
+		showPlayerMarkers = $bindable(),
 		tileTransparency,
-		isOpen,
-		onToggleAlwaysRevealed,
-		onToggleRevealed,
-		onToggleUnrevealed,
-		onTogglePaths,
-		onTransparencyChange,
-		onToggleOpen
+		onTransparencyChange
 	}: Props = $props();
+
+	let open = $state(false);
 </script>
 
 {#snippet layerControl(name: string, visibleState: boolean, onToggle: () => void)}
@@ -61,15 +55,14 @@
 
 <Collapsible.Root
 	class="px-1 w-52 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
-	open={isOpen}
-	onOpenChange={onToggleOpen}
+	bind:open
 >
 	<div class="flex justify-between items-center py-1 pl-2">
 		<h4 class="text-sm font-semibold">Layers</h4>
 		<Collapsible.Trigger
 			class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-9 cursor-pointer p-0' })}
 		>
-			{#if isOpen}
+			{#if open}
 				<ChevronDownIcon />
 			{:else}
 				<ChevronUpIcon />
@@ -79,13 +72,32 @@
 	</div>
 	<Collapsible.Content>
 		<div class="flex flex-col py-1 bg-accent">
-			{@render layerControl('Paths', showPaths, onTogglePaths)}
+			{@render layerControl('Paths', showPaths, () => (showPaths = !showPaths))}
+
+			{#if showDMMarkers !== undefined && showPlayerMarkers !== undefined}
+				<Separator class="mb-1" />
+
+				{@render layerControl('DM Markers', showDMMarkers, () => (showDMMarkers = !showDMMarkers))}
+				{@render layerControl(
+					'Player Markers',
+					showPlayerMarkers,
+					() => (showPlayerMarkers = !showPlayerMarkers)
+				)}
+			{/if}
 
 			<Separator class="mb-1" />
 
-			{@render layerControl('Always Revealed tiles', showAlwaysRevealed, onToggleAlwaysRevealed)}
-			{@render layerControl('Revealed tiles', showRevealed, onToggleRevealed)}
-			{@render layerControl('Unrevealed tiles', showUnrevealed, onToggleUnrevealed)}
+			{@render layerControl(
+				'Always Revealed tiles',
+				showAlwaysRevealed,
+				() => (showAlwaysRevealed = !showAlwaysRevealed)
+			)}
+			{@render layerControl('Revealed tiles', showRevealed, () => (showRevealed = !showRevealed))}
+			{@render layerControl(
+				'Unrevealed tiles',
+				showUnrevealed,
+				() => (showUnrevealed = !showUnrevealed)
+			)}
 		</div>
 
 		<!-- Tile Transparency Control -->

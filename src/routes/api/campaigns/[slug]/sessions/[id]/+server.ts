@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { campaigns, gameSessions, paths } from '$lib/server/db/schema';
+import { campaigns, gameSessions } from '$lib/server/db/schema';
 import { emitEvent } from '$lib/server/events';
 import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';

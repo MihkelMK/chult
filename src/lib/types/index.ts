@@ -85,6 +85,18 @@ export type MarkerType =
 	| 'generic' // General marker
 	| 'custom'; // Custom uploaded icon
 
+export interface DialogAction {
+	label: string;
+	variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+	action: () => void;
+}
+
+export interface DialogConfig {
+	title: string;
+	description: string;
+	actions: DialogAction[];
+}
+
 interface MapCanvasSharedProps {
 	isDM?: boolean;
 	isDragging: boolean;
@@ -115,8 +127,6 @@ interface MapCanvasSharedProps {
 	onMarkerClick?: (marker: MapMarkerResponse) => void;
 	onMapLoad?: (dimensions: { width: number; height: number }) => void;
 	onMapError?: () => void;
-	hasPoI: (coords: TileCoords) => boolean;
-	hasNotes: (coords: TileCoords) => boolean;
 }
 
 export interface MapCanvasWrapperProps extends MapCanvasSharedProps {

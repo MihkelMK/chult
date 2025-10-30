@@ -1,23 +1,24 @@
 <script lang="ts">
-	import ConfirmDialog from '$lib/components/general/ConfirmDialog.svelte';
-	import TimeCostDialog from '$lib/components/general/TimeCostDialog.svelte';
+	import MapCanvasWrapper from '$lib/components/canvas/MapCanvasWrapper.svelte';
+	import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte';
+	import ContextMenu from '$lib/components/dialogs/ContextMenu.svelte';
+	import KeyboardShortcutsDialog from '$lib/components/dialogs/KeyboardShortcutsDialog.svelte';
+	import MarkerCreateDialog from '$lib/components/dialogs/MarkerCreateDialog.svelte';
+	import MarkerDetailsDialog from '$lib/components/dialogs/MarkerDetailsDialog.svelte';
+	import MarkerPreviewPopover from '$lib/components/dialogs/MarkerPreviewPopover.svelte';
+	import TimeCostDialog from '$lib/components/dialogs/TimeCostDialog.svelte';
 	import CampaignSidebar from '$lib/components/map/CampaignSidebar.svelte';
-	import MapCanvasWrapper from '$lib/components/map/canvas/MapCanvasWrapper.svelte';
-	import CreateMarkerDialog from '$lib/components/map/dialogs/CreateMarkerDialog.svelte';
-	import MarkerDetailsDialog from '$lib/components/map/dialogs/MarkerDetailsDialog.svelte';
-	import MainToolbar from '$lib/components/map/MainToolbar.svelte';
 	import LayerControls from '$lib/components/map/overlays/LayerControls.svelte';
 	import SelectionToolbar from '$lib/components/map/overlays/SelectionToolbar.svelte';
 	import ToolModeButtons from '$lib/components/map/overlays/ToolModeButtons.svelte';
 	import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
 	import SessionSidebar from '$lib/components/map/SessionSidebar.svelte';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import * as Empty from '$lib/components/ui/empty/index.js';
+	import MapEmpty from '$lib/components/placeholders/MapEmpty.svelte';
 	import { Sheet } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
 	import type {
+		DialogConfig,
 		HexTriggerEvent,
 		MarkerType,
 		RightClickEvent,
@@ -30,14 +31,13 @@
 		UserRole
 	} from '$lib/types';
 	import type { MapMarkerResponse } from '$lib/types/database';
-	import { Map } from '@lucide/svelte';
 	import { PressedKeys, Previous } from 'runed';
 	import { toast } from 'svelte-sonner';
 	import { expoIn, expoOut } from 'svelte/easing';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
-	import KeyboardShortcutsDialog from './map/overlays/KeyboardShortcutsDialog.svelte';
+	import TopBar from './map/TopBar.svelte';
 
 	interface Props {
 		data: PageData;
@@ -54,7 +54,6 @@
 	// UI State
 	let leftSidebarOpen = $state(false);
 	let rightSidebarOpen = $state(false);
-	let contextMenuAnchor = $state<HTMLElement>(null!);
 
 	// Get states from context
 	const localState = getLocalState();
@@ -66,15 +65,7 @@
 
 	// Exploration state
 	let showDialog = $state(false);
-	let dialogConfig = $state<{
-		title: string;
-		description: string;
-		actions: Array<{
-			label: string;
-			variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
-			action: () => void;
-		}>;
-	}>({ title: '', description: '', actions: [] });
+	let dialogConfig = $state<DialogConfig>({ title: '', description: '', actions: [] });
 
 	// Context menu state
 	let contextMenuOpen = $state(false);
@@ -87,6 +78,8 @@
 	let showMarkerDetailsDialog = $state(false);
 	let createMarkerCoords = $state<TileCoords | null>(null);
 	let selectedMarker = $state<MapMarkerResponse | null>(null);
+	let selectedDMMarker = $state<MapMarkerResponse | null>(null);
+	let selectedPlayerMarker = $state<MapMarkerResponse | null>(null);
 
 	// Marker hover tooltip state
 	let hoveredMarker = $state<MapMarkerResponse | null>(null);
@@ -133,8 +126,9 @@
 	let showRevealed = $state(false);
 	let showUnrevealed = $state(true);
 	let showPaths = $state(true);
+	let showDMMarkers = $state(true); // DM only: show hidden markers
+	let showPlayerMarkers = $state(true); // DM only: show visible markers
 	let tileTransparency = $state('1'); // 0 = transparent, 1 = opaque
-	let layerVisibilityOpen = $state(false);
 
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
@@ -282,14 +276,6 @@
 		return tileKeys;
 	}
 
-	function hasPoI(coords: TileCoords) {
-		return localState.getTileMarkers(coords, effectiveRole).some((m) => m.type === 'poi');
-	}
-
-	function hasNotes(coords: TileCoords) {
-		return localState.getTileMarkers(coords, effectiveRole).some((m) => m.type === 'note');
-	}
-
 	function clearSelection(clearHistory: boolean = true) {
 		selectedSet.clear();
 
@@ -334,6 +320,7 @@
 
 		// Check if in teleport mode first
 		if (teleportMode === 'selecting-destination') {
+			console.log('teleport to:', clickedKey);
 			handleTeleportDestinationClick(clickedKey);
 			return;
 		}
@@ -567,102 +554,6 @@
 		showDialog = true;
 	}
 
-	// Exploration functions
-	async function handleStartSession() {
-		if (effectiveRole === 'dm' && 'startSession' in remoteState) {
-			try {
-				await remoteState.startSession();
-				toast.success('Session started');
-			} catch (error) {
-				console.error('Failed to start session:', error);
-				toast.error('Failed to start session');
-			}
-		}
-	}
-
-	function showEndSessionConfirmation(sessionId: number, durationSeconds: number) {
-		dialogConfig = {
-			title: 'End Short Session?',
-			description: `This session has only been active for ${Math.floor(durationSeconds)} seconds. Would you like to end it or delete it?`,
-			actions: [
-				{
-					label: 'Cancel',
-					variant: 'outline',
-					action: () => {}
-				},
-				{
-					label: 'Delete Session',
-					variant: 'destructive',
-					action: async () => {
-						try {
-							if ('deleteSession' in remoteState) {
-								await remoteState.deleteSession(sessionId);
-								toast.success('Session deleted');
-							}
-						} catch (error) {
-							console.error('Failed to delete session:', error);
-							toast.error('Failed to delete session');
-						}
-					}
-				},
-				{
-					label: 'End Session',
-					variant: 'default',
-					action: async () => {
-						try {
-							if ('endSession' in remoteState) {
-								await remoteState.endSession();
-								toast.success('Session ended');
-							}
-						} catch (error) {
-							console.error('Failed to end session:', error);
-							toast.error('Failed to end session');
-						}
-					}
-				}
-			]
-		};
-		showDialog = true;
-	}
-
-	async function handleEndSession() {
-		if (effectiveRole === 'dm' && 'endSession' in remoteState) {
-			const activeSession = localState.activeSession;
-			if (!activeSession) return;
-
-			// Calculate session duration in minutes
-			const now = new Date();
-			const startTime = new Date(activeSession.startedAt);
-			const durationMinutes = (now.getTime() - startTime.getTime()) / 60000;
-
-			// If session is less than 1 minute, ask if they want to delete it
-			if (durationMinutes < 1) {
-				showEndSessionConfirmation(activeSession.id, durationMinutes * 60);
-			} else {
-				// Session is longer than 1 minute, end it directly
-				try {
-					await remoteState.endSession();
-					toast.success('Session ended');
-				} catch (error) {
-					console.error('Failed to end session:', error);
-					toast.error('Failed to end session');
-				}
-			}
-		}
-	}
-
-	async function handleAdjustTime(delta: number, notes: string) {
-		if (effectiveRole === 'dm' && 'adjustGlobalTime' in remoteState) {
-			try {
-				await remoteState.adjustGlobalTime(delta, notes);
-				toast.success(`Time adjusted by ${delta > 0 ? '+' : ''}${delta} days`);
-			} catch (error) {
-				console.error('Failed to adjust time:', error);
-				toast.error('Failed to adjust time');
-			}
-		}
-	}
-
 	function isAdjacentToParty(tileKey: string): boolean {
 		if (!localState.partyTokenPosition) return false;
 
@@ -730,14 +621,31 @@
 		contextMenuPosition = { x: event.screenX, y: event.screenY };
 		contextMenuType = event.type;
 
-		// Store coords for marker creation and marker if provided (O(1) from background layer)
+		// Store coords and lookup markers at tile (O(1) lookup)
 		if (event.coords) {
 			createMarkerCoords = event.coords;
 
-			// If right-clicking on a marker, use the marker from event (already looked up with O(1))
-			if (event.type === 'marker' && event.marker) {
-				selectedMarker = event.marker;
+			// Check for markers at this tile
+			const tileKey = `${event.coords.x}-${event.coords.y}`;
+			const markersAtTile = localState.markersByTile.get(tileKey);
+
+			if (event.type === 'marker' && event.markers) {
+				// Direct marker click - use the provided marker
+				if (event.markers.dm) {
+					selectedDMMarker = event.markers.dm;
+				}
+				if (event.markers.player) {
+					selectedPlayerMarker = event.markers.player;
+				}
+			} else {
+				// Tile right-click - check for both DM and player markers
+				selectedDMMarker = null;
+				selectedDMMarker = null;
 			}
+
+			// Store markers for context menu
+			selectedDMMarker = markersAtTile?.dm || null;
+			selectedPlayerMarker = markersAtTile?.player || null;
 		}
 
 		// Open menu on next tick to ensure state updates properly
@@ -860,6 +768,7 @@
 			return;
 		}
 
+		setSelectedTool('set-position');
 		teleportOrigin = localState.partyTokenPosition;
 		teleportMode = 'selecting-destination';
 		contextMenuOpen = false;
@@ -904,10 +813,6 @@
 		} else {
 			visiblePathSessions.add(sessionId);
 		}
-	}
-
-	function handleOpenHistory() {
-		rightSidebarOpen = true;
 	}
 
 	function handlePanToParty() {
@@ -967,183 +872,155 @@
 <!-- Full screen layout -->
 <Tooltip.Provider>
 	<div class="flex fixed inset-0 bg-background">
-		<!-- Collapsible Sidebar -->
-		<Sheet bind:open={leftSidebarOpen}>
-			<div class="flex relative flex-col flex-1">
-				<!-- Floating Toolbars -->
-				<MainToolbar
-					campaignName={data.campaign?.name || data.session?.campaignSlug}
-					{effectiveRole}
-					{hasErrors}
-					activeSession={localState.activeSession}
-					selectedCount={selectedSet.size}
-					showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
-					partyTokenPosition={localState.partyTokenPosition}
-					onOpenHistory={handleOpenHistory}
-					onPanToParty={handlePanToParty}
+		<!-- Map Container with native scroll -->
+		<div
+			class="overflow-auto flex-1 max-w-screen bg-muted/20"
+			style="cursor: {loading
+				? 'loading'
+				: activeTool === 'pan'
+					? isDragging
+						? 'grabbing'
+						: 'grab'
+					: activeTool === 'paint' || activeTool === 'select'
+						? activeSelectMode === 'add'
+							? 'crosshair'
+							: 'not-allowed'
+						: 'default'} !important;"
+			role="application"
+			aria-label="Interactive map"
+		>
+			{#if !data.mapUrls}
+				<MapEmpty {userRole} slug={data.campaign.slug} />
+			{:else}
+				<MapCanvasWrapper
+					bind:isDragging
+					{canvasHeight}
+					{canvasWidth}
+					mapUrls={data.mapUrls}
+					variant="detail"
+					isDM={effectiveRole === 'dm'}
+					showAlwaysRevealed={effectiveRole === 'dm' ? showAlwaysRevealed : false}
+					showRevealed={effectiveRole === 'dm' ? showRevealed : false}
+					showUnrevealed={effectiveRole === 'dm' ? showUnrevealed : true}
+					showDMMarkers={effectiveRole === 'dm' ? showDMMarkers : false}
+					showPlayerMarkers={effectiveRole === 'dm' ? showPlayerMarkers : true}
+					tileTransparency={effectiveRole === 'dm' ? Number(tileTransparency) : 0.75}
+					hexesPerRow={data.campaign?.hexesPerRow ?? 20}
+					hexesPerCol={data.campaign?.hexesPerCol ?? 20}
+					xOffset={data.campaign?.hexOffsetX ?? 70}
+					yOffset={(data.campaign?.hexOffsetY ?? 58) - 2}
+					imageHeight={data.campaign?.imageHeight}
+					imageWidth={data.campaign?.imageWidth}
+					{localState}
+					{selectedSet}
+					showCoords={effectiveRole === 'dm' ? 'always' : 'hover'}
+					onHexTriggered={handleTileTrigger}
+					onRightClick={handleRightClick}
+					onMarkerHover={handleMarkerHover}
+					onMarkerClick={handleMarkerClick}
+					{activeTool}
+					selectedTool={_selectedTool}
+					{activeSelectMode}
+					showAnimations={true}
+					previewMode={false}
+					{zoom}
+					{showPaths}
+					{visiblePathSessions}
+					{panToCoords}
 				/>
+			{/if}
+		</div>
 
-				<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
-				{#if effectiveRole === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
-					<div
-						in:fly={{ y: 100, easing: expoOut, duration: 500 }}
-						out:fly={{ y: 100, easing: expoIn, duration: 250 }}
-						class="absolute bottom-16 left-1/2 z-20 -translate-x-1/2"
-					>
-						<SelectionToolbar
-							{alwaysRevealMode}
-							{activeSelectMode}
-							selectedCount={selectedSet.size}
-							showBrushSize={activeTool === 'paint'}
-							{brushSize}
-							onToggleAlwaysReveal={() => (alwaysRevealMode = !alwaysRevealMode)}
-							onSetSelectMode={(mode) => (_selectedSelectMode = mode)}
-							onReveal={revealSelectedTiles}
-							onHide={hideSelectedTiles}
-							onClear={() => clearSelection()}
-							onBrushSizeChange={(size) => (brushSize = size)}
-						/>
-					</div>
-				{/if}
+		<!-- Top Bar with sidebar toggles -->
+		<TopBar
+			{hasErrors}
+			{effectiveRole}
+			campaignName={data.campaign?.name || data.session?.campaignSlug}
+			activeSession={localState.activeSession}
+			selectedCount={selectedSet.size}
+			showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
+			partyTokenPosition={localState.partyTokenPosition}
+			onOpenCampaign={() => (leftSidebarOpen = true)}
+			onOpenHistory={() => (rightSidebarOpen = true)}
+			onPanToParty={handlePanToParty}
+		/>
 
-				<!-- Zoom Controls -->
-				<div class="absolute right-4 bottom-4 z-20">
-					<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
-				</div>
-
-				<!-- Keyboard Shortcuts Button -->
-				<div class="absolute right-6 bottom-36 z-20 -mr-px">
-					<KeyboardShortcutsDialog {effectiveRole} />
-				</div>
-
-				<!-- Map Container with native scroll -->
-				<div
-					class="overflow-auto flex-1 max-w-screen bg-muted/20"
-					style="cursor: {loading
-						? 'loading'
-						: activeTool === 'pan'
-							? isDragging
-								? 'grabbing'
-								: 'grab'
-							: activeTool === 'paint' || activeTool === 'select'
-								? activeSelectMode === 'add'
-									? 'crosshair'
-									: 'not-allowed'
-								: 'default'} !important;"
-					role="application"
-					aria-label="Interactive map"
-				>
-					{#if data.mapUrls}
-						<MapCanvasWrapper
-							bind:isDragging
-							{canvasHeight}
-							{canvasWidth}
-							mapUrls={data.mapUrls}
-							variant="detail"
-							isDM={effectiveRole === 'dm'}
-							showAlwaysRevealed={effectiveRole === 'dm' ? showAlwaysRevealed : false}
-							showRevealed={effectiveRole === 'dm' ? showRevealed : false}
-							showUnrevealed={effectiveRole === 'dm' ? showUnrevealed : true}
-							tileTransparency={effectiveRole === 'dm' ? Number(tileTransparency) : 0.75}
-							hexesPerRow={data.campaign?.hexesPerRow ?? 20}
-							hexesPerCol={data.campaign?.hexesPerCol ?? 20}
-							xOffset={data.campaign?.hexOffsetX ?? 70}
-							yOffset={(data.campaign?.hexOffsetY ?? 58) - 2}
-							imageHeight={data.campaign?.imageHeight}
-							imageWidth={data.campaign?.imageWidth}
-							{localState}
-							{selectedSet}
-							showCoords={effectiveRole === 'dm' ? 'always' : 'hover'}
-							onHexTriggered={handleTileTrigger}
-							onRightClick={handleRightClick}
-							onMarkerHover={handleMarkerHover}
-							onMarkerClick={handleMarkerClick}
-							{hasPoI}
-							{hasNotes}
-							{activeTool}
-							selectedTool={_selectedTool}
-							{activeSelectMode}
-							showAnimations={true}
-							previewMode={false}
-							{zoom}
-							{showPaths}
-							{visiblePathSessions}
-							{panToCoords}
-						/>
-					{:else}
-						<div class="flex justify-center items-center h-full">
-							<Empty.Root class="border border-dashed">
-								<Empty.Header>
-									<Empty.Media variant="icon">
-										<Map />
-									</Empty.Media>
-									<Empty.Title>Map Not Available</Empty.Title>
-									<Empty.Description>
-										{#if userRole === 'dm'}
-											Upload a map in the settings to get started.
-										{:else}
-											The campaign map is being prepared by your DM.
-										{/if}
-									</Empty.Description>
-								</Empty.Header>
-								<Empty.Content>
-									<Button
-										variant="outline"
-										size="sm"
-										href="/{data.campaign.slug}/settings"
-										class="cursor-pointer">Go to settings</Button
-									>
-								</Empty.Content>
-							</Empty.Root>pnpm dlx shadcn-svelte@latest add kbd
-						</div>
-					{/if}
-				</div>
-
-				<!-- Bottom Toolbar with Cursor Modes -->
-				<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-					<ToolModeButtons
-						{activeTool}
-						{activeSelectMode}
-						{brushSize}
-						showDMTools={effectiveRole === 'dm'}
-						showExploreTool={effectiveRole === 'player'}
-						onSelectTool={setSelectedTool}
-					/>
-				</div>
-
-				<!-- General Confirmation Dialog -->
-				<ConfirmDialog
-					bind:open={showDialog}
-					title={dialogConfig.title}
-					description={dialogConfig.description}
-					actions={dialogConfig.actions}
+		<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
+		{#if effectiveRole === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
+			<div
+				in:fly={{ y: 100, easing: expoOut, duration: 500 }}
+				out:fly={{ y: 100, easing: expoIn, duration: 250 }}
+				class="absolute bottom-16 left-1/2 z-20 -translate-x-1/2"
+			>
+				<SelectionToolbar
+					{activeSelectMode}
+					bind:alwaysRevealMode
+					bind:selectedSelectMode={_selectedSelectMode}
+					bind:brushSize
+					selectedCount={selectedSet.size}
+					showBrushSize={activeTool === 'paint'}
+					onReveal={revealSelectedTiles}
+					onHide={hideSelectedTiles}
+					onClear={() => clearSelection()}
 				/>
 			</div>
+		{/if}
 
-			<!-- Layer Controls -->
-			{#if effectiveRole === 'dm'}
-				<div class="absolute bottom-4 left-4 z-20">
-					<LayerControls
-						{showAlwaysRevealed}
-						{showRevealed}
-						{showUnrevealed}
-						{showPaths}
-						{tileTransparency}
-						isOpen={layerVisibilityOpen}
-						onToggleAlwaysRevealed={() => (showAlwaysRevealed = !showAlwaysRevealed)}
-						onToggleRevealed={() => (showRevealed = !showRevealed)}
-						onToggleUnrevealed={() => (showUnrevealed = !showUnrevealed)}
-						onTogglePaths={() => (showPaths = !showPaths)}
-						onTransparencyChange={(value) => (tileTransparency = value)}
-						onToggleOpen={(open) => (layerVisibilityOpen = open)}
-					/>
-				</div>
-			{/if}
+		<!-- Zoom Controls -->
+		<div class="absolute right-4 bottom-4 z-20">
+			<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
+		</div>
 
-			<!-- Left Sidebar Content -->
+		<!-- Keyboard Shortcuts Button -->
+		<div class="absolute right-6 bottom-36 z-20 -mr-px">
+			<KeyboardShortcutsDialog {effectiveRole} />
+		</div>
+
+		<!-- Bottom Toolbar with Cursor Modes -->
+		<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
+			<ToolModeButtons
+				{activeTool}
+				{activeSelectMode}
+				{brushSize}
+				showDMTools={effectiveRole === 'dm'}
+				showExploreTool={effectiveRole === 'player'}
+				onSelectTool={setSelectedTool}
+			/>
+		</div>
+
+		<!-- General Confirmation Dialog -->
+		<ConfirmDialog
+			bind:open={showDialog}
+			title={dialogConfig.title}
+			description={dialogConfig.description}
+			actions={dialogConfig.actions}
+		/>
+
+		<!-- Layer Controls -->
+		{#if effectiveRole === 'dm'}
+			<div class="absolute bottom-4 left-4 z-20">
+				<LayerControls
+					bind:showAlwaysRevealed
+					bind:showRevealed
+					bind:showUnrevealed
+					bind:showPaths
+					bind:showDMMarkers
+					bind:showPlayerMarkers
+					{tileTransparency}
+					onTransparencyChange={(value) => (tileTransparency = value)}
+				/>
+			</div>
+		{/if}
+
+		<!-- Left Sidebar - Campaign Management -->
+		<Sheet bind:open={leftSidebarOpen}>
 			<CampaignSidebar
+				bind:showDialog
+				bind:dialogConfig
 				{effectiveRole}
 				{userRole}
+				{hasActiveSession}
+				{sessionDuration}
 				campaignSlug={data.campaign.slug}
 				globalGameTime={localState.globalGameTime}
 				revealedTilesCount={localState.revealedTilesSet.size}
@@ -1151,13 +1028,8 @@
 				timeAuditLog={localState.timeAuditLog}
 				hasPendingOperations={!!hasPendingOperations}
 				pendingCount={remoteState.pending?.length || 0}
-				{hasActiveSession}
 				activeSession={localState.activeSession}
-				{sessionDuration}
-				onStartSession={handleStartSession}
-				onEndSession={handleEndSession}
 				onFlushPending={flushPendingOperations}
-				onAdjustTime={handleAdjustTime}
 			/>
 		</Sheet>
 
@@ -1173,57 +1045,20 @@
 		</Sheet>
 	</div>
 
-	<!-- Context Menu -->
-	<div
-		style="position: fixed; left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px;  z-index: 9999;"
-		bind:this={contextMenuAnchor}
-	>
-		<DropdownMenu.Root bind:open={contextMenuOpen}>
-			<DropdownMenu.Content
-				onEscapeKeydown={() => (contextMenuOpen = false)}
-				onInteractOutside={() => (contextMenuOpen = false)}
-				customAnchor={contextMenuAnchor}
-			>
-				{#if createMarkerCoords}
-					{@const tileXString = createMarkerCoords.x.toString().padStart(2, '0')}
-					{@const tileYString = createMarkerCoords.y.toString().padStart(2, '0')}
-					<DropdownMenu.Label>
-						Tile {tileXString}{tileYString}
-					</DropdownMenu.Label>
-					<DropdownMenu.Separator />
-					{#if localState?.partyTokenPosition && createMarkerCoords.x === localState.partyTokenPosition.x && createMarkerCoords.y === localState.partyTokenPosition.y}
-						<DropdownMenu.Item class="cursor-pointer" onclick={startTeleport}
-							>Teleport Party</DropdownMenu.Item
-						>
-					{/if}
-				{/if}
-				{#if contextMenuType === 'tile'}
-					<DropdownMenu.Item class="cursor-pointer" onclick={openCreateMarkerDialog}
-						>Create Marker</DropdownMenu.Item
-					>
-				{:else if contextMenuType === 'marker' && selectedMarker}
-					<DropdownMenu.Item
-						class="cursor-pointer"
-						onclick={() => {
-							contextMenuOpen = false;
-							handleEditMarker();
-						}}
-					>
-						Edit Marker
-					</DropdownMenu.Item>
-					<DropdownMenu.Item
-						class="cursor-pointer"
-						onclick={() => {
-							contextMenuOpen = false;
-							confirmDeleteMarker();
-						}}
-					>
-						Delete Marker
-					</DropdownMenu.Item>
-				{/if}
-			</DropdownMenu.Content>
-		</DropdownMenu.Root>
-	</div>
+	<!-- Tile Right Click Menu -->
+	<ContextMenu
+		open={contextMenuOpen}
+		position={contextMenuPosition}
+		type={contextMenuType}
+		partyPosition={localState.partyTokenPosition}
+		tile={createMarkerCoords}
+		{userRole}
+		{selectedDMMarker}
+		{selectedPlayerMarker}
+		handleShowMarker={handleMarkerClick}
+		{openCreateMarkerDialog}
+		{startTeleport}
+	/>
 
 	<!-- Time Cost Dialog for Teleport -->
 	<TimeCostDialog
@@ -1239,7 +1074,7 @@
 	/>
 
 	<!-- Create Marker Dialog -->
-	<CreateMarkerDialog
+	<MarkerCreateDialog
 		bind:open={showCreateMarkerDialog}
 		coords={createMarkerCoords}
 		isDM={userRole === 'dm'}
@@ -1248,7 +1083,7 @@
 	/>
 
 	<!-- Edit Marker Dialog -->
-	<CreateMarkerDialog
+	<MarkerCreateDialog
 		bind:open={showEditMarkerDialog}
 		coords={selectedMarker ? { x: selectedMarker.x, y: selectedMarker.y } : null}
 		editingMarker={selectedMarker}
@@ -1273,21 +1108,5 @@
 	/>
 
 	<!-- Marker Hover Tooltip -->
-	{#if hoveredMarker}
-		<div
-			style="position: fixed; left: {tooltipPosition.x}px; top: {tooltipPosition.y}px; pointer-events: none; z-index: 9998;"
-			class="py-2 px-3 text-sm rounded-md border shadow-md animate-in bg-popover text-popover-foreground fade-in-0 zoom-in-95"
-		>
-			<div class="font-medium">{hoveredMarker.title}</div>
-			{#if hoveredMarker.type !== 'party'}
-				<div class="mt-0.5 text-xs text-muted-foreground">
-					{hoveredMarker.type.charAt(0).toUpperCase() + hoveredMarker.type.slice(1)}
-					{#if effectiveRole === 'dm' && !hoveredMarker.visibleToPlayers}
-						<span class="ml-1">(Hidden)</span>
-					{/if}
-				</div>
-				<div class="mt-1 text-xs text-muted-foreground/70">Click for details</div>
-			{/if}
-		</div>
-	{/if}
+	<MarkerPreviewPopover {hoveredMarker} {effectiveRole} {tooltipPosition} />
 </Tooltip.Provider>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
-	import ConfirmDialog from '$lib/components/general/ConfirmDialog.svelte';
+	import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import type { UserRole } from '$lib/types';

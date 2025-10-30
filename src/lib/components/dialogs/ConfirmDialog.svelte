@@ -1,18 +1,10 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import type { DialogConfig } from '$lib/types';
 
-	interface DialogAction {
-		label: string;
-		variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
-		action: () => void;
-	}
-
-	interface Props {
+	interface Props extends DialogConfig {
 		open: boolean;
-		title: string;
-		description: string;
-		actions: DialogAction[];
 	}
 
 	let { open = $bindable(), title, description, actions }: Props = $props();

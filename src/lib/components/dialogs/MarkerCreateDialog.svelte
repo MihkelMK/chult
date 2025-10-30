@@ -1,12 +1,12 @@
 <script lang="ts">
-	import DangerIcon from '$lib/components/map/canvas/icons/DangerIcon.svelte';
-	import DungeonIcon from '$lib/components/map/canvas/icons/DungeonIcon.svelte';
-	import GenericIcon from '$lib/components/map/canvas/icons/GenericIcon.svelte';
-	import LandmarkIcon from '$lib/components/map/canvas/icons/LandmarkIcon.svelte';
-	import RestIcon from '$lib/components/map/canvas/icons/RestIcon.svelte';
-	import RuinsIcon from '$lib/components/map/canvas/icons/RuinsIcon.svelte';
-	import SettlementIcon from '$lib/components/map/canvas/icons/SettlementIcon.svelte';
-	import WarningIcon from '$lib/components/map/canvas/icons/WarningIcon.svelte';
+	import DangerIcon from '$lib/components/canvas/icons/DangerIcon.svelte';
+	import DungeonIcon from '$lib/components/canvas/icons/DungeonIcon.svelte';
+	import GenericIcon from '$lib/components/canvas/icons/GenericIcon.svelte';
+	import LandmarkIcon from '$lib/components/canvas/icons/LandmarkIcon.svelte';
+	import RestIcon from '$lib/components/canvas/icons/RestIcon.svelte';
+	import RuinsIcon from '$lib/components/canvas/icons/RuinsIcon.svelte';
+	import SettlementIcon from '$lib/components/canvas/icons/SettlementIcon.svelte';
+	import WarningIcon from '$lib/components/canvas/icons/WarningIcon.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Dialog,
@@ -234,7 +234,9 @@
 
 			<!-- Title input -->
 			<div class="grid gap-2">
-				<Label for="title">Name <span class="text-destructive">*</span></Label>
+				<Label for="title">
+					Name <span class="text-destructive">*</span>
+				</Label>
 				<Input
 					id="title"
 					type="text"

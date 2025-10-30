@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import LoadingScreen from '$lib/components/general/LoadingScreen.svelte';
+	import LoadingScreen from '$lib/components/placeholders/LoadingScreen.svelte';
 	import useImage from '$lib/hooks/useImage.svelte';
 	import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
 	import type { MapMarkerResponse } from '$lib/types/database';
@@ -16,6 +16,8 @@
 		showAlwaysRevealed = false,
 		showRevealed = false,
 		showUnrevealed = true,
+		showDMMarkers = false,
+		showPlayerMarkers = true,
 		tileTransparency = 1,
 		canvasHeight,
 		canvasWidth,
@@ -39,8 +41,6 @@
 		onMarkerClick,
 		onMapLoad = () => {},
 		onMapError = () => {},
-		hasPoI = () => false,
-		hasNotes = () => false,
 		showPaths = false,
 		visiblePathSessions = new Set<number>(),
 		panToCoords = null
@@ -205,16 +205,40 @@
 	});
 
 	// Filter markers by role and visibility - O(n) where n = number of markers
+	// Supports dual markers per tile: DM (hidden) and player (visible)
 	let markerTiles = $derived.by(() => {
-		const visibleMarkers: Array<{ marker: MapMarkerResponse; tile: Hex }> = [];
+		const visibleMarkers: Array<{
+			dmMarker?: MapMarkerResponse;
+			playerMarker?: MapMarkerResponse;
+			tile: Hex;
+		}> = [];
 
-		for (const [tileKey, marker] of localState.markersByTile) {
-			// Filter by visibility for players
-			if (!isDM && !marker.visibleToPlayers) continue;
-
+		for (const [tileKey, markers] of localState.markersByTile) {
 			const hex = hexMap.get(tileKey);
-			if (hex) {
-				visibleMarkers.push({ marker, tile: hex });
+			if (!hex) continue;
+
+			// Apply visibility filters
+			let dmMarker: MapMarkerResponse | undefined;
+			let playerMarker: MapMarkerResponse | undefined;
+
+			// DM markers (hidden) - only show if DM and toggle is on
+			if (isDM && showDMMarkers && markers.dm) {
+				dmMarker = markers.dm;
+			}
+
+			// Player markers (visible) - show based on role and toggle
+			if (markers.player) {
+				if (isDM && showPlayerMarkers) {
+					playerMarker = markers.player;
+				} else if (!isDM) {
+					// Players always see player markers
+					playerMarker = markers.player;
+				}
+			}
+
+			// Only add entry if at least one marker is visible
+			if (dmMarker || playerMarker) {
+				visibleMarkers.push({ dmMarker, playerMarker, tile: hex });
 			}
 		}
 
@@ -263,6 +287,8 @@
 			{showAlwaysRevealed}
 			{showUnrevealed}
 			{showRevealed}
+			{showDMMarkers}
+			{showPlayerMarkers}
 			{previewMode}
 			{isDM}
 			{tileTransparency}
@@ -272,8 +298,6 @@
 			{onMarkerClick}
 			{onMapLoad}
 			{onMapError}
-			{hasPoI}
-			{hasNotes}
 			{hexRadius}
 			{hexHeight}
 			{horizontalSpacing}

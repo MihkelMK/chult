@@ -1,14 +1,14 @@
 <script lang="ts">
-	import CustomIcon from '$lib/components/map/canvas/icons/CustomIcon.svelte';
-	import DangerIcon from '$lib/components/map/canvas/icons/DangerIcon.svelte';
-	import DungeonIcon from '$lib/components/map/canvas/icons/DungeonIcon.svelte';
-	import GenericIcon from '$lib/components/map/canvas/icons/GenericIcon.svelte';
-	import LandmarkIcon from '$lib/components/map/canvas/icons/LandmarkIcon.svelte';
-	import PartyIcon from '$lib/components/map/canvas/icons/PartyIcon.svelte';
-	import RestIcon from '$lib/components/map/canvas/icons/RestIcon.svelte';
-	import RuinsIcon from '$lib/components/map/canvas/icons/RuinsIcon.svelte';
-	import SettlementIcon from '$lib/components/map/canvas/icons/SettlementIcon.svelte';
-	import WarningIcon from '$lib/components/map/canvas/icons/WarningIcon.svelte';
+	import CustomIcon from '$lib/components/canvas/icons/CustomIcon.svelte';
+	import DangerIcon from '$lib/components/canvas/icons/DangerIcon.svelte';
+	import DungeonIcon from '$lib/components/canvas/icons/DungeonIcon.svelte';
+	import GenericIcon from '$lib/components/canvas/icons/GenericIcon.svelte';
+	import LandmarkIcon from '$lib/components/canvas/icons/LandmarkIcon.svelte';
+	import PartyIcon from '$lib/components/canvas/icons/PartyIcon.svelte';
+	import RestIcon from '$lib/components/canvas/icons/RestIcon.svelte';
+	import RuinsIcon from '$lib/components/canvas/icons/RuinsIcon.svelte';
+	import SettlementIcon from '$lib/components/canvas/icons/SettlementIcon.svelte';
+	import WarningIcon from '$lib/components/canvas/icons/WarningIcon.svelte';
 	import type { Hex } from '$lib/types';
 	import type { MapMarkerResponse } from '$lib/types/database';
 	import { Group, type KonvaMouseEvent } from 'svelte-konva';

@@ -104,8 +104,9 @@
 					{#if canEdit}
 						<div>
 							<Button variant="outline" class="cursor-pointer" onclick={onEdit}>Edit</Button>
-							<Button variant="destructive" class="cursor-pointer" onclick={onDelete}>Delete</Button
-							>
+							<Button variant="destructive" class="cursor-pointer" onclick={onDelete}>
+								Delete
+							</Button>
 						</div>
 					{/if}
 				</div>

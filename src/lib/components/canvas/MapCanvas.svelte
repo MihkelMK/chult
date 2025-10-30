@@ -1,6 +1,6 @@
 <script lang="ts">
-	import MapMarker from '$lib/components/map/canvas/MapMarker.svelte';
-	import MovementPaths from '$lib/components/map/canvas/MovementPaths.svelte';
+	import MapMarker from '$lib/components/canvas/MapMarker.svelte';
+	import MovementPaths from '$lib/components/canvas/MovementPaths.svelte';
 	import type { Hex, MapCanvasProps, MapMarkerResponse } from '$lib/types';
 	import { hexToTileKey, pixelToHex } from '$lib/utils/hexCoordinates';
 	import type { KonvaPointerEvent } from 'konva/lib/PointerEvents';
@@ -111,13 +111,13 @@
 			const tileCoords = { x: coords.col, y: coords.row };
 
 			// O(1) marker lookup using Map - decides context menu type
-			const marker = markersByTile.get(tileKey);
+			const markers = markersByTile.get(tileKey);
 
 			onRightClick({
-				type: marker ? 'marker' : 'tile',
+				type: markers ? 'marker' : 'tile',
 				key: tileKey,
 				coords: tileCoords,
-				marker: marker,
+				markers: markers,
 				screenX: e.evt.clientX,
 				screenY: e.evt.clientY
 			});
@@ -488,8 +488,49 @@
 		<!-- 2: Party Token & Markers Layer (always on top) -->
 		<Group listening={activeTool === 'interact'} oncontextmenu={handleBackgroundRightClick}>
 			<!-- Render markers first (below party token) -->
-			{#each markerTiles as { marker, tile } (marker.id)}
-				<MapMarker {marker} {tile} radius={hexRadius} {onMarkerHover} {onMarkerClick} />
+			{#each markerTiles as { dmMarker, playerMarker, tile } (`${tile.col}-${tile.row}`)}
+				{@const hasBoth = dmMarker && playerMarker}
+				{@const markerRadius = hasBoth ? hexRadius * 0.5 : hexRadius}
+
+				{#if hasBoth}
+					<!-- Side-by-side rendering for dual markers (DM only) -->
+					{@const offsetX = hexRadius * 0.3}
+					{@const leftTile = { ...tile, centerX: tile.centerX - offsetX }}
+					{@const rightTile = { ...tile, centerX: tile.centerX + offsetX }}
+
+					<MapMarker
+						marker={dmMarker}
+						tile={leftTile}
+						radius={markerRadius}
+						{onMarkerHover}
+						{onMarkerClick}
+					/>
+					<MapMarker
+						marker={playerMarker}
+						tile={rightTile}
+						radius={markerRadius}
+						{onMarkerHover}
+						{onMarkerClick}
+					/>
+				{:else if dmMarker}
+					<!-- Single DM marker (centered) -->
+					<MapMarker
+						marker={dmMarker}
+						{tile}
+						radius={markerRadius}
+						{onMarkerHover}
+						{onMarkerClick}
+					/>
+				{:else if playerMarker}
+					<!-- Single player marker (centered) -->
+					<MapMarker
+						marker={playerMarker}
+						{tile}
+						radius={markerRadius}
+						{onMarkerHover}
+						{onMarkerClick}
+					/>
+				{/if}
 			{/each}
 		</Group>
 	</Layer>

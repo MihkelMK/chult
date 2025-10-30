@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import * as Empty from '$lib/components/ui/empty';
 	import { Button } from '$lib/components/ui/button';
+	import * as Empty from '$lib/components/ui/empty';
 	import { ArrowLeft, House, MapPinOff } from '@lucide/svelte';
 	import type { Component } from 'svelte';
 

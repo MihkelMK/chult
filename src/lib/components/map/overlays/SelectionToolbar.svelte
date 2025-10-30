@@ -3,34 +3,31 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import type { SelectMode } from '$lib/types';
 	import { Eye, EyeOff, Lock, Minus, Plus, Trash2 } from '@lucide/svelte';
 
 	interface Props {
 		alwaysRevealMode: boolean;
-		activeSelectMode: 'add' | 'remove';
+		activeSelectMode: SelectMode;
+		selectedSelectMode: SelectMode;
 		selectedCount: number;
 		showBrushSize?: boolean;
 		brushSize?: number;
-		onToggleAlwaysReveal: () => void;
-		onSetSelectMode: (mode: 'add' | 'remove') => void;
 		onReveal: () => void;
 		onHide: () => void;
 		onClear: () => void;
-		onBrushSizeChange?: (size: number) => void;
 	}
 
 	let {
-		alwaysRevealMode,
+		brushSize = $bindable(),
+		alwaysRevealMode = $bindable(),
+		selectedSelectMode = $bindable(),
 		activeSelectMode,
 		selectedCount,
 		showBrushSize = false,
-		brushSize = 3,
-		onToggleAlwaysReveal,
-		onSetSelectMode,
 		onReveal,
 		onHide,
-		onClear,
-		onBrushSizeChange
+		onClear
 	}: Props = $props();
 </script>
 
@@ -43,7 +40,7 @@
 					variant={alwaysRevealMode ? 'default' : 'ghost'}
 					size="sm"
 					class="cursor-pointer"
-					onclick={onToggleAlwaysReveal}
+					onclick={() => (alwaysRevealMode = !alwaysRevealMode)}
 				>
 					<Lock class="w-4 h-4" />
 				</Button>
@@ -62,7 +59,7 @@
 					variant={activeSelectMode === 'add' ? 'default' : 'ghost'}
 					size="sm"
 					class="cursor-pointer"
-					onclick={() => onSetSelectMode('add')}
+					onclick={() => (selectedSelectMode = 'add')}
 				>
 					<Plus class="w-4 h-4" />
 				</Button>
@@ -76,7 +73,7 @@
 					variant={activeSelectMode === 'remove' ? 'default' : 'ghost'}
 					size="sm"
 					class="cursor-pointer"
-					onclick={() => onSetSelectMode('remove')}
+					onclick={() => (selectedSelectMode = 'remove')}
 				>
 					<Minus class="w-4 h-4" />
 				</Button>
@@ -134,20 +131,12 @@
 	</div>
 
 	<!-- Brush Size Slider -->
-	{#if showBrushSize && onBrushSizeChange}
+	{#if showBrushSize}
 		<div class="flex gap-2 items-center">
 			<div class="flex gap-2 items-center px-2">
 				<span class="text-xs text-muted-foreground">Brush Size:</span>
 				<div class="w-20">
-					<Slider
-						type="single"
-						value={brushSize}
-						onValueChange={(value) => onBrushSizeChange?.(value)}
-						min={1}
-						max={5}
-						step={1}
-						class="w-full"
-					/>
+					<Slider type="single" bind:value={brushSize} min={1} max={5} step={1} class="w-full" />
 				</div>
 				<span class="w-6 font-mono text-xs text-center">{brushSize}</span>
 			</div>
