@@ -1,5 +1,6 @@
-import type { TileCoords } from '$lib/types';
-import { SvelteSet } from 'svelte/reactivity';
+import type { TileCoords, UserRole } from '$lib/types';
+import type { MapMarkerResponse } from '$lib/types/database';
+import { SvelteDate, SvelteSet } from 'svelte/reactivity';
 import type { LocalStateDM } from './localStateDM.svelte';
 
 interface PendingOperation {
@@ -481,6 +482,206 @@ export class RemoteStateDM {
 			// Rollback optimistic update on failure
 			this.localState.globalGameTime = originalGameTime;
 			console.error('[remoteStateDM] Failed to adjust time:', error);
+			throw error;
+		}
+	}
+
+	async createMarker(data: {
+		x: number;
+		y: number;
+		type: string;
+		title: string;
+		content: string | null;
+		authorRole: UserRole;
+		visibleToPlayers: boolean;
+		imagePath: string | null;
+	}) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		// Create temporary marker for optimistic update
+		const tempId = -Math.floor(Math.random() * 1000000) - 1;
+		const tempMarker: MapMarkerResponse = {
+			...data,
+			id: tempId,
+			createdAt: new SvelteDate(),
+			updatedAt: new SvelteDate()
+		};
+
+		// Optimistic update
+		if ('mapMarkers' in this.localState.campaign) {
+			this.localState.campaign.mapMarkers.push(tempMarker);
+			this.localState.markersMap.set(tempId, tempMarker);
+			this.localState.markersVersion++;
+		}
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/markers`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to create marker');
+			}
+
+			const result = await response.json();
+			console.log('[remoteStateDM] Marker created:', result);
+
+			// Replace temp marker with real marker from API response (SSE will be deduplicated)
+			if ('mapMarkers' in this.localState.campaign) {
+				// Remove temp marker
+				const tempIndex = this.localState.campaign.mapMarkers.findIndex((m) => m.id === tempId);
+				if (tempIndex !== -1) {
+					this.localState.campaign.mapMarkers.splice(tempIndex, 1);
+				}
+				this.localState.markersMap.delete(tempId);
+
+				// Add real marker if it doesn't already exist
+				const exists = this.localState.markersMap.has(result.id);
+				if (!exists) {
+					const realMarker: MapMarkerResponse = {
+						...result,
+						createdAt: new SvelteDate(result.createdAt),
+						updatedAt: new SvelteDate(result.updatedAt)
+					};
+					this.localState.campaign.mapMarkers.push(realMarker);
+					this.localState.markersMap.set(result.id, realMarker);
+					this.localState.markersVersion++;
+				}
+			}
+
+			return result;
+		} catch (error) {
+			// Rollback on failure
+			if ('mapMarkers' in this.localState.campaign) {
+				this.localState.campaign.mapMarkers = this.localState.campaign.mapMarkers.filter(
+					(m) => m.id !== tempId
+				);
+				this.localState.markersMap.delete(tempId);
+				this.localState.markersVersion++;
+			}
+			console.log('this');
+			console.error('[remoteStateDM] Failed to create marker:', error);
+			throw error;
+		}
+	}
+
+	async updateMarker(
+		id: number,
+		data: { title?: string; content?: string | null; visibleToPlayers?: boolean }
+	) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		// Find marker in state
+		if (!('mapMarkers' in this.localState.campaign)) {
+			throw new Error('Map markers not available');
+		}
+
+		const markerIndex = this.localState.campaign.mapMarkers.findIndex((m) => m.id === id);
+		if (markerIndex === -1) {
+			throw new Error('Marker not found');
+		}
+
+		// Save original for rollback
+		const originalMarker = { ...this.localState.campaign.mapMarkers[markerIndex] };
+
+		// Optimistic update
+		const updatedMarker = {
+			...this.localState.campaign.mapMarkers[markerIndex],
+			...data,
+			updatedAt: new SvelteDate()
+		};
+		this.localState.campaign.mapMarkers[markerIndex] = updatedMarker;
+		this.localState.markersMap.set(id, updatedMarker);
+		this.localState.markersVersion++;
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/markers/${id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to update marker');
+			}
+
+			const result = await response.json();
+			console.log('[remoteStateDM] Marker updated:', result);
+
+			// Update with real data from API response
+			const realMarker: MapMarkerResponse = {
+				...result,
+				createdAt: new SvelteDate(result.createdAt),
+				updatedAt: new SvelteDate(result.updatedAt)
+			};
+			this.localState.campaign.mapMarkers[markerIndex] = realMarker;
+			this.localState.markersMap.set(id, realMarker);
+			this.localState.markersVersion++;
+
+			return result;
+		} catch (error) {
+			// Rollback on failure
+			this.localState.campaign.mapMarkers[markerIndex] = originalMarker;
+			this.localState.markersMap.set(id, originalMarker);
+			this.localState.markersVersion++;
+
+			console.error('[remoteStateDM] Failed to update marker:', error);
+			throw error;
+		}
+	}
+
+	async deleteMarker(id: number) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		if (!('mapMarkers' in this.localState.campaign)) {
+			throw new Error('Map markers not available');
+		}
+
+		// Find marker in state
+		const markerIndex = this.localState.campaign.mapMarkers.findIndex((m) => m.id === id);
+		if (markerIndex === -1) {
+			throw new Error('Marker not found');
+		}
+
+		// Save for rollback
+		const deletedMarker = { ...this.localState.campaign.mapMarkers[markerIndex] };
+
+		// Optimistic delete
+		this.localState.campaign.mapMarkers.splice(markerIndex, 1);
+		this.localState.markersMap.delete(id);
+		this.localState.markersVersion++;
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/markers/${id}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to delete marker');
+			}
+
+			console.log('[remoteStateDM] Marker deleted:', id);
+
+			// SSE will handle confirmation
+			return { success: true };
+		} catch (error) {
+			// Rollback on failure
+			this.localState.campaign.mapMarkers.push(deletedMarker);
+			this.localState.markersMap.set(id, deletedMarker);
+			this.localState.markersVersion++;
+
+			console.error('[remoteStateDM] Failed to delete marker:', error);
 			throw error;
 		}
 	}

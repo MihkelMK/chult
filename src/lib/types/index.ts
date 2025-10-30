@@ -1,5 +1,10 @@
 import type { LocalState } from '$lib/stores/localState.svelte';
-import type { GameSessionResponse, Path, RevealedTileResponse } from '$lib/types/database';
+import type {
+	GameSessionResponse,
+	MapMarkerResponse,
+	Path,
+	RevealedTileResponse
+} from '$lib/types/database';
 import type { ImageVariant, MapUrlsResponse } from '$lib/types/imgproxy';
 import type { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
@@ -43,7 +48,6 @@ export interface RightClickEvent {
 	coords?: TileCoords; // For anything with position
 	screenX: number; // Screen X position for menu
 	screenY: number; // Screen Y position for menu
-	data?: any; // Additional context
 }
 
 export interface HexRendered extends Hex {
@@ -69,6 +73,17 @@ export type UIToolDM = 'select' | 'paint' | 'set-position';
 export type UITool = UIToolGeneric | UIToolDM | UIToolPlayer;
 export type SelectMode = 'add' | 'remove';
 
+export type MarkerType =
+	| 'settlement' // Cities, towns, villages
+	| 'dungeon' // Dungeons, caves, lairs
+	| 'ruins' // Ruins, abandoned structures
+	| 'rest' // Camps, inns, safe havens
+	| 'landmark' // Notable locations, features
+	| 'danger' // Hazards, threats
+	| 'warning' // Caution areas
+	| 'generic' // General marker
+	| 'custom'; // Custom uploaded icon
+
 interface MapCanvasSharedProps {
 	isDM?: boolean;
 	isDragging: boolean;
@@ -93,6 +108,8 @@ interface MapCanvasSharedProps {
 	activeSelectMode: SelectMode;
 	onHexTriggered: (event: HexTriggerEvent) => void;
 	onRightClick?: (event: RightClickEvent) => void;
+	onMarkerHover?: (marker: MapMarkerResponse | null, screenX: number, screenY: number) => void;
+	onMarkerClick?: (marker: MapMarkerResponse) => void;
 	onMapLoad?: (dimensions: { width: number; height: number }) => void;
 	onMapError?: () => void;
 	hasPoI: (coords: TileCoords) => boolean;
@@ -113,12 +130,16 @@ export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 export interface MapCanvasProps extends MapCanvasSharedProps {
 	image: HTMLImageElement | undefined;
 	hexRadius: number;
+	hexHeight: number;
+	horizontalSpacing: number;
+	verticalSpacing: number;
 	revealedTiles: readonly Hex[];
 	alwaysRevealedTiles: readonly Hex[];
 	unrevealedTiles: readonly Hex[];
 	selectedTiles: readonly Hex[];
 	adjacentTiles: readonly Hex[]; // Valid moves with explore tool
 	partyTokenTile: Hex | null;
+	markerTiles?: ReadonlyArray<{ marker: MapMarkerResponse; tile: Hex }>;
 	showPaths?: boolean;
 	visiblePathSessions?: Set<number>;
 	sessions: GameSessionResponse[];

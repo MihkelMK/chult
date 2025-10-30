@@ -194,37 +194,6 @@ export class LocalStateDM extends LocalState {
 		}
 	}
 
-	async createMarker(marker: Omit<MapMarkerResponse, 'id' | 'createdAt' | 'updatedAt'>) {
-		const tempId = -Math.floor(Math.random() * 1000000) - 1; // Unique temporary ID for the optimistic update
-		const newMarker: MapMarkerResponse = {
-			...marker,
-			id: tempId,
-			createdAt: new SvelteDate(),
-			updatedAt: new SvelteDate(),
-			authorRole: 'dm'
-		};
-
-		// Optimistic update
-		(this.campaign as CampaignDataResponse).mapMarkers.push(newMarker);
-
-		try {
-			const { id } = await this.makeApiRequest<{ id: number }>('map-markers', 'POST', marker);
-			// Reconcile with the actual ID from the server
-			const createdMarker = (this.campaign as CampaignDataResponse).mapMarkers.find(
-				(m) => m.id === tempId
-			);
-			if (createdMarker) {
-				createdMarker.id = id;
-			}
-		} catch (error) {
-			// Rollback
-			(this.campaign as CampaignDataResponse).mapMarkers = (
-				this.campaign as CampaignDataResponse
-			).mapMarkers.filter((m) => m.id !== tempId);
-			console.error('Failed to create marker:', error);
-		}
-	}
-
 	// Event handlers for synchronization
 	private handleTilesRevealedBatch(tiles: RevealedTileResponse[]) {
 		// Filter out already-revealed tiles to avoid unnecessary work

@@ -3,6 +3,7 @@
 	import LoadingScreen from '$lib/components/general/LoadingScreen.svelte';
 	import useImage from '$lib/hooks/useImage.svelte';
 	import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
+	import type { MapMarkerResponse } from '$lib/types/database';
 	import { type Component } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
@@ -34,6 +35,8 @@
 		selectedSet,
 		onHexTriggered = () => {},
 		onRightClick,
+		onMarkerHover,
+		onMarkerClick,
 		onMapLoad = () => {},
 		onMapError = () => {},
 		hasPoI = () => false,
@@ -201,6 +204,29 @@
 		return tiles;
 	});
 
+	// Filter markers by role and visibility - O(n) where n = number of markers
+	let markerTiles = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		localState.markersVersion; // Track version changes
+
+		if (!('mapMarkers' in localState.campaign)) return [];
+
+		const visibleMarkers: Array<{ marker: MapMarkerResponse; tile: Hex }> = [];
+
+		for (const marker of localState.campaign.mapMarkers) {
+			// Filter by visibility for players
+			if (!isDM && !marker.visibleToPlayers) continue;
+
+			const key = `${marker.x}-${marker.y}`;
+			const hex = hexMap.get(key);
+			if (hex) {
+				visibleMarkers.push({ marker, tile: hex });
+			}
+		}
+
+		return visibleMarkers;
+	});
+
 	// Convert panToTile coordinates to Hex object
 	let panToTile = $derived.by(() => {
 		if (!panToCoords) return null;
@@ -225,6 +251,7 @@
 			{selectedTiles}
 			{adjacentTiles}
 			{partyTokenTile}
+			{markerTiles}
 			{image}
 			{zoom}
 			{activeTool}
@@ -246,11 +273,16 @@
 			{tileTransparency}
 			{onHexTriggered}
 			{onRightClick}
+			{onMarkerHover}
+			{onMarkerClick}
 			{onMapLoad}
 			{onMapError}
 			{hasPoI}
 			{hasNotes}
 			{hexRadius}
+			{hexHeight}
+			{horizontalSpacing}
+			{verticalSpacing}
 			{showPaths}
 			{visiblePathSessions}
 			sessions={localState.gameSessions}

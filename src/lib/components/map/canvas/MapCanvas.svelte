@@ -1,8 +1,10 @@
 <script lang="ts">
+	import MapMarker from '$lib/components/map/canvas/MapMarker.svelte';
 	import PathLayer from '$lib/components/map/canvas/PathLayer.svelte';
-	import PartyToken from '$lib/components/map/canvas/tokens/PartyToken.svelte';
-	import type { Hex, MapCanvasProps } from '$lib/types';
-	import { Group, Image, Layer, RegularPolygon, Stage, Text } from 'svelte-konva';
+	import type { Hex, MapCanvasProps, MapMarkerResponse } from '$lib/types';
+	import { hexToTileKey, pixelToHex } from '$lib/utils/hexCoordinates';
+	import type { KonvaPointerEvent } from 'konva/lib/PointerEvents';
+	import { Group, Image, Layer, Rect, RegularPolygon, Stage, Text } from 'svelte-konva';
 
 	let {
 		image,
@@ -14,11 +16,15 @@
 		selectedTiles,
 		adjacentTiles,
 		partyTokenTile,
+		markerTiles = [],
 		xOffset = 0,
 		yOffset = 0,
 		hexesPerCol,
 		hexesPerRow,
 		hexRadius,
+		hexHeight,
+		horizontalSpacing,
+		verticalSpacing,
 		zoom,
 		activeTool,
 		selectedTool,
@@ -32,6 +38,8 @@
 		imageWidth,
 		onHexTriggered,
 		onRightClick,
+		onMarkerHover,
+		onMarkerClick,
 		canvasHeight,
 		canvasWidth,
 		showPaths = false,
@@ -73,6 +81,42 @@
 	function handleHexTrigger(key: string) {
 		if (activeTool === 'pan') return;
 		onHexTriggered?.({ key });
+	}
+
+	function handleBackgroundRightClick(e: KonvaPointerEvent) {
+		// Only handle right-clicks on the background Rect itself
+		if (e.target.attrs.id !== 'background-click-layer') return;
+
+		e.evt.preventDefault();
+
+		const stage = e.target.getStage();
+		const pointerPos = stage?.getPointerPosition();
+		if (!pointerPos) return;
+
+		// Convert stage coordinates to layer coordinates
+		const layerX = pointerPos.x / scale - position.x / scale - xOffset;
+		const layerY = pointerPos.y / scale - position.y / scale - yOffset;
+
+		const coords = pixelToHex(
+			layerX,
+			layerY,
+			hexRadius,
+			hexHeight,
+			horizontalSpacing,
+			verticalSpacing,
+			hexesPerRow,
+			hexesPerCol
+		);
+
+		if (coords && onRightClick) {
+			onRightClick({
+				type: 'tile',
+				key: hexToTileKey(coords),
+				coords: { x: coords.col, y: coords.row },
+				screenX: e.evt.clientX,
+				screenY: e.evt.clientY
+			});
+		}
 	}
 
 	let dragBoundPaddingPX = $derived(canvasWidth * 0.1);
@@ -192,7 +236,7 @@
 		stroke={isAlways ? '#f97316' : 'black'}
 		perfectDrawEnabled={false}
 		shadowForStrokeEnabled={false}
-		listening={activeTool !== 'pan'}
+		listening={activeTool !== 'pan' && activeTool !== 'interact'}
 		onclick={() => handleHexTrigger(hex.id)}
 	/>
 	{@const isTopMost = hex.row === 0 && hex.row % 2 === 1}
@@ -201,9 +245,6 @@
 	{#if showCoords !== 'never' && !isTopMost && !isLeftMost && !isBottomMost}
 		{@render tileCoords(hex)}
 	{/if}
-	<!-- {#if hex.row > 0 && showCoords !== 'never'} -->
-	<!-- {@render indicators(hex)} -->
-	<!-- {/if} -->
 {/snippet}
 
 {#snippet selectedTileBorder(hex: Hex)}
@@ -296,6 +337,30 @@
 		}
 	}}
 >
+	<!-- Layer 0: Transparent context menu catcher-->
+	<Layer
+		x={xOffset}
+		y={yOffset}
+		clipX={gridClipX}
+		clipY={gridClipY}
+		clipHeight={gridHeight}
+		clipWidth={gridWidth}
+		staticConfig={true}
+		perfectDrawEnabled={false}
+		shadowForStrokeEnabled={false}
+		listening={activeTool === 'interact'}
+	>
+		<Rect
+			id="background-click-layer"
+			x={0}
+			y={0}
+			width={gridWidth + gridClipX * 2}
+			height={gridHeight + gridClipY * 2}
+			fill="transparent"
+			oncontextmenu={handleBackgroundRightClick}
+		/>
+	</Layer>
+
 	<!-- Layer 1: Background -->
 	<Layer staticConfig={true} listening={false}>
 		<Image
@@ -320,10 +385,7 @@
 		clipWidth={gridWidth}
 	>
 		<!-- 1: Fog-of-war -->
-		<Group
-			listening={showUnrevealed && activeTool !== 'pan'}
-			visible={showUnrevealed && tileTransparency !== 0}
-		>
+		<Group listening={showUnrevealed} visible={showUnrevealed && tileTransparency !== 0}>
 			{#each unrevealedTiles as hex (hex.id)}
 				{#if hex.row >= 0}
 					{@render tile(hex, false, false)}
@@ -332,10 +394,7 @@
 		</Group>
 		{#if isDM}
 			<!-- 2: Revealed tiles -->
-			<Group
-				listening={showRevealed && activeTool !== 'pan'}
-				visible={showRevealed && tileTransparency !== 0}
-			>
+			<Group listening={showRevealed} visible={showRevealed && tileTransparency !== 0}>
 				{#each revealedTiles as hex (hex.id)}
 					{#if hex.row >= 0}
 						{@render tile(hex, true, false)}
@@ -344,10 +403,7 @@
 			</Group>
 
 			<!-- 3: Always-revealed tiles -->
-			<Group
-				listening={showAlwaysRevealed && activeTool !== 'pan'}
-				visible={showAlwaysRevealed && tileTransparency !== 0}
-			>
+			<Group listening={showAlwaysRevealed} visible={showAlwaysRevealed && tileTransparency !== 0}>
 				{#each alwaysRevealedTiles as hex (hex.id)}
 					{@render tile(hex, false, true)}
 				{/each}
@@ -375,7 +431,10 @@
 		</Group>
 
 		<!-- 2: Highlight possible moves when exploring -->
-		<Group visible={selectedTool === 'explore' && adjacentTiles.length > 0}>
+		<Group
+			visible={selectedTool === 'explore' && adjacentTiles.length > 0}
+			listening={selectedTool === 'explore' && adjacentTiles.length > 0}
+		>
 			{#each adjacentTiles as hex (`adjacent-${hex.id}`)}
 				{@render adjacentTileHighlight(hex)}
 			{/each}
@@ -394,7 +453,7 @@
 		{yOffset}
 	/>
 
-	<!-- Party Token Layer (always on top) -->
+	<!-- Party Token & Markers Layer (always on top) -->
 	<Layer
 		x={xOffset}
 		y={yOffset}
@@ -402,7 +461,43 @@
 		clipY={gridClipY}
 		clipHeight={gridHeight}
 		clipWidth={gridWidth}
+		listening={activeTool === 'interact'}
 	>
-		<PartyToken tile={partyTokenTile} radius={hexRadius} {onRightClick} />
+		<!-- Render markers first (below party token) -->
+		{#each markerTiles as { marker, tile } (marker.id)}
+			<MapMarker
+				{marker}
+				{tile}
+				radius={hexRadius}
+				{onRightClick}
+				{onMarkerHover}
+				{onMarkerClick}
+			/>
+		{/each}
+
+		<!-- Party token on top (rendered through MapMarker for consistent UI) -->
+		{#if partyTokenTile}
+			{@const partyMarker: MapMarkerResponse = {
+				id: -1,
+				x: partyTokenTile.col,
+				y: partyTokenTile.row,
+				type: 'party',
+				title: 'Party Token',
+				content: null,
+				authorRole: 'dm',
+				visibleToPlayers: true,
+				imagePath: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+			}}
+			<MapMarker
+				marker={partyMarker}
+				tile={partyTokenTile}
+				radius={hexRadius}
+				{onRightClick}
+				{onMarkerHover}
+				{onMarkerClick}
+			/>
+		{/if}
 	</Layer>
 </Stage>

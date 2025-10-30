@@ -3,6 +3,8 @@
 	import TimeCostDialog from '$lib/components/general/TimeCostDialog.svelte';
 	import CampaignSidebar from '$lib/components/map/CampaignSidebar.svelte';
 	import MapCanvasWrapper from '$lib/components/map/canvas/MapCanvasWrapper.svelte';
+	import CreateMarkerDialog from '$lib/components/map/dialogs/CreateMarkerDialog.svelte';
+	import MarkerDetailsDialog from '$lib/components/map/dialogs/MarkerDetailsDialog.svelte';
 	import MainToolbar from '$lib/components/map/MainToolbar.svelte';
 	import LayerControls from '$lib/components/map/overlays/LayerControls.svelte';
 	import SelectionToolbar from '$lib/components/map/overlays/SelectionToolbar.svelte';
@@ -17,6 +19,7 @@
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
 	import type {
 		HexTriggerEvent,
+		MarkerType,
 		RightClickEvent,
 		RightClickEventType,
 		SelectMode,
@@ -26,6 +29,7 @@
 		UIToolPlayer,
 		UserRole
 	} from '$lib/types';
+	import type { MapMarkerResponse } from '$lib/types/database';
 	import { Map } from '@lucide/svelte';
 	import { PressedKeys, Previous } from 'runed';
 	import { toast } from 'svelte-sonner';
@@ -50,6 +54,7 @@
 	// UI State
 	let leftSidebarOpen = $state(false);
 	let rightSidebarOpen = $state(false);
+	let contextMenuAnchor = $state<HTMLElement>(null!);
 
 	// Get states from context
 	const localState = getLocalState();
@@ -75,7 +80,17 @@
 	let contextMenuOpen = $state(false);
 	let contextMenuPosition = $state({ x: 0, y: 0 });
 	let contextMenuType = $state<RightClickEventType | null>(null);
-	// let contextMenuData = $state<any>(null);
+
+	// Marker dialog state
+	let showCreateMarkerDialog = $state(false);
+	let showEditMarkerDialog = $state(false);
+	let showMarkerDetailsDialog = $state(false);
+	let createMarkerCoords = $state<TileCoords | null>(null);
+	let selectedMarker = $state<MapMarkerResponse | null>(null);
+
+	// Marker hover tooltip state
+	let hoveredMarker = $state<MapMarkerResponse | null>(null);
+	let tooltipPosition = $state({ x: 0, y: 0 });
 
 	let visiblePathSessions = new SvelteSet<number>(
 		localState.activeSession ? [localState.activeSession.id] : []
@@ -89,7 +104,14 @@
 
 	// Keyboard capture - disabled when any dialog or sidebar is open
 	let shouldCaptureKeyboard = $derived(
-		!leftSidebarOpen && !rightSidebarOpen && !showDialog && !showTimeCostDialog && !contextMenuOpen
+		!leftSidebarOpen &&
+			!rightSidebarOpen &&
+			!showDialog &&
+			!showTimeCostDialog &&
+			!showCreateMarkerDialog &&
+			!showEditMarkerDialog &&
+			!showMarkerDetailsDialog &&
+			!contextMenuOpen
 	);
 
 	let shiftHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Shift'));
@@ -525,6 +547,26 @@
 		showDialog = true;
 	}
 
+	function confirmDeleteMarker() {
+		dialogConfig = {
+			title: 'Delete Token?',
+			description: `Are you sure you want to delete this token? It can not be undone.`,
+			actions: [
+				{
+					label: 'Cancel',
+					variant: 'outline',
+					action: () => {}
+				},
+				{
+					label: 'Delete',
+					variant: 'destructive',
+					action: () => handleDeleteMarker()
+				}
+			]
+		};
+		showDialog = true;
+	}
+
 	// Exploration functions
 	async function handleStartSession() {
 		if (effectiveRole === 'dm' && 'startSession' in remoteState) {
@@ -674,12 +716,142 @@
 
 	// Right-click handler
 	function handleRightClick(event: RightClickEvent) {
-		if (effectiveRole !== 'dm') return; // Only DM can use context menus
+		// Allow both DM and players for marker creation and marker context menu
+		// Only DM can use other context menus (teleport, etc.)
+		if (effectiveRole !== 'dm' && event.type !== 'tile' && event.type !== 'marker') return;
+
+		// If menu is already open, close it first to restore pointer events
+		// Then reopen at new position on next tick
+		const wasOpen = contextMenuOpen;
+		if (wasOpen) {
+			contextMenuOpen = false;
+		}
 
 		contextMenuPosition = { x: event.screenX, y: event.screenY };
 		contextMenuType = event.type;
-		// contextMenuData = event.data;
-		contextMenuOpen = true;
+
+		// Store coords for marker creation or find marker for editing
+		if (event.coords) {
+			createMarkerCoords = event.coords;
+
+			// If right-clicking on a marker, find it
+			if (event.type === 'marker' && 'mapMarkers' in localState.campaign) {
+				const marker = localState.campaign.mapMarkers.find(
+					(m) => m.x === event.coords!.x && m.y === event.coords!.y
+				);
+				if (marker) {
+					selectedMarker = marker;
+				}
+			}
+		}
+
+		// Open menu on next tick to ensure state updates properly
+		if (wasOpen) {
+			setTimeout(() => {
+				contextMenuOpen = true;
+			}, 0);
+		} else {
+			contextMenuOpen = true;
+		}
+	}
+
+	// Marker creation
+	function openCreateMarkerDialog() {
+		if (createMarkerCoords) {
+			showCreateMarkerDialog = true;
+			contextMenuOpen = false;
+		}
+	}
+
+	async function handleCreateMarker(data: {
+		type: MarkerType;
+		title: string;
+		content?: string;
+		visibleToPlayers: boolean;
+	}) {
+		if (!createMarkerCoords) return;
+		if (!('createMarker' in remoteState)) return;
+
+		try {
+			await remoteState.createMarker({
+				x: createMarkerCoords.x,
+				y: createMarkerCoords.y,
+				type: data.type,
+				title: data.title,
+				content: data.content || null,
+				authorRole: effectiveRole,
+				visibleToPlayers: data.visibleToPlayers,
+				imagePath: null
+			});
+
+			toast.success(`Marker "${data.title}" created`);
+		} catch (error) {
+			console.error('Failed to create marker:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Failed to create marker';
+			toast.error(errorMessage);
+		}
+	}
+
+	function handleCancelCreateMarker() {
+		showCreateMarkerDialog = false;
+		createMarkerCoords = null;
+	}
+
+	// Marker interaction handlers
+	function handleMarkerHover(marker: MapMarkerResponse | null, screenX: number, screenY: number) {
+		hoveredMarker = marker;
+		if (marker) {
+			tooltipPosition = { x: screenX + 10, y: screenY + 10 };
+		}
+	}
+
+	function handleMarkerClick(marker: MapMarkerResponse) {
+		// Party markers don't have a details dialog - only hover tooltip and context menu
+		if (marker.type === 'party') return;
+
+		selectedMarker = marker;
+		showMarkerDetailsDialog = true;
+	}
+
+	function handleEditMarker() {
+		if (selectedMarker) {
+			showMarkerDetailsDialog = false;
+			showEditMarkerDialog = true;
+		}
+	}
+
+	async function handleUpdateMarker(data: {
+		type: MarkerType;
+		title: string;
+		content?: string;
+		visibleToPlayers: boolean;
+	}) {
+		if (!selectedMarker || !('updateMarker' in remoteState)) return;
+
+		try {
+			await remoteState.updateMarker(selectedMarker.id, data);
+			toast.success('Marker updated');
+			showEditMarkerDialog = false;
+		} catch (error) {
+			console.error('Failed to update marker:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Failed to update marker';
+			toast.error(errorMessage);
+		}
+	}
+
+	async function handleDeleteMarker() {
+		if (!selectedMarker || !('deleteMarker' in remoteState)) return;
+
+		try {
+			await remoteState.deleteMarker(selectedMarker.id);
+			toast.success('Marker deleted');
+			showMarkerDetailsDialog = false;
+			selectedMarker = null;
+		} catch (error) {
+			console.error('Failed to delete marker:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Failed to delete marker';
+			toast.error(errorMessage);
+		}
 	}
 
 	// Teleport functions
@@ -761,6 +933,30 @@
 		return () => {
 			document.removeEventListener('keydown', handleKeyDown);
 		};
+	});
+
+	// Remove pointer-events blocking from body when context menu is open
+	$effect(() => {
+		if (contextMenuOpen) {
+			// Use MutationObserver to continuously override pointer-events: none
+			const observer = new MutationObserver(() => {
+				if (document.body.style.pointerEvents === 'none') {
+					document.body.style.pointerEvents = 'auto';
+				}
+			});
+
+			observer.observe(document.body, {
+				attributes: true,
+				attributeFilter: ['style']
+			});
+
+			// Initial override
+			document.body.style.pointerEvents = 'auto';
+
+			return () => {
+				observer.disconnect();
+			};
+		}
 	});
 
 	$effect(() => {
@@ -865,6 +1061,8 @@
 							showCoords={effectiveRole === 'dm' ? 'always' : 'hover'}
 							onHexTriggered={handleTileTrigger}
 							onRightClick={handleRightClick}
+							onMarkerHover={handleMarkerHover}
+							onMarkerClick={handleMarkerClick}
 							{hasPoI}
 							{hasNotes}
 							{activeTool}
@@ -982,13 +1180,58 @@
 
 	<!-- Context Menu -->
 	<div
-		style="position: fixed; left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px; pointer-events: none; z-index: 9999;"
+		style="position: fixed; left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px;  z-index: 9999;"
+		bind:this={contextMenuAnchor}
 	>
 		<DropdownMenu.Root bind:open={contextMenuOpen}>
-			<DropdownMenu.Trigger style="pointer-events: auto;" />
-			<DropdownMenu.Content style="pointer-events: auto;">
+			<DropdownMenu.Content
+				onEscapeKeydown={() => (contextMenuOpen = false)}
+				onInteractOutside={() => (contextMenuOpen = false)}
+				customAnchor={contextMenuAnchor}
+			>
+				{#if createMarkerCoords}
+					{@const tileXString = createMarkerCoords.x.toString().padStart(2, '0')}
+					{@const tileYString = createMarkerCoords.y.toString().padStart(2, '0')}
+					<DropdownMenu.Label>
+						Tile {tileXString}{tileYString}
+					</DropdownMenu.Label>
+					<DropdownMenu.Separator />
+				{/if}
+
 				{#if contextMenuType === 'token'}
-					<DropdownMenu.Item onclick={startTeleport}>Teleport Party</DropdownMenu.Item>
+					<DropdownMenu.Item class="cursor-pointer" onclick={startTeleport}
+						>Teleport Party</DropdownMenu.Item
+					>
+				{:else if contextMenuType === 'tile'}
+					<DropdownMenu.Item class="cursor-pointer" onclick={openCreateMarkerDialog}
+						>Create Marker</DropdownMenu.Item
+					>
+				{:else if contextMenuType === 'marker' && selectedMarker}
+					{#if selectedMarker.type === 'party'}
+						<!-- Party markers get teleport option instead of edit/delete -->
+						<DropdownMenu.Item class="cursor-pointer" onclick={startTeleport}
+							>Teleport Party</DropdownMenu.Item
+						>
+					{:else}
+						<DropdownMenu.Item
+							class="cursor-pointer"
+							onclick={() => {
+								contextMenuOpen = false;
+								handleEditMarker();
+							}}
+						>
+							Edit Marker
+						</DropdownMenu.Item>
+						<DropdownMenu.Item
+							class="cursor-pointer"
+							onclick={() => {
+								contextMenuOpen = false;
+								confirmDeleteMarker();
+							}}
+						>
+							Delete Marker
+						</DropdownMenu.Item>
+					{/if}
 				{/if}
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
@@ -1006,4 +1249,57 @@
 			cancelTeleport();
 		}}
 	/>
+
+	<!-- Create Marker Dialog -->
+	<CreateMarkerDialog
+		bind:open={showCreateMarkerDialog}
+		coords={createMarkerCoords}
+		isDM={userRole === 'dm'}
+		onConfirm={handleCreateMarker}
+		onCancel={handleCancelCreateMarker}
+	/>
+
+	<!-- Edit Marker Dialog -->
+	<CreateMarkerDialog
+		bind:open={showEditMarkerDialog}
+		coords={selectedMarker ? { x: selectedMarker.x, y: selectedMarker.y } : null}
+		editingMarker={selectedMarker}
+		isDM={userRole === 'dm'}
+		onConfirm={handleUpdateMarker}
+		onCancel={() => (showEditMarkerDialog = false)}
+	/>
+
+	<!-- Marker Details Dialog -->
+	<MarkerDetailsDialog
+		bind:open={showMarkerDetailsDialog}
+		marker={selectedMarker}
+		userRole={effectiveRole}
+		canEdit={effectiveRole === 'dm' ||
+			(!!selectedMarker && selectedMarker.authorRole === effectiveRole)}
+		onEdit={handleEditMarker}
+		onDelete={confirmDeleteMarker}
+		onClose={() => {
+			showMarkerDetailsDialog = false;
+			selectedMarker = null;
+		}}
+	/>
+
+	<!-- Marker Hover Tooltip -->
+	{#if hoveredMarker}
+		<div
+			style="position: fixed; left: {tooltipPosition.x}px; top: {tooltipPosition.y}px; pointer-events: none; z-index: 9998;"
+			class="py-2 px-3 text-sm rounded-md border shadow-md animate-in bg-popover text-popover-foreground fade-in-0 zoom-in-95"
+		>
+			<div class="font-medium">{hoveredMarker.title}</div>
+			{#if hoveredMarker.type !== 'party'}
+				<div class="mt-0.5 text-xs text-muted-foreground">
+					{hoveredMarker.type.charAt(0).toUpperCase() + hoveredMarker.type.slice(1)}
+					{#if effectiveRole === 'dm' && !hoveredMarker.visibleToPlayers}
+						<span class="ml-1">(Hidden)</span>
+					{/if}
+				</div>
+				<div class="mt-1 text-xs text-muted-foreground/70">Click for details</div>
+			{/if}
+		</div>
+	{/if}
 </Tooltip.Provider>

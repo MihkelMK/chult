@@ -96,7 +96,7 @@ export const navigationPaths = pgTable('navigation_paths', {
 	pathGroup: integer('path_group').notNull().default(1)
 });
 
-// Points of Interest - DM-created POIs on tiles
+// Map Markers - POI tokens on tiles
 export const mapMarkers = pgTable(
 	'map_markers',
 	{
@@ -106,16 +106,19 @@ export const mapMarkers = pgTable(
 			.references(() => campaigns.id, { onDelete: 'cascade' }),
 		x: integer('x').notNull(),
 		y: integer('y').notNull(),
-		type: text('type', { enum: ['poi', 'note'] }).notNull(),
-		title: text('title'), // Required for POIs, optional for notes
-		content: text('content'), // Description for POIs, body for notes
-		imagePath: text('image_path'),
+		type: text('type').notNull(), // settlement, dungeon, ruins, rest, landmark, danger, warning, generic, custom
+		title: text('title').notNull(), // Name (required)
+		content: text('content'), // Description (optional)
+		imagePath: text('image_path'), // For custom type icons
 		authorRole: text('author_role', { enum: ['dm', 'player'] }).notNull(),
 		visibleToPlayers: boolean('visible_to_players').notNull().default(false),
 		createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 	},
-	(table) => [index('map_markers_campaign_id_idx').on(table.campaignId)]
+	(table) => [
+		index('map_markers_campaign_id_idx').on(table.campaignId),
+		index('map_markers_campaign_id_x_y_unique_idx').on(table.campaignId, table.x, table.y)
+	]
 );
 
 // Uploaded images - tracking all uploaded files for management

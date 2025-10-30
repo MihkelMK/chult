@@ -29,8 +29,8 @@ export class LocalState extends EventEmitter {
 	public revealedTilesSet = new SvelteSet<string>();
 	public alwaysRevealedTilesSet = new SvelteSet<string>();
 
-	// Protected markers map for O(1) lookups (shared between DM and Player)
-	protected markersMap = new SvelteMap<number, MapMarkerResponse>();
+	// Markers map for O(1) lookups (shared between DM and Player)
+	public markersMap = new SvelteMap<number, MapMarkerResponse>();
 
 	// Exploration state (NEW)
 	public globalGameTime = $state(0); // Days as float
@@ -76,6 +76,7 @@ export class LocalState extends EventEmitter {
 
 	// Version counter to force reactivity when Sets change
 	public tilesVersion = $state(0);
+	public markersVersion = $state(0);
 
 	constructor(
 		initialData: CampaignDataResponse | PlayerCampaignDataResponse,
@@ -330,6 +331,7 @@ export class LocalState extends EventEmitter {
 				} as MapMarkerResponse;
 				this.markersMap.set(marker.id, newMarker);
 				this.campaign.mapMarkers.push(newMarker);
+				this.markersVersion++;
 			}
 		}
 	}
@@ -349,6 +351,7 @@ export class LocalState extends EventEmitter {
 					} as MapMarkerResponse;
 					this.markersMap.set(marker.id, updatedMarker);
 					this.campaign.mapMarkers[index] = updatedMarker;
+					this.markersVersion++;
 				}
 			}
 		}
@@ -362,6 +365,7 @@ export class LocalState extends EventEmitter {
 				this.campaign.mapMarkers = this.campaign.mapMarkers.filter(
 					(m: MapMarkerResponse) => m.id !== id
 				);
+				this.markersVersion++;
 			}
 		}
 	}
