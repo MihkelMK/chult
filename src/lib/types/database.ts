@@ -1,13 +1,18 @@
-import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import {
 	campaigns,
-	revealedTiles,
+	gameSessions,
 	mapMarkers,
 	navigationPaths,
-	uploadedImages,
-	gameSessions
+	paths,
+	revealedTiles,
+	timeAuditLog,
+	uploadedImages
 } from '$lib/server/db/schema';
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type { MapUrlsResponse } from './imgproxy';
+
+// Export PathStep types from schema
+export type { DMPath, DMTeleport, PathStep, PlayerMove } from '$lib/server/db/schema';
 
 // Full model types
 export type Campaign = InferSelectModel<typeof campaigns>;
@@ -16,6 +21,8 @@ export type MapMarker = InferSelectModel<typeof mapMarkers>;
 export type GameSession = InferSelectModel<typeof gameSessions>;
 export type NavigationPath = InferSelectModel<typeof navigationPaths>;
 export type UploadedImage = InferSelectModel<typeof uploadedImages>;
+export type Path = InferSelectModel<typeof paths>;
+export type TimeAuditLog = InferSelectModel<typeof timeAuditLog>;
 
 // Insert types
 export type NewCampaign = InferInsertModel<typeof campaigns>;
@@ -24,6 +31,8 @@ export type NewMapMarker = InferInsertModel<typeof mapMarkers>;
 export type NewGameSession = InferInsertModel<typeof gameSessions>;
 export type NewNavigationPath = InferInsertModel<typeof navigationPaths>;
 export type NewUploadedImage = InferInsertModel<typeof uploadedImages>;
+export type NewPath = InferInsertModel<typeof paths>;
+export type NewTimeAuditLog = InferInsertModel<typeof timeAuditLog>;
 
 // Response types that match your actual queries
 export type CampaignSummary = Pick<
@@ -38,6 +47,10 @@ export type CampaignSummary = Pick<
 	| 'hexOffsetY'
 	| 'imageHeight'
 	| 'imageWidth'
+	| 'hasPlayerMap'
+	| 'globalGameTime'
+	| 'partyTokenX'
+	| 'partyTokenY'
 >;
 
 export type RevealedTileResponse = Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed' | 'revealedAt'>;
@@ -59,14 +72,33 @@ export type MapMarkerResponse = Pick<
 
 export type GameSessionResponse = Pick<
 	GameSession,
-	'id' | 'name' | 'startTime' | 'endTime' | 'createdAt'
+	| 'id'
+	| 'sessionNumber'
+	| 'name'
+	| 'startGameTime'
+	| 'endGameTime'
+	| 'startedAt'
+	| 'endedAt'
+	| 'duration'
+	| 'isActive'
+	| 'lastActivityAt'
+	| 'createdAt'
 >;
+
+export type PathResponse = Pick<Path, 'id' | 'gameSessionId' | 'steps' | 'revealedTiles'>;
+
+export type TimeAuditLogResponse = Pick<
+	TimeAuditLog,
+	'id' | 'timestamp' | 'type' | 'amount' | 'actorRole' | 'notes'
+>;
+
+export type UserRole = 'dm' | 'player';
 
 // Session data type
 export type SessionData = {
 	campaignId: number;
 	campaignSlug: string;
-	role: 'dm' | 'player';
+	role: UserRole;
 	expiresAt: number;
 };
 
@@ -76,6 +108,8 @@ export type CampaignDataResponse = {
 	revealedTiles: RevealedTileResponse[];
 	mapMarkers: MapMarkerResponse[];
 	gameSessions: GameSessionResponse[];
+	paths: PathResponse[];
+	timeAuditLog?: TimeAuditLogResponse[]; // DM only
 };
 
 // Player version
@@ -91,11 +125,17 @@ export interface PlayerCampaignDataResponse {
 		| 'hexOffsetY'
 		| 'imageHeight'
 		| 'imageWidth'
+		| 'globalGameTime'
+		| 'partyTokenX'
+		| 'partyTokenY'
+		| 'hasPlayerMap'
 	>;
 	revealedTiles: Pick<RevealedTile, 'x' | 'y' | 'alwaysRevealed'>[];
 	mapMarkers: MapMarkerResponse[];
-	gameSessions: never[]; // Players don't get game sessions
+	gameSessions: GameSessionResponse[];
+	paths: PathResponse[];
 	mapUrls: MapUrlsResponse | undefined;
+	hasPlayerMapFile: boolean;
 }
 
 export interface CampaignTokenResponse {

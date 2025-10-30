@@ -1,19 +1,23 @@
-import { db } from './db';
 import {
 	campaigns,
-	revealedTiles,
+	gameSessions as gameSessionsSchema,
 	mapMarkers,
-	gameSessions as gameSessionsSchema
+	paths,
+	revealedTiles,
+	timeAuditLog
 } from '$lib/server/db/schema';
-import { and, desc, eq, sql } from 'drizzle-orm';
 import type {
 	Campaign,
 	CampaignDataResponse,
-	CampaignTokenResponse,
 	CampaignStatsResponse,
-	PlayerCampaignDataResponse
+	CampaignTokenResponse,
+	PlayerCampaignDataResponse,
+	UserRole
 } from '$lib/types';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { db } from './db';
 import { getMapUrls } from './imgproxy';
+import { hasMapImage } from './uploads';
 
 function generateSlug(name: string): string {
 	return name
@@ -133,7 +137,14 @@ export async function getCampaignData(
 	const campaign = await getCampaignById(campaignId);
 	if (!campaign) return null;
 
-	const mapUrlsPromise = getMapUrls(campaign.slug);
+	// Get appropriate map based on role and hasPlayerMap setting
+	const mapType: UserRole = isPlayerView && campaign.hasPlayerMap ? 'player' : 'dm';
+	const mapUrlsPromise = getMapUrls(campaign.slug, mapType);
+
+	// For DM view, also check if player map file exists
+	const hasPlayerMapFilePromise = isPlayerView
+		? Promise.resolve(false)
+		: hasMapImage(campaign.slug, 'player');
 
 	// Get revealed tiles
 	const revealedPromise = db
@@ -160,28 +171,65 @@ export async function getCampaignData(
 				.where(eq(mapMarkers.campaignId, campaignId))
 				.orderBy(mapMarkers.createdAt);
 
-	// Get recent game sessions (DM only)
-	const gameSessionsPromise = isPlayerView
-		? Promise.resolve([])
+	// Get exploration game sessions - limit to 50 most recent
+	const gameSessionsPromise = db
+		.select({
+			id: gameSessionsSchema.id,
+			sessionNumber: gameSessionsSchema.sessionNumber,
+			name: gameSessionsSchema.name,
+			startGameTime: gameSessionsSchema.startGameTime,
+			endGameTime: gameSessionsSchema.endGameTime,
+			startedAt: gameSessionsSchema.startedAt,
+			endedAt: gameSessionsSchema.endedAt,
+			duration: gameSessionsSchema.duration,
+			isActive: gameSessionsSchema.isActive,
+			lastActivityAt: gameSessionsSchema.lastActivityAt,
+			createdAt: gameSessionsSchema.createdAt
+		})
+		.from(gameSessionsSchema)
+		.where(eq(gameSessionsSchema.campaignId, campaignId))
+		.orderBy(desc(gameSessionsSchema.sessionNumber))
+		.limit(50);
+
+	// Get paths for game sessions (NEW)
+	const pathsPromise = db
+		.select({
+			id: paths.id,
+			gameSessionId: paths.gameSessionId,
+			steps: paths.steps,
+			revealedTiles: paths.revealedTiles
+		})
+		.from(paths)
+		.innerJoin(gameSessionsSchema, eq(paths.gameSessionId, gameSessionsSchema.id))
+		.where(eq(gameSessionsSchema.campaignId, campaignId));
+
+	// Get time audit log (DM only, NEW)
+	const timeAuditLogPromise = isPlayerView
+		? Promise.resolve(undefined)
 		: db
 				.select({
-					id: gameSessionsSchema.id,
-					name: gameSessionsSchema.name,
-					startTime: gameSessionsSchema.startTime,
-					endTime: gameSessionsSchema.endTime,
-					createdAt: gameSessionsSchema.createdAt
+					id: timeAuditLog.id,
+					timestamp: timeAuditLog.timestamp,
+					type: timeAuditLog.type,
+					amount: timeAuditLog.amount,
+					actorRole: timeAuditLog.actorRole,
+					notes: timeAuditLog.notes
 				})
-				.from(gameSessionsSchema)
-				.where(eq(gameSessionsSchema.campaignId, campaignId))
-				.orderBy(desc(gameSessionsSchema.startTime))
-				.limit(10);
+				.from(timeAuditLog)
+				.where(eq(timeAuditLog.campaignId, campaignId))
+				.orderBy(desc(timeAuditLog.timestamp))
+				.limit(100);
 
-	const [mapUrls, revealed, markers, gameSessions] = await Promise.all([
-		mapUrlsPromise,
-		revealedPromise,
-		markersPromise,
-		gameSessionsPromise
-	]);
+	const [mapUrls, hasPlayerMapFile, revealed, markers, gameSessions, explorationPaths, auditLog] =
+		await Promise.all([
+			mapUrlsPromise,
+			hasPlayerMapFilePromise,
+			revealedPromise,
+			markersPromise,
+			gameSessionsPromise,
+			pathsPromise,
+			timeAuditLogPromise
+		]);
 
 	return {
 		campaign: {
@@ -189,17 +237,24 @@ export async function getCampaignData(
 			name: campaign.name,
 			slug: campaign.slug,
 			createdAt: campaign.createdAt,
+			hasPlayerMap: campaign.hasPlayerMap,
 			hexOffsetX: campaign.hexOffsetX,
 			hexOffsetY: campaign.hexOffsetY,
 			hexesPerCol: campaign.hexesPerCol,
 			hexesPerRow: campaign.hexesPerRow,
 			imageHeight: campaign.imageHeight,
-			imageWidth: campaign.imageWidth
+			imageWidth: campaign.imageWidth,
+			globalGameTime: campaign.globalGameTime,
+			partyTokenX: campaign.partyTokenX,
+			partyTokenY: campaign.partyTokenY
 		},
 		revealedTiles: revealed,
 		mapMarkers: markers,
 		gameSessions: gameSessions,
-		mapUrls: mapUrls
+		paths: explorationPaths,
+		timeAuditLog: auditLog,
+		mapUrls: mapUrls,
+		hasPlayerMapFile: hasPlayerMapFile
 	};
 }
 

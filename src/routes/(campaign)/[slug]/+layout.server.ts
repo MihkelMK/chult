@@ -1,7 +1,7 @@
-import type { LayoutServerLoad } from './$types';
-import { error, redirect } from '@sveltejs/kit';
 import { getCampaignData } from '$lib/server/campaign';
 import type { PlayerCampaignDataResponse } from '$lib/types/database';
+import { error, redirect } from '@sveltejs/kit';
+import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, params, depends }) => {
 	if (!locals.session) {
@@ -9,14 +9,17 @@ export const load: LayoutServerLoad = async ({ locals, params, depends }) => {
 	}
 
 	if (locals.session.campaignSlug !== params.slug) {
-		throw error(403, 'Access denied');
+		throw redirect(302, `/${locals.session.campaignSlug}`);
 	}
 
 	depends('campaign:data');
 
+	// Determine effective role: viewAs takes precedence over role
+	const effectiveRole = locals.session.viewAs || locals.session.role;
+	const isPlayerView = effectiveRole === 'player';
 	const campaignData = (await getCampaignData(
 		locals.session.campaignId,
-		true
+		isPlayerView
 	)) as PlayerCampaignDataResponse;
 
 	if (!campaignData) {

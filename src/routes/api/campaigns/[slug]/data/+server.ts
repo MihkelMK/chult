@@ -1,8 +1,8 @@
-import type { RequestHandler } from './$types';
-import { json, error } from '@sveltejs/kit';
 import { getCampaignData } from '$lib/server/campaign';
 import { requireAuth } from '$lib/server/session';
 import type { CampaignDataResponse } from '$lib/types';
+import { error, json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
 	const session = requireAuth(event);

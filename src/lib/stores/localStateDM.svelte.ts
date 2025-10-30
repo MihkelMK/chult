@@ -1,7 +1,14 @@
-import { LocalState } from './localState.svelte';
-import type { CampaignDataResponse, MapMarkerResponse, RevealedTileResponse } from '$lib/types';
-import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
+import type {
+	CampaignDataResponse,
+	GameSessionResponse,
+	MapMarkerResponse,
+	PathStep,
+	RevealedTileResponse,
+	TimeAuditLogResponse
+} from '$lib/types';
 import { untrack } from 'svelte';
+import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
+import { LocalState } from './localState.svelte';
 
 export class LocalStateDM extends LocalState {
 	// Public reactive Sets - UI source of truth
@@ -15,22 +22,56 @@ export class LocalStateDM extends LocalState {
 		this.initializeRevealedTileSets(initialData.revealedTiles);
 		this.initializeMarkersMap(initialData.mapMarkers);
 
+		// Initialize time audit log (DM only)
+		this.timeAuditLog = initialData.timeAuditLog || [];
+
 		// Event listeners for synchronization
-		this.addEventListener('tiles-revealed-batch', (tiles) =>
+		this.addEventListener('tiles:revealed:batch', (tiles) =>
 			this.handleTilesRevealedBatch(tiles as RevealedTileResponse[])
 		);
-		this.addEventListener('tile-hidden', (tile) =>
+		this.addEventListener('tile:hidden', (tile) =>
 			super.handleTileHidden(tile as Pick<RevealedTileResponse, 'x' | 'y'>)
 		);
-		this.addEventListener('marker-created', (marker) =>
+		this.addEventListener('marker:created', (marker) =>
 			super.handleMarkerCreated(marker as MapMarkerResponse)
 		);
-		this.addEventListener('marker-updated', (marker) =>
+		this.addEventListener('marker:updated', (marker) =>
 			super.handleMarkerUpdated(marker as MapMarkerResponse)
 		);
-		this.addEventListener('marker-deleted', (data) =>
+		this.addEventListener('marker:deleted', (data) =>
 			super.handleMarkerDeleted((data as { id: number }).id)
 		);
+
+		// Exploration event listeners (NEW)
+		this.addEventListener('movement:step-added', (data) =>
+			super.handleMovementStepAdded(data as { sessionId: number; step: PathStep; tiles: string[] })
+		);
+		this.addEventListener('time:updated', (data) =>
+			this.handleTimeUpdated(data as { globalGameTime: number; auditEntry?: TimeAuditLogResponse })
+		);
+		this.addEventListener('session:started', (session) =>
+			super.handleSessionStarted(session as GameSessionResponse)
+		);
+		this.addEventListener('session:ended', (session) =>
+			super.handleSessionEnded(session as GameSessionResponse)
+		);
+		this.addEventListener('session:deleted', (data) =>
+			super.handleSessionDeleted(data as { id: number })
+		);
+	}
+
+	// Override handleTimeUpdated to also handle audit log entries (DM only)
+	protected handleTimeUpdated(data: { globalGameTime: number; auditEntry?: TimeAuditLogResponse }) {
+		this.globalGameTime = data.globalGameTime;
+
+		// Add audit log entry (avoiding duplicates from API response)
+		if (data.auditEntry) {
+			const exists = this.timeAuditLog.some((entry) => entry.id === data.auditEntry!.id);
+
+			if (!exists) {
+				this.timeAuditLog = [data.auditEntry, ...this.timeAuditLog];
+			}
+		}
 	}
 
 	// Local state update methods (no API calls - used by remoteState and SSE)
@@ -149,39 +190,7 @@ export class LocalStateDM extends LocalState {
 		}
 	}
 
-	async createMarker(marker: Omit<MapMarkerResponse, 'id' | 'createdAt' | 'updatedAt'>) {
-		const tempId = -Math.floor(Math.random() * 1000000) - 1; // Unique temporary ID for the optimistic update
-		const newMarker: MapMarkerResponse = {
-			...marker,
-			id: tempId,
-			createdAt: new SvelteDate(),
-			updatedAt: new SvelteDate(),
-			authorRole: 'dm'
-		};
-
-		// Optimistic update
-		(this.campaign as CampaignDataResponse).mapMarkers.push(newMarker);
-
-		try {
-			const { id } = await this.makeApiRequest<{ id: number }>('map-markers', 'POST', marker);
-			// Reconcile with the actual ID from the server
-			const createdMarker = (this.campaign as CampaignDataResponse).mapMarkers.find(
-				(m) => m.id === tempId
-			);
-			if (createdMarker) {
-				createdMarker.id = id;
-			}
-		} catch (error) {
-			// Rollback
-			(this.campaign as CampaignDataResponse).mapMarkers = (
-				this.campaign as CampaignDataResponse
-			).mapMarkers.filter((m) => m.id !== tempId);
-			console.error('Failed to create marker:', error);
-		}
-	}
-
 	// Event handlers for synchronization
-
 	private handleTilesRevealedBatch(tiles: RevealedTileResponse[]) {
 		// Filter out already-revealed tiles to avoid unnecessary work
 		const regularTiles: { x: number; y: number }[] = [];

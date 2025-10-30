@@ -14,6 +14,7 @@ export type ImageVariant = keyof ImageVariants;
 
 export interface MapUrlsResponse {
 	variants: ImageVariants;
+	hash: string; // Content hash for cache busting
 }
 
 export interface ImageOptions {

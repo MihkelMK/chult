@@ -1,5 +1,6 @@
-import type { TileCoords } from '$lib/types';
-import { SvelteSet } from 'svelte/reactivity';
+import type { TileCoords, UserRole } from '$lib/types';
+import type { MapMarkerResponse } from '$lib/types/database';
+import { SvelteDate, SvelteSet } from 'svelte/reactivity';
 import type { LocalStateDM } from './localStateDM.svelte';
 
 interface PendingOperation {
@@ -35,14 +36,14 @@ export class RemoteStateDM {
 
 		// Connect to local state events if available
 		if (localState) {
-			localState.addEventListener('tile-revealed', (tile: TileCoords | RevealedTile) => {
+			localState.addEventListener('tile:revealed', (tile: TileCoords | RevealedTile) => {
 				// Remove from pending if this was from our optimistic update
 				this.pending = this.pending.filter(
 					(op) => !(op.coords.x === tile.x && op.coords.y === tile.y && op.type === 'reveal')
 				);
 			});
 
-			localState.addEventListener('tile-hidden', (tile: Pick<TileCoords, 'x' | 'y'>) => {
+			localState.addEventListener('tile:hidden', (tile: Pick<TileCoords, 'x' | 'y'>) => {
 				// Remove any pending operations for this tile since it's now definitively hidden
 				this.pending = this.pending.filter(
 					(op) => !(op.coords.x === tile.x && op.coords.y === tile.y)
@@ -321,6 +322,358 @@ export class RemoteStateDM {
 		}
 
 		this.scheduleBatch();
+	}
+
+	// Exploration methods (NEW)
+	async startSession() {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/sessions/start`, {
+				method: 'POST'
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to start session');
+			}
+
+			const session = await response.json();
+
+			// SSE will handle the state update
+			return session;
+		} catch (error) {
+			console.error('[remoteStateDM] Failed to start session:', error);
+			throw error;
+		}
+	}
+
+	async endSession() {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		const activeSession = this.localState.activeSession;
+		if (!activeSession) {
+			throw new Error('No active session');
+		}
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/sessions/end`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' }
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to end session');
+			}
+
+			const session = await response.json();
+
+			// SSE will handle the state update
+			return session;
+		} catch (error) {
+			console.error('[remoteStateDM] Failed to end session:', error);
+			throw error;
+		}
+	}
+
+	async deleteSession(sessionId: number) {
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/sessions/${sessionId}`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' }
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to delete session');
+			}
+
+			const session = await response.json();
+
+			// SSE will handle the state update
+			return session;
+		} catch (error) {
+			console.error('[remoteStateDM] Failed to delete session:', error);
+			throw error;
+		}
+	}
+
+	async addDMTeleport(from: TileCoords, to: TileCoords, timeCost: number) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		const activeSession = this.localState.activeSession;
+		if (!activeSession) {
+			throw new Error('No active session');
+		}
+
+		// Optimistic update - update party position immediately
+		const originalPosition = this.localState.partyTokenPosition;
+		this.localState.partyTokenPosition = to;
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/movement/dm/teleport`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ from, to, timeCost })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to teleport');
+			}
+
+			const result = await response.json();
+
+			// SSE will handle the complete state update
+			return result;
+		} catch (error) {
+			// Rollback optimistic update on failure
+			this.localState.partyTokenPosition = originalPosition;
+			console.error('[remoteStateDM] Failed to teleport:', error);
+			throw error;
+		}
+	}
+
+	async adjustGlobalTime(delta: number, notes: string = '') {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		// Optimistic update - update global game time immediately
+		const originalGameTime = this.localState.globalGameTime;
+		this.localState.globalGameTime += delta;
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/time/adjust`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ delta, notes })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to adjust time');
+			}
+
+			const result = await response.json();
+
+			// Add the audit entry immediately from API response (SSE will be deduplicated)
+			const exists = this.localState.timeAuditLog.some(
+				(entry) => entry.id === result.auditEntry.id
+			);
+			if (!exists) {
+				this.localState.timeAuditLog = [result.auditEntry, ...this.localState.timeAuditLog];
+			}
+
+			return result;
+		} catch (error) {
+			// Rollback optimistic update on failure
+			this.localState.globalGameTime = originalGameTime;
+			console.error('[remoteStateDM] Failed to adjust time:', error);
+			throw error;
+		}
+	}
+
+	async createMarker(data: {
+		x: number;
+		y: number;
+		type: string;
+		title: string;
+		content: string | null;
+		authorRole: UserRole;
+		visibleToPlayers: boolean;
+		imagePath: string | null;
+	}) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		// Create temporary marker for optimistic update
+		const tempId = -Math.floor(Math.random() * 1000000) - 1;
+		const tempMarker: MapMarkerResponse = {
+			...data,
+			id: tempId,
+			createdAt: new SvelteDate(),
+			updatedAt: new SvelteDate()
+		};
+
+		// Optimistic update
+		if ('mapMarkers' in this.localState.campaign) {
+			this.localState.campaign.mapMarkers.push(tempMarker);
+			this.localState.markersById.set(tempId, tempMarker);
+			this.localState.markersVersion++;
+		}
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/markers`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to create marker');
+			}
+
+			const result = await response.json();
+
+			// Replace temp marker with real marker from API response (SSE will be deduplicated)
+			if ('mapMarkers' in this.localState.campaign) {
+				// Remove temp marker
+				const tempIndex = this.localState.campaign.mapMarkers.findIndex((m) => m.id === tempId);
+				if (tempIndex !== -1) {
+					this.localState.campaign.mapMarkers.splice(tempIndex, 1);
+				}
+				this.localState.markersById.delete(tempId);
+
+				// Add real marker if it doesn't already exist
+				const exists = this.localState.markersById.has(result.id);
+				if (!exists) {
+					const realMarker: MapMarkerResponse = {
+						...result,
+						createdAt: new SvelteDate(result.createdAt),
+						updatedAt: new SvelteDate(result.updatedAt)
+					};
+					this.localState.campaign.mapMarkers.push(realMarker);
+					this.localState.markersById.set(result.id, realMarker);
+					this.localState.markersVersion++;
+				}
+			}
+
+			return result;
+		} catch (error) {
+			// Rollback on failure
+			if ('mapMarkers' in this.localState.campaign) {
+				this.localState.campaign.mapMarkers = this.localState.campaign.mapMarkers.filter(
+					(m) => m.id !== tempId
+				);
+				this.localState.markersById.delete(tempId);
+				this.localState.markersVersion++;
+			}
+			console.error('[remoteStateDM] Failed to create marker:', error);
+			throw error;
+		}
+	}
+
+	async updateMarker(
+		id: number,
+		data: { title?: string; content?: string | null; visibleToPlayers?: boolean }
+	) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		// Find marker in state
+		if (!('mapMarkers' in this.localState.campaign)) {
+			throw new Error('Map markers not available');
+		}
+
+		const markerIndex = this.localState.campaign.mapMarkers.findIndex((m) => m.id === id);
+		if (markerIndex === -1) {
+			throw new Error('Marker not found');
+		}
+
+		// Save original for rollback
+		const originalMarker = { ...this.localState.campaign.mapMarkers[markerIndex] };
+
+		// Optimistic update
+		const updatedMarker = {
+			...this.localState.campaign.mapMarkers[markerIndex],
+			...data,
+			updatedAt: new SvelteDate()
+		};
+		this.localState.campaign.mapMarkers[markerIndex] = updatedMarker;
+		this.localState.markersById.set(id, updatedMarker);
+		this.localState.markersVersion++;
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/markers/${id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to update marker');
+			}
+
+			const result = await response.json();
+
+			// Update with real data from API response
+			const realMarker: MapMarkerResponse = {
+				...result,
+				createdAt: new SvelteDate(result.createdAt),
+				updatedAt: new SvelteDate(result.updatedAt)
+			};
+			this.localState.campaign.mapMarkers[markerIndex] = realMarker;
+			this.localState.markersById.set(id, realMarker);
+			this.localState.markersVersion++;
+
+			return result;
+		} catch (error) {
+			// Rollback on failure
+			this.localState.campaign.mapMarkers[markerIndex] = originalMarker;
+			this.localState.markersById.set(id, originalMarker);
+			this.localState.markersVersion++;
+
+			console.error('[remoteStateDM] Failed to update marker:', error);
+			throw error;
+		}
+	}
+
+	async deleteMarker(id: number) {
+		if (!this.localState) {
+			throw new Error('Local state not available');
+		}
+
+		if (!('mapMarkers' in this.localState.campaign)) {
+			throw new Error('Map markers not available');
+		}
+
+		// Find marker in state
+		const markerIndex = this.localState.campaign.mapMarkers.findIndex((m) => m.id === id);
+		if (markerIndex === -1) {
+			throw new Error('Marker not found');
+		}
+
+		// Save for rollback
+		const deletedMarker = { ...this.localState.campaign.mapMarkers[markerIndex] };
+
+		// Optimistic delete
+		this.localState.campaign.mapMarkers.splice(markerIndex, 1);
+		this.localState.markersById.delete(id);
+		this.localState.markersVersion++;
+
+		try {
+			const response = await fetch(`/api/campaigns/${this.campaignSlug}/markers/${id}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to delete marker');
+			}
+
+			// SSE will handle confirmation
+			return { success: true };
+		} catch (error) {
+			// Rollback on failure
+			this.localState.campaign.mapMarkers.push(deletedMarker);
+			this.localState.markersById.set(id, deletedMarker);
+			this.localState.markersVersion++;
+
+			console.error('[remoteStateDM] Failed to delete marker:', error);
+			throw error;
+		}
 	}
 
 	flush() {

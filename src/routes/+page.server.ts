@@ -1,6 +1,12 @@
-import type { Actions } from './$types';
+import { createSession, validateCampaignAccess } from '$lib/server/session';
 import { fail, redirect } from '@sveltejs/kit';
-import { validateCampaignAccess, createSession } from '$lib/server/session';
+import type { Actions, PageServerLoad } from './$types';
+
+export const load: PageServerLoad = async ({ locals }) => {
+	if (locals.session && locals.session.campaignSlug) {
+		throw redirect(302, `/${locals.session.campaignSlug}`);
+	}
+};
 
 export const actions: Actions = {
 	access: async (event) => {
