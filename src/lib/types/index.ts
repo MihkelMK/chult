@@ -46,7 +46,7 @@ export interface RightClickEvent {
 	type: RightClickEventType;
 	key?: string; // For tiles
 	coords?: TileCoords; // For anything with position
-	marker?: MapMarkerResponse; // For markers (O(1) lookup from background layer)
+	markers?: { dm?: MapMarkerResponse; player?: MapMarkerResponse }; // For markers (O(1) lookup from background layer)
 	screenX: number; // Screen X position for menu
 	screenY: number; // Screen Y position for menu
 }
@@ -103,6 +103,8 @@ interface MapCanvasSharedProps {
 	showAlwaysRevealed?: boolean;
 	showRevealed?: boolean;
 	showUnrevealed?: boolean;
+	showDMMarkers?: boolean; // DM only: show hidden markers
+	showPlayerMarkers?: boolean; // DM only: show visible markers
 	showCoords: 'never' | 'always' | 'hover';
 	activeTool: UITool;
 	selectedTool: UITool;
@@ -140,8 +142,12 @@ export interface MapCanvasProps extends MapCanvasSharedProps {
 	selectedTiles: readonly Hex[];
 	adjacentTiles: readonly Hex[]; // Valid moves with explore tool
 	partyTokenTile: Hex | null;
-	markerTiles?: ReadonlyArray<{ marker: MapMarkerResponse; tile: Hex }>;
-	markersByTile: SvelteMap<string, MapMarkerResponse>; // For O(1) marker lookup on right-click (key: "x-y")
+	markerTiles?: ReadonlyArray<{
+		dmMarker?: MapMarkerResponse;
+		playerMarker?: MapMarkerResponse;
+		tile: Hex;
+	}>;
+	markersByTile: SvelteMap<string, { dm?: MapMarkerResponse; player?: MapMarkerResponse }>; // For O(1) marker lookup on right-click (key: "x-y")
 	showPaths?: boolean;
 	visiblePathSessions?: Set<number>;
 	sessions: GameSessionResponse[];

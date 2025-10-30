@@ -56,13 +56,25 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		return error(400, 'Invalid imagePath');
 	}
 
-	// Check if marker already exists at this location
+	// Players can only create visible markers
+	const requestedVisibility = visibleToPlayers ?? true;
+	if (userRole === 'player' && !requestedVisibility) {
+		return error(403, 'Players can only create visible markers');
+	}
+
+	// Check if marker with same visibility already exists at this location
 	const existingMarker = await db.query.mapMarkers.findFirst({
-		where: and(eq(mapMarkers.campaignId, campaign.id), eq(mapMarkers.x, x), eq(mapMarkers.y, y))
+		where: and(
+			eq(mapMarkers.campaignId, campaign.id),
+			eq(mapMarkers.x, x),
+			eq(mapMarkers.y, y),
+			eq(mapMarkers.visibleToPlayers, requestedVisibility)
+		)
 	});
 
 	if (existingMarker) {
-		return error(409, 'A marker already exists at this location');
+		const markerType = requestedVisibility ? 'player marker' : 'DM marker';
+		return error(409, `A ${markerType} already exists at this location`);
 	}
 
 	// Create marker
@@ -77,7 +89,7 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 			content: content?.trim() || null,
 			imagePath: imagePath || null,
 			authorRole: userRole,
-			visibleToPlayers: visibleToPlayers ?? true // Default to visible
+			visibleToPlayers: requestedVisibility // Use validated visibility
 		})
 		.returning();
 

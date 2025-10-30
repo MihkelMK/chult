@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
 	boolean,
 	doublePrecision,
@@ -8,7 +8,8 @@ import {
 	pgTable,
 	serial,
 	text,
-	timestamp
+	timestamp,
+	uniqueIndex
 } from 'drizzle-orm/pg-core';
 
 // Campaigns table - main campaign data
@@ -117,7 +118,13 @@ export const mapMarkers = pgTable(
 	},
 	(table) => [
 		index('map_markers_campaign_id_idx').on(table.campaignId),
-		index('map_markers_campaign_id_x_y_unique_idx').on(table.campaignId, table.x, table.y)
+		// Dual unique constraints: one DM marker (hidden) and one player marker (visible) per tile
+		uniqueIndex('map_markers_dm_unique_idx')
+			.on(table.campaignId, table.x, table.y)
+			.where(sql`${table.visibleToPlayers} = false`),
+		uniqueIndex('map_markers_player_unique_idx')
+			.on(table.campaignId, table.x, table.y)
+			.where(sql`${table.visibleToPlayers} = true`)
 	]
 );
 

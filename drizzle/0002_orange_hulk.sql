@@ -1,0 +1,3 @@
+ALTER TABLE "map_markers" ALTER COLUMN "title" SET NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "map_markers_dm_unique_idx" ON "map_markers" USING btree ("campaign_id","x","y") WHERE "map_markers"."visible_to_players" = false;--> statement-breakpoint
+CREATE UNIQUE INDEX "map_markers_player_unique_idx" ON "map_markers" USING btree ("campaign_id","x","y") WHERE "map_markers"."visible_to_players" = true;

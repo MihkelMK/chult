@@ -8,8 +8,7 @@ import type {
 	PlayerCampaignDataResponse,
 	RevealedTile,
 	TileCoords,
-	TimeAuditLogResponse,
-	UserRole
+	TimeAuditLogResponse
 } from '$lib/types';
 import EventEmitter from 'eventemitter3';
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -33,10 +32,18 @@ export class LocalState extends EventEmitter {
 	public markersById = $state(new SvelteMap<number, MapMarkerResponse>()); // Key: marker.id (for SSE handlers)
 
 	// Derived map for O(1) tile-based lookups (automatically synced from markersById)
+	// Supports dual markers per tile: one DM (hidden) and one player (visible)
 	public markersByTile = $derived.by(() => {
-		const byTile = new SvelteMap<string, MapMarkerResponse>();
+		const byTile = new SvelteMap<string, { dm?: MapMarkerResponse; player?: MapMarkerResponse }>();
 		this.markersById.forEach((marker) => {
-			byTile.set(`${marker.x}-${marker.y}`, marker);
+			const key = `${marker.x}-${marker.y}`;
+			const existing = byTile.get(key) || {};
+			if (marker.visibleToPlayers) {
+				existing.player = marker;
+			} else {
+				existing.dm = marker;
+			}
+			byTile.set(key, existing);
 		});
 		return byTile;
 	});
@@ -284,26 +291,6 @@ export class LocalState extends EventEmitter {
 		}
 
 		return response.json() as Promise<T>;
-	}
-
-	// Get markers for a specific tile with role-based filtering
-	getTileMarkers(coords: TileCoords, role: UserRole) {
-		if (!('mapMarkers' in this.campaign)) return [];
-
-		const tileMarkers = this.campaign.mapMarkers.filter(
-			(m) => m.x === coords.x && m.y === coords.y
-		);
-
-		// Role-based filtering
-		if (role === 'dm') {
-			return tileMarkers; // DM sees everything
-		} else {
-			// Players only see markers visible to them
-			return tileMarkers.filter((m) => {
-				// Player markers don't have visibleToPlayers field, they're always visible to players
-				return !('visibleToPlayers' in m) || m.visibleToPlayers;
-			});
-		}
 	}
 
 	// Protected shared initialization methods

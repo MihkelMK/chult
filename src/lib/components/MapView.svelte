@@ -1191,42 +1191,35 @@
 						Tile {tileXString}{tileYString}
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
+					{#if localState?.partyTokenPosition && createMarkerCoords.x === localState.partyTokenPosition.x && createMarkerCoords.y === localState.partyTokenPosition.y}
+						<DropdownMenu.Item class="cursor-pointer" onclick={startTeleport}
+							>Teleport Party</DropdownMenu.Item
+						>
+					{/if}
 				{/if}
-
-				{#if contextMenuType === 'token'}
-					<DropdownMenu.Item class="cursor-pointer" onclick={startTeleport}
-						>Teleport Party</DropdownMenu.Item
-					>
-				{:else if contextMenuType === 'tile'}
+				{#if contextMenuType === 'tile'}
 					<DropdownMenu.Item class="cursor-pointer" onclick={openCreateMarkerDialog}
 						>Create Marker</DropdownMenu.Item
 					>
 				{:else if contextMenuType === 'marker' && selectedMarker}
-					{#if selectedMarker.type === 'party'}
-						<!-- Party markers get teleport option instead of edit/delete -->
-						<DropdownMenu.Item class="cursor-pointer" onclick={startTeleport}
-							>Teleport Party</DropdownMenu.Item
-						>
-					{:else}
-						<DropdownMenu.Item
-							class="cursor-pointer"
-							onclick={() => {
-								contextMenuOpen = false;
-								handleEditMarker();
-							}}
-						>
-							Edit Marker
-						</DropdownMenu.Item>
-						<DropdownMenu.Item
-							class="cursor-pointer"
-							onclick={() => {
-								contextMenuOpen = false;
-								confirmDeleteMarker();
-							}}
-						>
-							Delete Marker
-						</DropdownMenu.Item>
-					{/if}
+					<DropdownMenu.Item
+						class="cursor-pointer"
+						onclick={() => {
+							contextMenuOpen = false;
+							handleEditMarker();
+						}}
+					>
+						Edit Marker
+					</DropdownMenu.Item>
+					<DropdownMenu.Item
+						class="cursor-pointer"
+						onclick={() => {
+							contextMenuOpen = false;
+							confirmDeleteMarker();
+						}}
+					>
+						Delete Marker
+					</DropdownMenu.Item>
 				{/if}
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
