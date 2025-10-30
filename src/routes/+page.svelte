@@ -1,83 +1,120 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { Button } from '$lib/components/ui/button';
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle
+	} from '$lib/components/ui/card';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Eye, EyeOff, Map } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
 
 	let campaignSlug = $state('');
 	let accessToken = $state('');
 	let loading = $state(false);
-	let error = $state('');
+	let loginFailed = $state(false);
+	let showToken = $state(false);
 
 	// Form is valid when both fields have values
 	let isValid = $derived(campaignSlug.trim() && accessToken.trim());
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-100">
-	<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-md">
-		<h1 class="mb-6 text-center text-2xl font-bold">D&D Campaign Map</h1>
+<svelte:head>
+	<title>Campaign Access - Chult</title>
+</svelte:head>
 
-		<form
-			method="POST"
-			action="?/access"
-			use:enhance={() => {
-				loading = true;
-				error = '';
-				return async ({ result }) => {
-					loading = false;
-					if (result.type === 'redirect') {
-						goto(result.location);
-					} else if (result.type === 'failure') {
-						interface FailureData {
-							message?: string;
-						}
-						const failureData = result.data as FailureData | undefined;
-						error = failureData?.message || 'Access denied';
-					}
-				};
-			}}
-		>
-			<div class="mb-4">
-				<label for="campaignSlug" class="mb-2 block text-sm font-medium text-gray-700">
-					Campaign Code
-				</label>
-				<input
-					id="campaignSlug"
-					name="campaignSlug"
-					type="text"
-					required
-					bind:value={campaignSlug}
-					class="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-					placeholder="Enter campaign code"
-				/>
-			</div>
-
-			<div class="mb-6">
-				<label for="accessToken" class="mb-2 block text-sm font-medium text-gray-700">
-					Access Token
-				</label>
-				<input
-					id="accessToken"
-					name="accessToken"
-					type="password"
-					required
-					bind:value={accessToken}
-					class="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-					placeholder="Enter access token"
-				/>
-			</div>
-
-			{#if error}
-				<div class="mb-4 rounded border border-red-400 bg-red-100 p-3 text-red-700">
-					{error}
+<div class="flex justify-center items-center min-h-screen bg-muted/20">
+	<div class="container p-6 mx-auto max-w-md">
+		<Card>
+			<CardHeader class="text-center">
+				<div class="flex justify-center mb-4">
+					<div class="p-3 rounded-full bg-primary/10">
+						<Map class="w-8 h-8 text-primary" />
+					</div>
 				</div>
-			{/if}
+				<CardTitle class="text-2xl">Campaign Access</CardTitle>
+				<CardDescription>Enter your campaign code and access token</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<form
+					method="POST"
+					action="?/access"
+					class="space-y-4"
+					use:enhance={() => {
+						loading = true;
+						loginFailed = false;
+						return async ({ result }) => {
+							loading = false;
+							if (result.type === 'redirect') {
+								goto(result.location);
+							} else if (result.type === 'failure') {
+								loginFailed = true;
+								interface FailureData {
+									message?: string;
+								}
+								const failureData = result.data as FailureData | undefined;
+								const errorMessage = failureData?.message || 'Access denied';
+								toast.error(errorMessage);
+							}
+						};
+					}}
+				>
+					<div class="space-y-2">
+						<Label for="campaignSlug">Campaign Code</Label>
+						<Input
+							id="campaignSlug"
+							name="campaignSlug"
+							type="text"
+							required
+							bind:value={campaignSlug}
+							placeholder="Enter campaign code"
+							disabled={loading}
+							aria-invalid={loginFailed}
+							oninput={() => (loginFailed = false)}
+						/>
+					</div>
 
-			<button
-				type="submit"
-				disabled={loading || !isValid}
-				class="w-full rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-			>
-				{loading ? 'Accessing...' : 'Access Campaign'}
-			</button>
-		</form>
+					<div class="space-y-2">
+						<Label for="accessToken">Access Token</Label>
+						<div class="flex gap-2">
+							<Input
+								id="accessToken"
+								name="accessToken"
+								type={showToken ? 'text' : 'password'}
+								required
+								bind:value={accessToken}
+								placeholder="Enter access token"
+								disabled={loading}
+								class="flex-1"
+								aria-invalid={loginFailed}
+								oninput={() => (loginFailed = false)}
+							/>
+							<Button
+								type="button"
+								variant="outline"
+								size="icon"
+								onclick={() => (showToken = !showToken)}
+								disabled={loading}
+							>
+								{#if showToken}
+									<EyeOff class="w-4 h-4" />
+								{:else}
+									<Eye class="w-4 h-4" />
+								{/if}
+							</Button>
+						</div>
+					</div>
+
+					<Button type="submit" disabled={loading || !isValid} class="w-full">
+						{loading ? 'Accessing...' : 'Access Campaign'}
+					</Button>
+				</form>
+			</CardContent>
+		</Card>
 	</div>
 </div>

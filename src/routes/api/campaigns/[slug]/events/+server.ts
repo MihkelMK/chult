@@ -1,7 +1,8 @@
-import { error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 import eventEmitter from '$lib/server/events';
 import { requireAuth } from '$lib/server/session';
+import type { EventRole } from '$lib/types/events';
+import { error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
 	const { params } = event;
@@ -17,7 +18,7 @@ export const GET: RequestHandler = async (event) => {
 
 	const stream = new ReadableStream({
 		start(controller) {
-			const listener = (event: { event: string; data: unknown; role: 'dm' | 'player' | 'all' }) => {
+			const listener = (event: { event: string; data: unknown; role: EventRole }) => {
 				// Role-based filtering
 				if (event.role === 'all' || event.role === session.role) {
 					const sseMessage = `event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`;

@@ -1,7 +1,12 @@
 import type { LocalState } from '$lib/stores/localState.svelte';
-import type { RevealedTileResponse } from '$lib/types/database';
+import type {
+	GameSessionResponse,
+	MapMarkerResponse,
+	Path,
+	RevealedTileResponse
+} from '$lib/types/database';
 import type { ImageVariant, MapUrlsResponse } from '$lib/types/imgproxy';
-import type { SvelteSet } from 'svelte/reactivity';
+import type { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 export * from '$lib/types/database';
 export * from '$lib/types/imgproxy';
@@ -9,18 +14,6 @@ export * from '$lib/types/imgproxy';
 export interface TileCoords {
 	x: number;
 	y: number;
-}
-
-/**
- * Interface for a compact coordinate range.
- * This stores a start and end x-coordinate for a given y-coordinate,
- * allowing for efficient representation of contiguous areas.
- */
-export interface TileCoordsRange {
-	yStart: number;
-	yEnd: number;
-	xStart: number;
-	xEnd: number;
 }
 
 export interface Hex {
@@ -35,21 +28,49 @@ export interface HexTriggerEvent {
 	key: string;
 }
 
-export interface HexRendered extends Hex {
-	fill: string;
-	stroke: string;
-	strokeWidth: string;
-	strokeOpacity: string | number;
-	class?: string;
-	style?: string;
-	poinerEvents?: string;
-	fillOpacity: string | number;
-	shouldRender: boolean;
+export type RightClickEventType = 'tile' | 'token' | 'marker' | 'poi';
+
+export interface RightClickEvent {
+	type: RightClickEventType;
+	key?: string; // For tiles
+	coords?: TileCoords; // For anything with position
+	markers?: { dm?: MapMarkerResponse; player?: MapMarkerResponse }; // For markers (O(1) lookup from background layer)
+	screenX: number; // Screen X position for menu
+	screenY: number; // Screen Y position for menu
 }
 
 export interface CanvasImage {
 	image: HTMLImageElement | undefined;
 	status: 'loading' | 'loaded' | 'failed';
+}
+
+export type UIToolGeneric = 'interact' | 'pan';
+export type UIToolPlayer = 'explore';
+export type UIToolDM = 'select' | 'paint' | 'set-position';
+export type UITool = UIToolGeneric | UIToolDM | UIToolPlayer;
+export type SelectMode = 'add' | 'remove';
+
+export type MarkerType =
+	| 'settlement' // Cities, towns, villages
+	| 'dungeon' // Dungeons, caves, lairs
+	| 'ruins' // Ruins, abandoned structures
+	| 'rest' // Camps, inns, safe havens
+	| 'landmark' // Notable locations, features
+	| 'danger' // Hazards, threats
+	| 'warning' // Caution areas
+	| 'generic' // General marker
+	| 'custom'; // Custom uploaded icon
+
+export interface DialogAction {
+	label: string;
+	variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+	action: () => void;
+}
+
+export interface DialogConfig {
+	title: string;
+	description: string;
+	actions: DialogAction[];
 }
 
 interface MapCanvasSharedProps {
@@ -70,14 +91,18 @@ interface MapCanvasSharedProps {
 	showAlwaysRevealed?: boolean;
 	showRevealed?: boolean;
 	showUnrevealed?: boolean;
+	showDMMarkers?: boolean; // DM only: show hidden markers
+	showPlayerMarkers?: boolean; // DM only: show visible markers
 	showCoords: 'never' | 'always' | 'hover';
-	cursorMode: 'interact' | 'pan' | 'select' | 'paint';
+	activeTool: UITool;
+	selectedTool: UITool;
+	activeSelectMode: SelectMode;
 	onHexTriggered: (event: HexTriggerEvent) => void;
+	onRightClick?: (event: RightClickEvent) => void;
+	onMarkerHover?: (marker: MapMarkerResponse | null, screenX: number, screenY: number) => void;
+	onMarkerClick?: (marker: MapMarkerResponse) => void;
 	onMapLoad?: (dimensions: { width: number; height: number }) => void;
 	onMapError?: () => void;
-	hasPoI: (coords: TileCoords) => boolean;
-	hasNotes: (coords: TileCoords) => boolean;
-	isPlayerPosition: (coords: TileCoords) => boolean;
 }
 
 export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
@@ -86,14 +111,33 @@ export interface MapCanvasWrapperProps extends MapCanvasSharedProps {
 	initiallyRevealed?: RevealedTileResponse[];
 	localState: LocalState;
 	selectedSet: SvelteSet<string>;
+	showPaths?: boolean;
+	visiblePathSessions?: Set<number>;
+	panToCoords?: TileCoords | null;
 }
 
 export interface MapCanvasProps extends MapCanvasSharedProps {
 	image: HTMLImageElement | undefined;
-	hexGrid: readonly Hex[];
 	hexRadius: number;
+	hexHeight: number;
+	horizontalSpacing: number;
+	verticalSpacing: number;
 	revealedTiles: readonly Hex[];
 	alwaysRevealedTiles: readonly Hex[];
 	unrevealedTiles: readonly Hex[];
 	selectedTiles: readonly Hex[];
+	adjacentTiles: readonly Hex[]; // Valid moves with explore tool
+	partyTokenTile: Hex | null;
+	markerTiles?: ReadonlyArray<{
+		dmMarker?: MapMarkerResponse;
+		playerMarker?: MapMarkerResponse;
+		tile: Hex;
+	}>;
+	markersByTile: SvelteMap<string, { dm?: MapMarkerResponse; player?: MapMarkerResponse }>; // For O(1) marker lookup on right-click (key: "x-y")
+	showPaths?: boolean;
+	visiblePathSessions?: Set<number>;
+	sessions: GameSessionResponse[];
+	pathsMap: SvelteMap<number, Path>;
+	hexGrid: readonly Hex[];
+	panToTile?: Hex | null;
 }

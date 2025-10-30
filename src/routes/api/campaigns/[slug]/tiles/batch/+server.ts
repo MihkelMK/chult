@@ -1,10 +1,10 @@
-import type { RequestHandler } from './$types';
-import { json, error } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/session';
 import { db } from '$lib/server/db';
-import { eq, and, or } from 'drizzle-orm';
 import { revealedTiles } from '$lib/server/db/schema';
 import eventEmitter from '$lib/server/events';
+import { requireAuth } from '$lib/server/session';
+import { error, json } from '@sveltejs/kit';
+import { and, eq, or } from 'drizzle-orm';
+import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async (event) => {
 	const session = requireAuth(event, 'dm');
@@ -54,7 +54,7 @@ export const POST: RequestHandler = async (event) => {
 						}))
 					);
 					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
-						event: 'tile-revealed',
+						event: 'tile:revealed',
 						data: newTiles.map((tile) => ({ ...tile, alwaysRevealed })),
 						role: 'all' // Send to both DM and players
 					});
@@ -77,7 +77,7 @@ export const POST: RequestHandler = async (event) => {
 
 				if (deletedTiles.length > 0) {
 					eventEmitter.emit(`campaign-${session.campaignSlug}`, {
-						event: 'tile-hidden',
+						event: 'tile:hidden',
 						data: deletedTiles,
 						role: 'all' // Send to both DM and players
 					});
