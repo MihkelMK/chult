@@ -46,6 +46,7 @@ export interface RightClickEvent {
 	type: RightClickEventType;
 	key?: string; // For tiles
 	coords?: TileCoords; // For anything with position
+	marker?: MapMarkerResponse; // For markers (O(1) lookup from background layer)
 	screenX: number; // Screen X position for menu
 	screenY: number; // Screen Y position for menu
 }
@@ -140,6 +141,7 @@ export interface MapCanvasProps extends MapCanvasSharedProps {
 	adjacentTiles: readonly Hex[]; // Valid moves with explore tool
 	partyTokenTile: Hex | null;
 	markerTiles?: ReadonlyArray<{ marker: MapMarkerResponse; tile: Hex }>;
+	markersByTile: SvelteMap<string, MapMarkerResponse>; // For O(1) marker lookup on right-click (key: "x-y")
 	showPaths?: boolean;
 	visiblePathSessions?: Set<number>;
 	sessions: GameSessionResponse[];

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import MapMarker from '$lib/components/map/canvas/MapMarker.svelte';
-	import PathLayer from '$lib/components/map/canvas/PathLayer.svelte';
+	import MovementPaths from '$lib/components/map/canvas/MovementPaths.svelte';
 	import type { Hex, MapCanvasProps, MapMarkerResponse } from '$lib/types';
 	import { hexToTileKey, pixelToHex } from '$lib/utils/hexCoordinates';
 	import type { KonvaPointerEvent } from 'konva/lib/PointerEvents';
@@ -17,6 +17,7 @@
 		adjacentTiles,
 		partyTokenTile,
 		markerTiles = [],
+		markersByTile,
 		xOffset = 0,
 		yOffset = 0,
 		hexesPerCol,
@@ -84,9 +85,6 @@
 	}
 
 	function handleBackgroundRightClick(e: KonvaPointerEvent) {
-		// Only handle right-clicks on the background Rect itself
-		if (e.target.attrs.id !== 'background-click-layer') return;
-
 		e.evt.preventDefault();
 
 		const stage = e.target.getStage();
@@ -109,10 +107,17 @@
 		);
 
 		if (coords && onRightClick) {
+			const tileKey = hexToTileKey(coords);
+			const tileCoords = { x: coords.col, y: coords.row };
+
+			// O(1) marker lookup using Map - decides context menu type
+			const marker = markersByTile.get(tileKey);
+
 			onRightClick({
-				type: 'tile',
-				key: hexToTileKey(coords),
-				coords: { x: coords.col, y: coords.row },
+				type: marker ? 'marker' : 'tile',
+				key: tileKey,
+				coords: tileCoords,
+				marker: marker,
 				screenX: e.evt.clientX,
 				screenY: e.evt.clientY
 			});
@@ -441,19 +446,7 @@
 		</Group>
 	</Layer>
 
-	<!-- Path Visualization Layer (between UI elements and party token) -->
-	<PathLayer
-		{sessions}
-		{pathsMap}
-		visibleSessionIds={visiblePathSessions}
-		{showPaths}
-		{hexRadius}
-		{hexGrid}
-		{xOffset}
-		{yOffset}
-	/>
-
-	<!-- Party Token & Markers Layer (always on top) -->
+	<!-- Layer 4: Campaign data -->
 	<Layer
 		x={xOffset}
 		y={yOffset}
@@ -461,43 +454,43 @@
 		clipY={gridClipY}
 		clipHeight={gridHeight}
 		clipWidth={gridWidth}
-		listening={activeTool === 'interact'}
 	>
-		<!-- Render markers first (below party token) -->
-		{#each markerTiles as { marker, tile } (marker.id)}
-			<MapMarker
-				{marker}
-				{tile}
-				radius={hexRadius}
-				{onRightClick}
-				{onMarkerHover}
-				{onMarkerClick}
-			/>
-		{/each}
+		<!-- 1: Path Visualization Layer (between UI elements and party token) -->
+		<MovementPaths
+			{sessions}
+			{pathsMap}
+			visibleSessionIds={visiblePathSessions}
+			{showPaths}
+			{hexRadius}
+			{hexGrid}
+		/>
 
-		<!-- Party token on top (rendered through MapMarker for consistent UI) -->
-		{#if partyTokenTile}
-			{@const partyMarker: MapMarkerResponse = {
-				id: -1,
-				x: partyTokenTile.col,
-				y: partyTokenTile.row,
-				type: 'party',
-				title: 'Party Token',
-				content: null,
-				authorRole: 'dm',
-				visibleToPlayers: true,
-				imagePath: null,
+		<Group listening={false}>
+			<!-- Party token on top (rendered through MapMarker for consistent UI) -->
+			{#if partyTokenTile}
+				{@const partyMarker: MapMarkerResponse = {
+        id: -1,
+        x: partyTokenTile.col,
+        y: partyTokenTile.row,
+        type: 'party',
+        title: 'Party Token',
+        content: null,
+        authorRole: 'dm',
+        visibleToPlayers: true,
+        imagePath: null,
         createdAt: new Date(),
         updatedAt: new Date()
-			}}
-			<MapMarker
-				marker={partyMarker}
-				tile={partyTokenTile}
-				radius={hexRadius}
-				{onRightClick}
-				{onMarkerHover}
-				{onMarkerClick}
-			/>
-		{/if}
+      }}
+				<MapMarker marker={partyMarker} tile={partyTokenTile} radius={hexRadius} />
+			{/if}
+		</Group>
+
+		<!-- 2: Party Token & Markers Layer (always on top) -->
+		<Group listening={activeTool === 'interact'} oncontextmenu={handleBackgroundRightClick}>
+			<!-- Render markers first (below party token) -->
+			{#each markerTiles as { marker, tile } (marker.id)}
+				<MapMarker {marker} {tile} radius={hexRadius} {onMarkerHover} {onMarkerClick} />
+			{/each}
+		</Group>
 	</Layer>
 </Stage>

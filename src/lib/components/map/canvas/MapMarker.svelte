@@ -9,9 +9,8 @@
 	import RuinsIcon from '$lib/components/map/canvas/icons/RuinsIcon.svelte';
 	import SettlementIcon from '$lib/components/map/canvas/icons/SettlementIcon.svelte';
 	import WarningIcon from '$lib/components/map/canvas/icons/WarningIcon.svelte';
-	import type { Hex, RightClickEvent } from '$lib/types';
+	import type { Hex } from '$lib/types';
 	import type { MapMarkerResponse } from '$lib/types/database';
-	import type { KonvaPointerEvent } from 'konva/lib/PointerEvents';
 	import { Group, type KonvaMouseEvent } from 'svelte-konva';
 
 	interface Props {
@@ -20,10 +19,9 @@
 		radius?: number;
 		onMarkerHover?: (marker: MapMarkerResponse | null, screenX: number, screenY: number) => void;
 		onMarkerClick?: (marker: MapMarkerResponse) => void;
-		onRightClick?: (event: RightClickEvent) => void;
 	}
 
-	let { marker, tile, radius = 15, onMarkerHover, onMarkerClick, onRightClick }: Props = $props();
+	let { marker, tile, radius = 15, onMarkerHover, onMarkerClick }: Props = $props();
 
 	let markerSize = $derived(radius * 0.75);
 
@@ -35,18 +33,10 @@
 		onMarkerHover?.(null, 0, 0);
 	}
 
-	function handleClick() {
+	function handleClick(e: KonvaMouseEvent) {
+		// Only handle left-click (button 0), ignore right-click (button 2)
+		if (e.evt.button !== 0) return;
 		onMarkerClick?.(marker);
-	}
-
-	function handleContextMenu(e: KonvaPointerEvent) {
-		e.evt.preventDefault();
-		onRightClick?.({
-			type: 'marker',
-			coords: { x: tile.col, y: tile.row },
-			screenX: e.evt.clientX,
-			screenY: e.evt.clientY
-		});
 	}
 
 	// Color schemes for each marker type
@@ -69,11 +59,10 @@
 </script>
 
 <Group
-	listening={true}
+	listening={marker.type !== 'party'}
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
 	onclick={handleClick}
-	oncontextmenu={handleContextMenu}
 	staticConfig={true}
 	perfectDrawEnabled={false}
 	shadowForStrokeEnabled={false}

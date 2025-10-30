@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { GameSessionResponse, Path } from '$lib/types';
-	import { Circle, Group, Layer, Line } from 'svelte-konva';
+	import { Circle, Group, Line } from 'svelte-konva';
 	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
@@ -10,20 +10,9 @@
 		showPaths: boolean;
 		hexRadius: number;
 		hexGrid: readonly { id: string; col: number; row: number; centerX: number; centerY: number }[];
-		xOffset: number;
-		yOffset: number;
 	}
 
-	let {
-		sessions,
-		pathsMap,
-		visibleSessionIds,
-		showPaths,
-		hexRadius,
-		hexGrid,
-		xOffset,
-		yOffset
-	}: Props = $props();
+	let { sessions, pathsMap, visibleSessionIds, showPaths, hexRadius, hexGrid }: Props = $props();
 
 	// Create map for quick hex lookups
 	let hexMap = $derived.by(() => {
@@ -252,7 +241,7 @@
 </script>
 
 {#if showPaths && visibleSessions.length > 0}
-	<Layer x={xOffset} y={yOffset} listening={false}>
+	<Group listening={false}>
 		{#each visibleSessions as session, index (session.id)}
 			{@const pathData = renderSessionPath(session, index)}
 			{#if pathData && pathData.segments.length > 0}
@@ -343,5 +332,5 @@
 				</Group>
 			{/if}
 		{/each}
-	</Layer>
+	</Group>
 {/if}

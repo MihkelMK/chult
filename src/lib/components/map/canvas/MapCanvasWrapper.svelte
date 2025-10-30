@@ -206,19 +206,13 @@
 
 	// Filter markers by role and visibility - O(n) where n = number of markers
 	let markerTiles = $derived.by(() => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		localState.markersVersion; // Track version changes
-
-		if (!('mapMarkers' in localState.campaign)) return [];
-
 		const visibleMarkers: Array<{ marker: MapMarkerResponse; tile: Hex }> = [];
 
-		for (const marker of localState.campaign.mapMarkers) {
+		for (const [tileKey, marker] of localState.markersByTile) {
 			// Filter by visibility for players
 			if (!isDM && !marker.visibleToPlayers) continue;
 
-			const key = `${marker.x}-${marker.y}`;
-			const hex = hexMap.get(key);
+			const hex = hexMap.get(tileKey);
 			if (hex) {
 				visibleMarkers.push({ marker, tile: hex });
 			}
@@ -252,6 +246,7 @@
 			{adjacentTiles}
 			{partyTokenTile}
 			{markerTiles}
+			markersByTile={localState.markersByTile}
 			{image}
 			{zoom}
 			{activeTool}

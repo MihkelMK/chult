@@ -29,13 +29,22 @@ export class LocalState extends EventEmitter {
 	public revealedTilesSet = new SvelteSet<string>();
 	public alwaysRevealedTilesSet = new SvelteSet<string>();
 
-	// Markers map for O(1) lookups (shared between DM and Player)
-	public markersMap = new SvelteMap<number, MapMarkerResponse>();
+	// Markers maps for O(1) lookups (shared between DM and Player)
+	public markersById = $state(new SvelteMap<number, MapMarkerResponse>()); // Key: marker.id (for SSE handlers)
+
+	// Derived map for O(1) tile-based lookups (automatically synced from markersById)
+	public markersByTile = $derived.by(() => {
+		const byTile = new SvelteMap<string, MapMarkerResponse>();
+		this.markersById.forEach((marker) => {
+			byTile.set(`${marker.x}-${marker.y}`, marker);
+		});
+		return byTile;
+	});
 
 	// Exploration state (NEW)
 	public globalGameTime = $state(0); // Days as float
 	public gameSessions = $state<GameSessionResponse[]>([]);
-	public pathsMap = new SvelteMap<number, PathResponse>(); // gameSessionId -> PathResponse
+	public pathsMap = $state(new SvelteMap<number, PathResponse>()); // gameSessionId -> PathResponse
 	public partyTokenPosition = $state<TileCoords | null>(null);
 	public partyTokenTile = $derived<string | null>(
 		this.partyTokenPosition ? `${this.partyTokenPosition.x}-${this.partyTokenPosition.y}` : null
@@ -312,7 +321,7 @@ export class LocalState extends EventEmitter {
 	}
 
 	protected initializeMarkersMap(markers: MapMarkerResponse[]) {
-		this.markersMap = new SvelteMap(markers.map((m) => [m.id, m]));
+		this.markersById = new SvelteMap(markers.map((m) => [m.id, m]));
 	}
 
 	protected initializePathsMap(paths: PathResponse[]) {
@@ -323,14 +332,17 @@ export class LocalState extends EventEmitter {
 	protected handleMarkerCreated(marker: MapMarkerResponse) {
 		if (this.campaign && 'mapMarkers' in this.campaign) {
 			// Check Map first for O(1) duplicate detection
-			if (!this.markersMap.has(marker.id)) {
+			if (!this.markersById.has(marker.id)) {
 				const newMarker = {
 					...marker,
 					createdAt: new SvelteDate(marker.createdAt),
 					updatedAt: new SvelteDate(marker.updatedAt)
 				} as MapMarkerResponse;
-				this.markersMap.set(marker.id, newMarker);
+				this.markersById.set(marker.id, newMarker);
 				this.campaign.mapMarkers.push(newMarker);
+
+				// Trigger reactivity by reassigning Map
+				this.markersById = new SvelteMap(this.markersById);
 				this.markersVersion++;
 			}
 		}
@@ -339,7 +351,7 @@ export class LocalState extends EventEmitter {
 	protected handleMarkerUpdated(marker: MapMarkerResponse) {
 		if (this.campaign && 'mapMarkers' in this.campaign) {
 			// O(1) lookup in Map
-			if (this.markersMap.has(marker.id)) {
+			if (this.markersById.has(marker.id)) {
 				const index = this.campaign.mapMarkers.findIndex(
 					(m: MapMarkerResponse) => m.id === marker.id
 				);
@@ -349,8 +361,12 @@ export class LocalState extends EventEmitter {
 						createdAt: new SvelteDate(marker.createdAt),
 						updatedAt: new SvelteDate(marker.updatedAt)
 					} as MapMarkerResponse;
-					this.markersMap.set(marker.id, updatedMarker);
+
+					this.markersById.set(marker.id, updatedMarker);
 					this.campaign.mapMarkers[index] = updatedMarker;
+
+					// Trigger reactivity by reassigning Map
+					this.markersById = new SvelteMap(this.markersById);
 					this.markersVersion++;
 				}
 			}
@@ -359,12 +375,13 @@ export class LocalState extends EventEmitter {
 
 	protected handleMarkerDeleted(id: number) {
 		if (this.campaign && 'mapMarkers' in this.campaign) {
-			// O(1) check and delete from Map
-			if (this.markersMap.delete(id)) {
-				// Only filter array if marker existed
+			if (this.markersById.delete(id)) {
 				this.campaign.mapMarkers = this.campaign.mapMarkers.filter(
 					(m: MapMarkerResponse) => m.id !== id
 				);
+
+				// Trigger reactivity by reassigning Map
+				this.markersById = new SvelteMap(this.markersById);
 				this.markersVersion++;
 			}
 		}

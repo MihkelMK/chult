@@ -113,7 +113,7 @@ export class RemoteStatePlayer {
 		// Optimistic update
 		if ('mapMarkers' in this.localState.campaign) {
 			this.localState.campaign.mapMarkers.push(tempMarker);
-			this.localState.markersMap.set(tempId, tempMarker);
+			this.localState.markersById.set(tempId, tempMarker);
 			this.localState.markersVersion++;
 		}
 
@@ -139,10 +139,10 @@ export class RemoteStatePlayer {
 				if (tempIndex !== -1) {
 					this.localState.campaign.mapMarkers.splice(tempIndex, 1);
 				}
-				this.localState.markersMap.delete(tempId);
+				this.localState.markersById.delete(tempId);
 
 				// Add real marker if it doesn't already exist
-				const exists = this.localState.markersMap.has(result.id);
+				const exists = this.localState.markersById.has(result.id);
 				if (!exists) {
 					const realMarker: MapMarkerResponse = {
 						...result,
@@ -150,7 +150,7 @@ export class RemoteStatePlayer {
 						updatedAt: new SvelteDate(result.updatedAt)
 					};
 					this.localState.campaign.mapMarkers.push(realMarker);
-					this.localState.markersMap.set(result.id, realMarker);
+					this.localState.markersById.set(result.id, realMarker);
 					this.localState.markersVersion++;
 				}
 			}
@@ -162,7 +162,7 @@ export class RemoteStatePlayer {
 				this.localState.campaign.mapMarkers = this.localState.campaign.mapMarkers.filter(
 					(m) => m.id !== tempId
 				);
-				this.localState.markersMap.delete(tempId);
+				this.localState.markersById.delete(tempId);
 				this.localState.markersVersion++;
 			}
 			console.error('[remoteStatePlayer] Failed to create marker:', error);
@@ -198,7 +198,7 @@ export class RemoteStatePlayer {
 			updatedAt: new SvelteDate()
 		};
 		this.localState.campaign.mapMarkers[markerIndex] = updatedMarker;
-		this.localState.markersMap.set(id, updatedMarker);
+		this.localState.markersById.set(id, updatedMarker);
 		this.localState.markersVersion++;
 
 		try {
@@ -223,14 +223,14 @@ export class RemoteStatePlayer {
 				updatedAt: new SvelteDate(result.updatedAt)
 			};
 			this.localState.campaign.mapMarkers[markerIndex] = realMarker;
-			this.localState.markersMap.set(id, realMarker);
+			this.localState.markersById.set(id, realMarker);
 			this.localState.markersVersion++;
 
 			return result;
 		} catch (error) {
 			// Rollback on failure
 			this.localState.campaign.mapMarkers[markerIndex] = originalMarker;
-			this.localState.markersMap.set(id, originalMarker);
+			this.localState.markersById.set(id, originalMarker);
 			this.localState.markersVersion++;
 
 			console.error('[remoteStatePlayer] Failed to update marker:', error);
@@ -258,7 +258,7 @@ export class RemoteStatePlayer {
 
 		// Optimistic delete
 		this.localState.campaign.mapMarkers.splice(markerIndex, 1);
-		this.localState.markersMap.delete(id);
+		this.localState.markersById.delete(id);
 		this.localState.markersVersion++;
 
 		try {
@@ -278,7 +278,7 @@ export class RemoteStatePlayer {
 		} catch (error) {
 			// Rollback on failure
 			this.localState.campaign.mapMarkers.push(deletedMarker);
-			this.localState.markersMap.set(id, deletedMarker);
+			this.localState.markersById.set(id, deletedMarker);
 			this.localState.markersVersion++;
 
 			console.error('[remoteStatePlayer] Failed to delete marker:', error);

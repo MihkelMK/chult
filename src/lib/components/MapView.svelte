@@ -730,18 +730,13 @@
 		contextMenuPosition = { x: event.screenX, y: event.screenY };
 		contextMenuType = event.type;
 
-		// Store coords for marker creation or find marker for editing
+		// Store coords for marker creation and marker if provided (O(1) from background layer)
 		if (event.coords) {
 			createMarkerCoords = event.coords;
 
-			// If right-clicking on a marker, find it
-			if (event.type === 'marker' && 'mapMarkers' in localState.campaign) {
-				const marker = localState.campaign.mapMarkers.find(
-					(m) => m.x === event.coords!.x && m.y === event.coords!.y
-				);
-				if (marker) {
-					selectedMarker = marker;
-				}
+			// If right-clicking on a marker, use the marker from event (already looked up with O(1))
+			if (event.type === 'marker' && event.marker) {
+				selectedMarker = event.marker;
 			}
 		}
 
