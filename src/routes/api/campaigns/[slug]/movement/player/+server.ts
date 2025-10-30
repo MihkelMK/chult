@@ -165,8 +165,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			.where(
 				and(
 					eq(campaigns.id, campaign.id),
-					eq(campaigns.partyTokenX, campaign.partyTokenX),
-					eq(campaigns.partyTokenY, campaign.partyTokenY)
+					eq(campaigns.partyTokenX, currentX),
+					eq(campaigns.partyTokenY, currentY)
 				)
 			)
 			.returning({ id: campaigns.id });
