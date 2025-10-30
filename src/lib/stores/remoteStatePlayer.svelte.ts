@@ -130,7 +130,6 @@ export class RemoteStatePlayer {
 			}
 
 			const result = await response.json();
-			console.log('[remoteStatePlayer] Marker created:', result);
 
 			// Replace temp marker with real marker from API response (SSE will be deduplicated)
 			if ('mapMarkers' in this.localState.campaign) {
@@ -214,7 +213,6 @@ export class RemoteStatePlayer {
 			}
 
 			const result = await response.json();
-			console.log('[remoteStatePlayer] Marker updated:', result);
 
 			// Update with real data from API response
 			const realMarker: MapMarkerResponse = {
@@ -270,8 +268,6 @@ export class RemoteStatePlayer {
 				const errorData = await response.json();
 				throw new Error(errorData.message || 'Failed to delete marker');
 			}
-
-			console.log('[remoteStatePlayer] Marker deleted:', id);
 
 			// SSE will handle confirmation
 			return { success: true };

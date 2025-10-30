@@ -5,7 +5,7 @@ import type {
 	PlayerCampaignDataResponse,
 	RevealedTile
 } from '$lib/types';
-import { SvelteDate, SvelteSet } from 'svelte/reactivity';
+import { SvelteSet } from 'svelte/reactivity';
 import { LocalState } from './localState.svelte';
 
 export class LocalStatePlayer extends LocalState {
@@ -53,42 +53,6 @@ export class LocalStatePlayer extends LocalState {
 		this.addEventListener('session:deleted', (data) =>
 			super.handleSessionDeleted(data as { id: number })
 		);
-	}
-
-	// Optimistic UI methods
-	async createNote(note: Omit<MapMarkerResponse, 'id' | 'createdAt' | 'updatedAt' | 'type'>) {
-		const tempId = -Math.floor(Math.random() * 1000000) - 1;
-		const newNote: MapMarkerResponse = {
-			...note,
-			id: tempId,
-			type: 'note',
-			createdAt: new SvelteDate(),
-			updatedAt: new SvelteDate(),
-			authorRole: 'player',
-			visibleToPlayers: true
-		};
-
-		// Optimistic update
-		(this.campaign as PlayerCampaignDataResponse).mapMarkers.push(newNote);
-
-		try {
-			const { id } = await this.makeApiRequest<{ id: number }>('map-markers', 'POST', {
-				...note,
-				type: 'note'
-			});
-			const createdNote = (this.campaign as PlayerCampaignDataResponse).mapMarkers.find(
-				(n) => n.id === tempId
-			);
-			if (createdNote) {
-				createdNote.id = id;
-			}
-		} catch (error) {
-			// Rollback
-			(this.campaign as PlayerCampaignDataResponse).mapMarkers = (
-				this.campaign as PlayerCampaignDataResponse
-			).mapMarkers.filter((n) => n.id !== tempId);
-			console.error('Failed to create note:', error);
-		}
 	}
 
 	// Event handlers for synchronization

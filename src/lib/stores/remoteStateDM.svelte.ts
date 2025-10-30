@@ -341,7 +341,6 @@ export class RemoteStateDM {
 			}
 
 			const session = await response.json();
-			console.log('[remoteStateDM] Session started:', session);
 
 			// SSE will handle the state update
 			return session;
@@ -373,7 +372,6 @@ export class RemoteStateDM {
 			}
 
 			const session = await response.json();
-			console.log('[remoteStateDM] Session ended:', session);
 
 			// SSE will handle the state update
 			return session;
@@ -396,7 +394,6 @@ export class RemoteStateDM {
 			}
 
 			const session = await response.json();
-			console.log('[remoteStateDM] Session deleted:', session);
 
 			// SSE will handle the state update
 			return session;
@@ -433,7 +430,6 @@ export class RemoteStateDM {
 			}
 
 			const result = await response.json();
-			console.log('[remoteStateDM] Teleport successful:', result);
 
 			// SSE will handle the complete state update
 			return result;
@@ -467,7 +463,6 @@ export class RemoteStateDM {
 			}
 
 			const result = await response.json();
-			console.log('[remoteStateDM] Time adjustment successful:', result);
 
 			// Add the audit entry immediately from API response (SSE will be deduplicated)
 			const exists = this.localState.timeAuditLog.some(
@@ -529,7 +524,6 @@ export class RemoteStateDM {
 			}
 
 			const result = await response.json();
-			console.log('[remoteStateDM] Marker created:', result);
 
 			// Replace temp marker with real marker from API response (SSE will be deduplicated)
 			if ('mapMarkers' in this.localState.campaign) {
@@ -564,7 +558,6 @@ export class RemoteStateDM {
 				this.localState.markersById.delete(tempId);
 				this.localState.markersVersion++;
 			}
-			console.log('this');
 			console.error('[remoteStateDM] Failed to create marker:', error);
 			throw error;
 		}
@@ -614,7 +607,6 @@ export class RemoteStateDM {
 			}
 
 			const result = await response.json();
-			console.log('[remoteStateDM] Marker updated:', result);
 
 			// Update with real data from API response
 			const realMarker: MapMarkerResponse = {
@@ -670,8 +662,6 @@ export class RemoteStateDM {
 				const errorData = await response.json();
 				throw new Error(errorData.message || 'Failed to delete marker');
 			}
-
-			console.log('[remoteStateDM] Marker deleted:', id);
 
 			// SSE will handle confirmation
 			return { success: true };

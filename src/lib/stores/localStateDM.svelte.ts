@@ -62,7 +62,6 @@ export class LocalStateDM extends LocalState {
 
 	// Override handleTimeUpdated to also handle audit log entries (DM only)
 	protected handleTimeUpdated(data: { globalGameTime: number; auditEntry?: TimeAuditLogResponse }) {
-		console.log('[localStateDM] SSE time:updated', data);
 		this.globalGameTime = data.globalGameTime;
 
 		// Add audit log entry (avoiding duplicates from API response)
@@ -70,10 +69,7 @@ export class LocalStateDM extends LocalState {
 			const exists = this.timeAuditLog.some((entry) => entry.id === data.auditEntry!.id);
 
 			if (!exists) {
-				console.log('[localStateDM] Adding audit entry from SSE');
 				this.timeAuditLog = [data.auditEntry, ...this.timeAuditLog];
-			} else {
-				console.log('[localStateDM] Skipping duplicate audit entry (already added from API)');
 			}
 		}
 	}

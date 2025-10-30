@@ -16,18 +16,6 @@ export interface TileCoords {
 	y: number;
 }
 
-/**
- * Interface for a compact coordinate range.
- * This stores a start and end x-coordinate for a given y-coordinate,
- * allowing for efficient representation of contiguous areas.
- */
-export interface TileCoordsRange {
-	yStart: number;
-	yEnd: number;
-	xStart: number;
-	xEnd: number;
-}
-
 export interface Hex {
 	id: string;
 	row: number;
@@ -49,18 +37,6 @@ export interface RightClickEvent {
 	markers?: { dm?: MapMarkerResponse; player?: MapMarkerResponse }; // For markers (O(1) lookup from background layer)
 	screenX: number; // Screen X position for menu
 	screenY: number; // Screen Y position for menu
-}
-
-export interface HexRendered extends Hex {
-	fill: string;
-	stroke: string;
-	strokeWidth: string;
-	strokeOpacity: string | number;
-	class?: string;
-	style?: string;
-	poinerEvents?: string;
-	fillOpacity: string | number;
-	shouldRender: boolean;
 }
 
 export interface CanvasImage {

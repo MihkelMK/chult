@@ -393,8 +393,6 @@ export class LocalState extends EventEmitter {
 
 	// Exploration event handlers (NEW)
 	protected handleSessionStarted(session: GameSessionResponse) {
-		console.log('[localStateDM] SSE session:started', session);
-
 		// Check if session already exists (from optimistic update)
 		const existingIndex = this.gameSessions.findIndex((s) => s.id === session.id);
 		if (existingIndex !== -1) {
@@ -416,8 +414,6 @@ export class LocalState extends EventEmitter {
 	}
 
 	protected handleSessionEnded(session: GameSessionResponse) {
-		console.log('[localStateDM] SSE session:ended', session);
-
 		// Update session in array
 		const index = this.gameSessions.findIndex((s) => s.id === session.id);
 		if (index !== -1) {
@@ -426,8 +422,6 @@ export class LocalState extends EventEmitter {
 	}
 
 	protected handleSessionDeleted(data: { id: number }) {
-		console.log('[localStateDM] SSE session:deleted', data);
-
 		// Remove session from array
 		this.gameSessions = this.gameSessions.filter((s) => s.id !== data.id);
 
@@ -437,13 +431,10 @@ export class LocalState extends EventEmitter {
 	}
 
 	protected handleTimeUpdated(data: { globalGameTime: number }) {
-		console.log('[localStateDM] SSE time:updated', data);
 		this.globalGameTime = data.globalGameTime;
 	}
 
 	protected handleMovementStepAdded(data: { sessionId: number; step: PathStep; tiles: string[] }) {
-		console.log('[localState] SSE movement:step-added', data);
-
 		const path = this.pathsMap.get(data.sessionId);
 		if (!path) {
 			console.warn('[localState] Path not found for session', data.sessionId);
@@ -453,7 +444,6 @@ export class LocalState extends EventEmitter {
 		// Check if step already exists (from optimistic update)
 		const stepExists = path.steps.some((s) => this.stepsEqual(s, data.step));
 		if (stepExists) {
-			console.log('[localState] Step already exists (optimistic)');
 			return;
 		}
 
