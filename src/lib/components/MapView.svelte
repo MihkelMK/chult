@@ -103,8 +103,7 @@
 			!showTimeCostDialog &&
 			!showCreateMarkerDialog &&
 			!showEditMarkerDialog &&
-			!showMarkerDetailsDialog &&
-			!contextMenuOpen
+			!showMarkerDetailsDialog
 	);
 
 	let shiftHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Shift'));
