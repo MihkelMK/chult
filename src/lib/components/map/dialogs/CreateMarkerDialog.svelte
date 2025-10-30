@@ -70,7 +70,7 @@
 				selectedType = 'generic';
 				title = '';
 				description = '';
-				visibleToPlayers = false;
+				visibleToPlayers = !isDM;
 			}
 		}
 	});
