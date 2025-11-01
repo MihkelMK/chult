@@ -35,7 +35,7 @@ services:
       UV_THREADPOOL_SIZE: 128
       NODE_OPTIONS: --max-old-space-size=1536
     volumes:
-      - /mnt/dietpi_userdata/chult/uploads:/app/uploads
+      - ${UPLOADS_PATH}:/app/uploads
     tmpfs:
       - /tmp:mode=1777,size=256M # Fast temporary storage
     depends_on:
@@ -119,7 +119,7 @@ services:
       IMGPROXY_CACHE_CONTROL_PASSTHROUGH: 'true'
       IMGPROXY_SET_CANONICAL_HEADER: 'true'
     volumes:
-      - ./uploads:/var/lib/imgproxy:ro # Read-only access to uploads
+      - ${UPLOADS_PATH}:/var/lib/imgproxy:ro # Read-only access to uploads
       - imgproxy_cache:/tmp/imgproxy # Named volume for better performance
     ports:
       - '9008:8080'
@@ -180,19 +180,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     command: >
-      postgres
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=4MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
-      -c max_connections=100
+      postgres -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=4MB -c min_wal_size=1GB -c max_wal_size=4GB -c max_connections=100
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -232,7 +221,7 @@ services:
       BACKUP_KEEP_MONTHS: 6 # Keep 6 months
       HEALTHCHECK_PORT: 8080
     volumes:
-      - /mnt/dietpi_userdata/chult/backups:/backups
+      - ${BACKUPS_PATH}:/backups
     depends_on:
       postgres:
         condition: service_healthy
