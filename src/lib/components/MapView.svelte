@@ -47,7 +47,7 @@
 
 	let { data, userRole, effectiveRole }: Props = $props();
 
-	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
+	const zoomSteps = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
 	const heldKeyboardKeys = new PressedKeys();
 
@@ -394,18 +394,38 @@
 
 	function zoomIn() {
 		if (zoomIndex < zoomSteps.length - 1) {
-			zoomIndex += 1;
+			if (zoomIndex % 2 == 1) {
+				zoomIndex += 1;
+			} else {
+				zoomIndex += 2;
+			}
 		}
 	}
 
 	function zoomOut() {
 		if (zoomIndex > 0) {
-			zoomIndex -= 1;
+			if (zoomIndex % 2 == 1) {
+				zoomIndex -= 1;
+			} else {
+				zoomIndex -= 2;
+			}
 		}
 	}
 
 	function resetZoom() {
 		zoomIndex = 0;
+	}
+
+	function handleZoomIn() {
+		if (zoomIndex < zoomSteps.length - 1) {
+			zoomIndex += 1;
+		}
+	}
+
+	function handleZoomOut() {
+		if (zoomIndex > 0) {
+			zoomIndex -= 1;
+		}
 	}
 
 	// Keyboard shortcuts for zoom and tool switching
@@ -917,6 +937,8 @@
 					onRightClick={handleRightClick}
 					onMarkerHover={handleMarkerHover}
 					onMarkerClick={handleMarkerClick}
+					onZoomIn={handleZoomIn}
+					onZoomOut={handleZoomOut}
 					{activeTool}
 					selectedTool={_selectedTool}
 					{activeSelectMode}
