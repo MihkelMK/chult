@@ -17,8 +17,6 @@
 	const textHeight = fontSize * 1.4;
 	const paddingX = radius * 0.4;
 	const paddingY = paddingX * 0.3;
-
-	const titleY = y - radius - textHeight - paddingY;
 </script>
 
 <!-- Main token circle -->
@@ -51,7 +49,7 @@
 <!-- Constant title label above the token -->
 <Text
 	{x}
-	y={titleY}
+	y={y - radius - textHeight - paddingY}
 	text="Party"
 	{fontSize}
 	fontFamily="Arial, sans-serif"
