@@ -166,7 +166,7 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: 'env PGPASSWORD="$$POSTGRESQL_PASSWORD" psql -h localhost -p 5432 -U "$$POSTGRESQL_USERNAME" pgbouncer -b -c "SHOW USERS" >/dev/null'
+      test: ['CMD-SHELL', 'psql -h localhost -p 5432 -c "SELECT 1" || exit 1']
       interval: 10s
       timeout: 5s
       retries: 3
