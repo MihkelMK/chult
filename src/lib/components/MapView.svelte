@@ -536,7 +536,7 @@
 	function showMovementConfirmation(tileKey: string) {
 		dialogConfig = {
 			title: 'Confirm Movement',
-			description: `Move to tile ${tileKey}? This will take 0.5 days.`,
+			description: `Move to tile ${tileKey.replace('-', '')}? This will take 0.5 days.`,
 			actions: [
 				{
 					label: 'Cancel',

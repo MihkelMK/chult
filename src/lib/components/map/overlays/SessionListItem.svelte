@@ -50,9 +50,9 @@
 	function formatStepDisplay(step: PathStep): string {
 		switch (step.type) {
 			case 'player_move':
-				return `→ ${step.tileKey}`;
+				return `→ ${step.tileKey.replace('-', '')}`;
 			case 'dm_teleport':
-				return `⚡ ${step.fromTile} → ${step.toTile}`;
+				return `⚡ ${step.fromTile.replace('-', '')} → ${step.toTile.replace('-', '')}`;
 			case 'dm_path': {
 				const tiles = step.tiles.slice(0, 3).join(' → ');
 				const more = step.tiles.length > 3 ? ` ... (+${step.tiles.length - 3})` : '';
