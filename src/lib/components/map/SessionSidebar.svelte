@@ -9,14 +9,31 @@
 		pathsMap: SvelteMap<number, Path>;
 		activeSessionId: number | null;
 		visibleSessionIds: Set<number>;
+		activeSessionDuration: string | null;
+		globalGameTime: number;
 		onToggleVisibility: (sessionId: number) => void;
 	}
 
-	let { sessions, pathsMap, activeSessionId, visibleSessionIds, onToggleVisibility }: Props =
-		$props();
+	let {
+		sessions,
+		pathsMap,
+		activeSessionId,
+		visibleSessionIds,
+		activeSessionDuration,
+		globalGameTime,
+		onToggleVisibility
+	}: Props = $props();
 
 	// Sort sessions by session number (newest first)
 	let sortedSessions = $derived(sessions.slice().sort((a, b) => b.sessionNumber - a.sessionNumber));
+	let activeSessionIndex = $derived(
+		sessions.findIndex((session) => session.id === activeSessionId)
+	);
+	let activeSessionGametime = $derived(
+		sessions[activeSessionIndex]?.startGameTime
+			? globalGameTime - sessions[activeSessionIndex].startGameTime
+			: 0
+	);
 </script>
 
 <SheetContent side="right" class="w-96">
@@ -37,6 +54,8 @@
 					path={pathsMap.get(session.id) || null}
 					isActive={session.id === activeSessionId}
 					isVisible={visibleSessionIds.has(session.id)}
+					{activeSessionDuration}
+					{activeSessionGametime}
 					{onToggleVisibility}
 				/>
 			{/each}

@@ -1061,6 +1061,8 @@
 				pathsMap={localState.pathsMap}
 				activeSessionId={localState.activeSession?.id || null}
 				visibleSessionIds={visiblePathSessions}
+				activeSessionDuration={sessionDuration}
+				globalGameTime={localState.globalGameTime}
 				onToggleVisibility={handleTogglePathVisibility}
 			/>
 		</Sheet>

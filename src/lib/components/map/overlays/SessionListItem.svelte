@@ -10,10 +10,20 @@
 		path: Path | null;
 		isActive: boolean;
 		isVisible: boolean;
+		activeSessionDuration: string | null;
+		activeSessionGametime: number;
 		onToggleVisibility: (sessionId: number) => void;
 	}
 
-	let { session, path, isActive, isVisible, onToggleVisibility }: Props = $props();
+	let {
+		session,
+		path,
+		isActive,
+		isVisible,
+		activeSessionDuration,
+		activeSessionGametime,
+		onToggleVisibility
+	}: Props = $props();
 
 	let open = $state(isActive); // Active session expanded by default
 
@@ -101,12 +111,22 @@
 					<div>
 						<span class="text-muted-foreground">Game Time:</span>
 						<span class="ml-1 font-medium">
-							{formatGameTime((session.endGameTime || 0) - session.startGameTime)}
+							{formatGameTime(
+								isActive
+									? activeSessionGametime
+									: (session.endGameTime || 0) - session.startGameTime
+							)}
 						</span>
 					</div>
 					<div>
 						<span class="text-muted-foreground">Duration:</span>
-						<span class="ml-1 font-medium">{formatDuration(session.duration)}</span>
+						<span class="ml-1 font-medium">
+							{#if isActive}
+								{activeSessionDuration}
+							{:else}
+								{formatDuration(session.duration)}
+							{/if}
+						</span>
 					</div>
 				</div>
 
