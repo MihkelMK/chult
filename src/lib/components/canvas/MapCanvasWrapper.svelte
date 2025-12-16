@@ -37,6 +37,8 @@
 		selectedSet,
 		onHexTriggered = () => {},
 		onRightClick,
+		onZoomIn,
+		onZoomOut,
 		onMarkerHover,
 		onMarkerClick,
 		onMapLoad = () => {},
@@ -294,6 +296,8 @@
 			{tileTransparency}
 			{onHexTriggered}
 			{onRightClick}
+			{onZoomIn}
+			{onZoomOut}
 			{onMarkerHover}
 			{onMarkerClick}
 			{onMapLoad}

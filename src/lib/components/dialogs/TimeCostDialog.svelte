@@ -70,7 +70,7 @@
 		</DialogHeader>
 
 		<div class="grid gap-4 py-4">
-			<div class="grid grid-cols-4 gap-4 items-center">
+			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="timeCost" class="text-right">Time Cost</Label>
 				<Input
 					id="timeCost"

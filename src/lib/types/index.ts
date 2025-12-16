@@ -99,6 +99,8 @@ interface MapCanvasSharedProps {
 	activeSelectMode: SelectMode;
 	onHexTriggered: (event: HexTriggerEvent) => void;
 	onRightClick?: (event: RightClickEvent) => void;
+	onZoomIn?: () => void;
+	onZoomOut?: () => void;
 	onMarkerHover?: (marker: MapMarkerResponse | null, screenX: number, screenY: number) => void;
 	onMarkerClick?: (marker: MapMarkerResponse) => void;
 	onMapLoad?: (dimensions: { width: number; height: number }) => void;

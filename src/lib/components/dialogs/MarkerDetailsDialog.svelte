@@ -67,12 +67,12 @@
 	<Dialog bind:open>
 		<DialogContent class="sm:max-w-[500px]">
 			<DialogHeader>
-				<div class="flex gap-3 items-start">
-					<div class="flex flex-1 gap-4 items-center">
+				<div class="flex items-start gap-3">
+					<div class="flex flex-1 items-center gap-4">
 						<DialogTitle>{marker.title}</DialogTitle>
 						{#if typeMeta}
 							<div
-								class="inline-flex gap-2 items-center py-1 px-2 text-xs font-medium rounded-md"
+								class="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium"
 								style="color: {typeMeta.color}; background-color: {typeMeta.bgColor};"
 							>
 								{typeMeta.label}
@@ -99,7 +99,7 @@
 			{/if}
 
 			<DialogFooter>
-				<div class="flex justify-between w-full">
+				<div class="flex w-full justify-between">
 					<Button variant="ghost" class="cursor-pointer" onclick={onClose}>Close</Button>
 					{#if canEdit}
 						<div>

@@ -23,7 +23,7 @@
 	setLocalState(localState as LocalState);
 </script>
 
-<div class="min-h-screen bg-gradient-to-br to-blue-50 from-slate-50">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
 	<main>
 		{@render children()}
 	</main>

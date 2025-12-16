@@ -13,7 +13,7 @@
 {#if hoveredMarker}
 	<div
 		style="position: fixed; left: {tooltipPosition.x}px; top: {tooltipPosition.y}px; pointer-events: none; z-index: 9998;"
-		class="py-2 px-3 text-sm rounded-md border shadow-md animate-in bg-popover text-popover-foreground fade-in-0 zoom-in-95"
+		class="animate-in rounded-md border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-md fade-in-0 zoom-in-95"
 	>
 		<div class="font-medium">{hoveredMarker.title}</div>
 		{#if hoveredMarker.type !== 'party'}

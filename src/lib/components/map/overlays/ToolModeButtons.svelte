@@ -23,7 +23,7 @@
 	}: Props = $props();
 </script>
 
-<div class="flex gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm">
+<div class="flex gap-1 rounded-lg border bg-background/95 p-1 shadow-xs backdrop-blur-sm">
 	<Tooltip.Root>
 		<Tooltip.Trigger>
 			{#snippet child({ props })}
@@ -34,7 +34,7 @@
 					class="cursor-pointer"
 					onclick={() => onSelectTool('interact')}
 				>
-					<MousePointer class="w-4 h-4" />
+					<MousePointer class="h-4 w-4" />
 				</Button>
 			{/snippet}
 		</Tooltip.Trigger>
@@ -51,7 +51,7 @@
 					class="cursor-pointer"
 					onclick={() => onSelectTool('pan')}
 				>
-					<Hand class="w-4 h-4" />
+					<Hand class="h-4 w-4" />
 				</Button>
 			{/snippet}
 		</Tooltip.Trigger>
@@ -69,7 +69,7 @@
 						class="cursor-pointer"
 						onclick={() => onSelectTool('explore')}
 					>
-						<Navigation class="w-4 h-4" />
+						<Navigation class="h-4 w-4" />
 					</Button>
 				{/snippet}
 			</Tooltip.Trigger>
@@ -86,9 +86,9 @@
 						variant={activeTool === 'select' ? 'default' : 'ghost'}
 						size="sm"
 						onclick={() => onSelectTool('select')}
-						class="cursor-pointer relativ"
+						class="relativ cursor-pointer"
 					>
-						<Square class="w-4 h-4" />
+						<Square class="h-4 w-4" />
 						{#if activeTool === 'select'}
 							<span
 								class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full text-xs {activeSelectMode ===
@@ -97,9 +97,9 @@
 									: 'bg-red-500'}"
 							>
 								{#if activeSelectMode === 'add'}
-									<Plus class="w-2 h-2 text-white" />
+									<Plus class="h-2 w-2 text-white" />
 								{:else}
-									<Minus class="w-2 h-2 text-white" />
+									<Minus class="h-2 w-2 text-white" />
 								{/if}
 							</span>
 						{/if}
@@ -119,7 +119,7 @@
 						onclick={() => onSelectTool('paint')}
 						class="relative cursor-pointer"
 					>
-						<Paintbrush class="w-4 h-4" />
+						<Paintbrush class="h-4 w-4" />
 						{#if activeTool === 'paint'}
 							<span
 								class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full text-xs {activeSelectMode ===
@@ -128,9 +128,9 @@
 									: 'bg-red-500'}"
 							>
 								{#if activeSelectMode === 'add'}
-									<Plus class="w-2 h-2 text-white" />
+									<Plus class="h-2 w-2 text-white" />
 								{:else}
-									<Minus class="w-2 h-2 text-white" />
+									<Minus class="h-2 w-2 text-white" />
 								{/if}
 							</span>
 						{/if}

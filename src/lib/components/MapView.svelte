@@ -47,7 +47,7 @@
 
 	let { data, userRole, effectiveRole }: Props = $props();
 
-	const zoomSteps = [1, 1.5, 2, 3, 4, 5, 6, 10];
+	const zoomSteps = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
 	const heldKeyboardKeys = new PressedKeys();
 
@@ -103,8 +103,7 @@
 			!showTimeCostDialog &&
 			!showCreateMarkerDialog &&
 			!showEditMarkerDialog &&
-			!showMarkerDetailsDialog &&
-			!contextMenuOpen
+			!showMarkerDetailsDialog
 	);
 
 	let shiftHeld = $derived(shouldCaptureKeyboard && heldKeyboardKeys.has('Shift'));
@@ -320,7 +319,6 @@
 
 		// Check if in teleport mode first
 		if (teleportMode === 'selecting-destination') {
-			console.log('teleport to:', clickedKey);
 			handleTeleportDestinationClick(clickedKey);
 			return;
 		}
@@ -395,18 +393,38 @@
 
 	function zoomIn() {
 		if (zoomIndex < zoomSteps.length - 1) {
-			zoomIndex += 1;
+			if (zoomIndex % 2 == 1) {
+				zoomIndex += 1;
+			} else {
+				zoomIndex += 2;
+			}
 		}
 	}
 
 	function zoomOut() {
 		if (zoomIndex > 0) {
-			zoomIndex -= 1;
+			if (zoomIndex % 2 == 1) {
+				zoomIndex -= 1;
+			} else {
+				zoomIndex -= 2;
+			}
 		}
 	}
 
 	function resetZoom() {
 		zoomIndex = 0;
+	}
+
+	function handleZoomIn() {
+		if (zoomIndex < zoomSteps.length - 1) {
+			zoomIndex += 1;
+		}
+	}
+
+	function handleZoomOut() {
+		if (zoomIndex > 0) {
+			zoomIndex -= 1;
+		}
 	}
 
 	// Keyboard shortcuts for zoom and tool switching
@@ -517,7 +535,7 @@
 	function showMovementConfirmation(tileKey: string) {
 		dialogConfig = {
 			title: 'Confirm Movement',
-			description: `Move to tile ${tileKey}? This will take 0.5 days.`,
+			description: `Move to tile ${tileKey.replace('-', '')}? This will take 0.5 days.`,
 			actions: [
 				{
 					label: 'Cancel',
@@ -871,10 +889,10 @@
 
 <!-- Full screen layout -->
 <Tooltip.Provider>
-	<div class="flex fixed inset-0 bg-background">
+	<div class="fixed inset-0 flex bg-background">
 		<!-- Map Container with native scroll -->
 		<div
-			class="overflow-auto flex-1 max-w-screen bg-muted/20"
+			class="max-w-screen flex-1 overflow-auto bg-muted/20"
 			style="cursor: {loading
 				? 'loading'
 				: activeTool === 'pan'
@@ -918,6 +936,8 @@
 					onRightClick={handleRightClick}
 					onMarkerHover={handleMarkerHover}
 					onMarkerClick={handleMarkerClick}
+					onZoomIn={handleZoomIn}
+					onZoomOut={handleZoomOut}
 					{activeTool}
 					selectedTool={_selectedTool}
 					{activeSelectMode}
@@ -1040,6 +1060,8 @@
 				pathsMap={localState.pathsMap}
 				activeSessionId={localState.activeSession?.id || null}
 				visibleSessionIds={visiblePathSessions}
+				activeSessionDuration={sessionDuration}
+				globalGameTime={localState.globalGameTime}
 				onToggleVisibility={handleTogglePathVisibility}
 			/>
 		</Sheet>

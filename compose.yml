@@ -5,49 +5,47 @@ services:
     build:
       context: .
       args:
-        DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}'
-
-        # Build-time variables (baked into compiled code via $env/static/*)
+        # Baked into compiled code via $env/static/*
+        POSTGRES_HOST: pgbouncer
         PUBLIC_MAX_IMAGE_SIZE: '${PUBLIC_MAX_IMAGE_SIZE}'
-        PRIVATE_DM_TOKEN: '${PRIVATE_DM_TOKEN}'
-        IMGPROXY_KEY: '${IMGPROXY_KEY}'
-        IMGPROXY_SALT: '${IMGPROXY_SALT}'
-        IMGPROXY_URL: '${IMGPROXY_URL}'
+      secrets:
+        - PRIVATE_DM_TOKEN
+        - IMGPROXY_KEY
+        - IMGPROXY_SALT
+        - IMGPROXY_URL
+        - POSTGRES_USER
+        - POSTGRES_PASSWORD
+        - POSTGRES_DB
     restart: unless-stopped
     environment:
-      # Database (via PgBouncer)
-      DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}'
-
-      # Application secrets
-      PRIVATE_DM_TOKEN: '${PRIVATE_DM_TOKEN}'
-
-      # Imgproxy configuration
-      IMGPROXY_KEY: '${IMGPROXY_KEY}'
-      IMGPROXY_SALT: '${IMGPROXY_SALT}'
-      IMGPROXY_URL: '${IMGPROXY_URL}'
-
-      # File uploads
-      PUBLIC_MAX_IMAGE_SIZE: '${PUBLIC_MAX_IMAGE_SIZE}'
-      BODY_SIZE_LIMIT: '${PUBLIC_MAX_IMAGE_SIZE}'
-
+      # DB connection details for drizzle migrate
+      POSTGRES_HOST: postgres
+      POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+      POSTGRES_DB_FILE: /run/secrets/POSTGRES_DB
       # Node.js runtime optimizations
+      BODY_SIZE_LIMIT: '${PUBLIC_MAX_IMAGE_SIZE}'
       NODE_ENV: production
       UV_THREADPOOL_SIZE: 128
       NODE_OPTIONS: --max-old-space-size=1536
     volumes:
-      - /mnt/dietpi_userdata/chult/uploads:/app/uploads
+      - ${UPLOADS_PATH}:/app/uploads
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
     tmpfs:
       - /tmp:mode=1777,size=256M # Fast temporary storage
     depends_on:
       pgbouncer:
         condition: service_healthy
     ports:
-      - 9007:3000
+      - 3000:3000
     networks:
       - backend
       - frontend
     healthcheck:
-      test: ['CMD', 'nc', '-z', 'localhost', '3000']
+      test: ['CMD-SHELL', 'wget -q --tries=1 --spider http://127.0.0.1:3000 || exit 1']
       interval: 30s
       timeout: 3s
       retries: 3
@@ -75,6 +73,7 @@ services:
   imgproxy:
     container_name: chult-imgproxy
     image: ghcr.io/imgproxy/imgproxy:latest
+    command: imgproxy -keypath /run/secrets/IMGPROXY_KEY -saltpath /run/secrets/IMGPROXY_SALT
     environment:
       # Basic config
       IMGPROXY_BIND: '0.0.0.0:8080'
@@ -83,8 +82,8 @@ services:
       IMGPROXY_TTL: 3600
 
       # Security - generate these with: openssl rand -hex 64
-      IMGPROXY_KEY: '${IMGPROXY_KEY}'
-      IMGPROXY_SALT: '${IMGPROXY_SALT}'
+      # IMGPROXY_KEY: '' # Now passed in as file
+      # IMGPROXY_SALT: '' # Now passed in as file
       IMGPROXY_SIGNATURE_SIZE: 32
 
       # Format settings
@@ -119,15 +118,18 @@ services:
       IMGPROXY_CACHE_CONTROL_PASSTHROUGH: 'true'
       IMGPROXY_SET_CANONICAL_HEADER: 'true'
     volumes:
-      - ./uploads:/var/lib/imgproxy:ro # Read-only access to uploads
+      - ${UPLOADS_PATH}:/var/lib/imgproxy:ro # Read-only access to uploads
       - imgproxy_cache:/tmp/imgproxy # Named volume for better performance
+    secrets:
+      - IMGPROXY_KEY
+      - IMGPROXY_SALT
     ports:
-      - '9008:8080'
+      - '8080:8080'
     networks:
       - frontend
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      test: ['CMD', 'imgproxy', 'health']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -149,16 +151,24 @@ services:
   pgbouncer:
     container_name: chult-pgbouncer
     image: edoburu/pgbouncer:latest
+    entrypoint: /pgbouncer-entrypoint.sh # Wrapper to load DB creds from Docker secrets
     environment:
-      DATABASE_URL: 'postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}'
+      # These _FILE vars are read by our custom entrypoint script
+      DB_USER_FILE: /run/secrets/POSTGRES_USER
+      DB_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+      DB_NAME_FILE: /run/secrets/POSTGRES_DB
+      # These are read by the pgbouncer image itself
+      DB_HOST: postgres
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 25
       AUTH_TYPE: scram-sha-256 # Support Postgres 16 SCRAM authentication
-      # For healthcheck
-      PGUSER: '${POSTGRES_USER}'
-      PGPASSWORD: '${POSTGRES_PASSWORD}'
-      PGDATABASE: '${POSTGRES_DB}'
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    volumes:
+      - ./pgbouncer-entrypoint.sh:/pgbouncer-entrypoint.sh:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -166,40 +176,34 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'psql -h localhost -p 5432 -c "SELECT 1" || exit 1']
+      test: ['CMD', 'pg_isready', '-h', 'localhost']
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
 
   postgres:
-    container_name: ${POSTGRES_HOST}
+    container_name: chult-postgres
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+      POSTGRES_DB_FILE: /run/secrets/POSTGRES_DB
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
     command: >
-      postgres
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=4MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
-      -c max_connections=100
+      postgres -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=4MB -c min_wal_size=1GB -c max_wal_size=4GB -c max_connections=100
+
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      test: ['CMD', 'pg_isready']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -220,19 +224,29 @@ services:
 
   postgres-backup:
     container_name: chult-backup
-    image: prodrigestivill/postgres-backup-local
+    image: prodrigestivill/postgres-backup-local:16-alpine
     environment:
+      # Connection details
       POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+      POSTGRES_DB_FILE: /run/secrets/POSTGRES_DB
+      # Backup config
       SCHEDULE: '@daily' # Run at midnight
       BACKUP_KEEP_DAYS: 7 # Keep 7 days
       BACKUP_KEEP_WEEKS: 4 # Keep 4 weeks
       BACKUP_KEEP_MONTHS: 6 # Keep 6 months
-      HEALTHCHECK_PORT: 8080
+      # Healthcheck
+      HEALTHCHECK_PORT: 8000
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    ports:
+      - '8000:8000'
     volumes:
-      - /mnt/dietpi_userdata/chult/backups:/backups
+      # chown 999:999 (default) / 70:70 (alpine)
+      - ${BACKUPS_PATH}:/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -245,6 +259,22 @@ services:
       options:
         max-size: '10m'
         max-file: '3'
+
+secrets:
+  PRIVATE_DM_TOKEN:
+    environment: PRIVATE_DM_TOKEN
+  IMGPROXY_KEY:
+    environment: IMGPROXY_KEY
+  IMGPROXY_SALT:
+    environment: IMGPROXY_SALT
+  IMGPROXY_URL:
+    environment: IMGPROXY_URL
+  POSTGRES_USER:
+    environment: POSTGRES_USER
+  POSTGRES_PASSWORD:
+    environment: POSTGRES_PASSWORD
+  POSTGRES_DB:
+    environment: POSTGRES_DB
 
 volumes:
   postgres_data: {}

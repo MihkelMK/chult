@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import type { MapMarkerResponse, RightClickEventType, TileCoords, UserRole } from '$lib/types';
 
 	interface Props {

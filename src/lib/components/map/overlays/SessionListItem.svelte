@@ -10,10 +10,20 @@
 		path: Path | null;
 		isActive: boolean;
 		isVisible: boolean;
+		activeSessionDuration: string | null;
+		activeSessionGametime: number;
 		onToggleVisibility: (sessionId: number) => void;
 	}
 
-	let { session, path, isActive, isVisible, onToggleVisibility }: Props = $props();
+	let {
+		session,
+		path,
+		isActive,
+		isVisible,
+		activeSessionDuration,
+		activeSessionGametime,
+		onToggleVisibility
+	}: Props = $props();
 
 	let open = $state(isActive); // Active session expanded by default
 
@@ -40,9 +50,9 @@
 	function formatStepDisplay(step: PathStep): string {
 		switch (step.type) {
 			case 'player_move':
-				return `→ ${step.tileKey}`;
+				return `→ ${step.tileKey.replace('-', '')}`;
 			case 'dm_teleport':
-				return `⚡ ${step.fromTile} → ${step.toTile}`;
+				return `⚡ ${step.fromTile.replace('-', '')} → ${step.toTile.replace('-', '')}`;
 			case 'dm_path': {
 				const tiles = step.tiles.slice(0, 3).join(' → ');
 				const more = step.tiles.length > 3 ? ` ... (+${step.tiles.length - 3})` : '';
@@ -55,10 +65,10 @@
 </script>
 
 <Collapsible.Root bind:open>
-	<div class="p-2 rounded-lg border">
+	<div class="rounded-lg border p-2">
 		<!-- Header -->
-		<div class="flex gap-2 justify-between items-center">
-			<Collapsible.Trigger class="flex flex-1 gap-2 items-center text-left hover:opacity-70">
+		<div class="flex items-center justify-between gap-2">
+			<Collapsible.Trigger class="flex flex-1 items-center gap-2 text-left hover:opacity-70">
 				<ChevronDown class="h-4 w-4 transition-transform {open ? '' : '-rotate-90'}" />
 				<div class="flex-1">
 					<div class="text-sm font-medium">
@@ -75,19 +85,19 @@
 				variant="ghost"
 				size="sm"
 				onclick={() => onToggleVisibility(session.id)}
-				class="p-0 w-8 h-8"
+				class="h-8 w-8 p-0"
 			>
 				{#if isVisible}
-					<Eye class="w-4 h-4" />
+					<Eye class="h-4 w-4" />
 				{:else}
-					<EyeOff class="w-4 h-4 text-muted-foreground" />
+					<EyeOff class="h-4 w-4 text-muted-foreground" />
 				{/if}
 			</Button>
 		</div>
 
 		<!-- Collapsible Content -->
 		<Collapsible.Content>
-			<div class="pt-2 pl-6 space-y-3">
+			<div class="space-y-3 pt-2 pl-6">
 				<!-- Stats -->
 				<div class="grid grid-cols-2 gap-2 text-xs">
 					<div>
@@ -101,12 +111,22 @@
 					<div>
 						<span class="text-muted-foreground">Game Time:</span>
 						<span class="ml-1 font-medium">
-							{formatGameTime((session.endGameTime || 0) - session.startGameTime)}
+							{formatGameTime(
+								isActive
+									? activeSessionGametime
+									: (session.endGameTime || 0) - session.startGameTime
+							)}
 						</span>
 					</div>
 					<div>
 						<span class="text-muted-foreground">Duration:</span>
-						<span class="ml-1 font-medium">{formatDuration(session.duration)}</span>
+						<span class="ml-1 font-medium">
+							{#if isActive}
+								{activeSessionDuration}
+							{:else}
+								{formatDuration(session.duration)}
+							{/if}
+						</span>
 					</div>
 				</div>
 
@@ -116,7 +136,7 @@
 						<div class="mb-1 text-xs text-muted-foreground">Path:</div>
 						<div class="space-y-1">
 							{#each path.steps as step, index (`${session.id}-step${index}`)}
-								<div class="pl-2 font-mono text-xs border-l-2 border-muted">
+								<div class="border-l-2 border-muted pl-2 font-mono text-xs">
 									<span class="text-muted-foreground">{index + 1}.</span>
 									{formatStepDisplay(step)}
 								</div>
@@ -124,7 +144,7 @@
 						</div>
 					</div>
 				{:else}
-					<div class="text-xs italic text-muted-foreground">No movement recorded</div>
+					<div class="text-xs text-muted-foreground italic">No movement recorded</div>
 				{/if}
 			</div>
 		</Collapsible.Content>

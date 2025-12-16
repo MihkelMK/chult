@@ -26,7 +26,6 @@ test/
 # Environment
 .env
 .env.*
-!.env.example
 
 # Git
 .git/

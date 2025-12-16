@@ -157,7 +157,7 @@
 							onclick={() => (selectedType = type)}
 						>
 							<!-- Konva icon preview -->
-							<div class="flex justify-center items-center h-[50px] w-[50px]">
+							<div class="flex h-[50px] w-[50px] items-center justify-center">
 								<Stage width={50} height={50}>
 									<Layer>
 										{#if type === 'settlement'}
@@ -261,7 +261,7 @@
 
 			<!-- Visibility toggle (DM only) -->
 			{#if isDM}
-				<div class="flex justify-between items-center">
+				<div class="flex items-center justify-between">
 					<div class="space-y-0.5">
 						<Label for="visibility">Visible to Players</Label>
 						<div class="text-sm text-muted-foreground">

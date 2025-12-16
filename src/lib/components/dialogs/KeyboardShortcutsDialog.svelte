@@ -77,12 +77,12 @@
 			variant="ghost"
 			size="icon"
 			aria-label="Keyboard shortcuts"
-			class="opacity-75 hover:opacity-100 backdrop-blur-md backdrop-opacity-50"
+			class="opacity-75 backdrop-blur-md backdrop-opacity-50 hover:opacity-100"
 		>
-			<Keyboard class="w-4 h-4 text-shadow-lg" />
+			<Keyboard class="h-4 w-4 text-shadow-lg" />
 		</Button>
 	</Dialog.Trigger>
-	<Dialog.Content class="overflow-y-auto max-w-2xl max-h-[80vh]">
+	<Dialog.Content class="max-h-[80vh] max-w-2xl overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title>Keyboard Shortcuts</Dialog.Title>
 			<Dialog.Description>
@@ -96,7 +96,7 @@
 					<h3 class="text-sm font-semibold text-foreground">{section.title}</h3>
 					<div class="space-y-2">
 						{#each section.shortcuts as shortcut (shortcut.description)}
-							<div class="flex gap-4 justify-between items-center">
+							<div class="flex items-center justify-between gap-4">
 								<span class="flex-1 text-sm text-muted-foreground">
 									{shortcut.description}
 								</span>

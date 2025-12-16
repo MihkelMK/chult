@@ -15,7 +15,7 @@
 </script>
 
 <div
-	class="flex gap-2 items-center p-2 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
+	class="flex items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
 >
 	{#if hasActiveSession}
 		<Badge variant="default" class="text-xs">
@@ -24,7 +24,7 @@
 		<Tooltip.Root>
 			<Tooltip.Trigger>
 				<Button variant="destructive" size="sm" onclick={onEndSession}>
-					<Square class="w-4 h-4" />
+					<Square class="h-4 w-4" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content>End Session</Tooltip.Content>
@@ -33,7 +33,7 @@
 		<Tooltip.Root>
 			<Tooltip.Trigger>
 				<Button variant="default" size="sm" onclick={onStartSession}>
-					<Play class="w-4 h-4" />
+					<Play class="h-4 w-4" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content>Start Session</Tooltip.Content>

@@ -83,10 +83,10 @@
 			</Dialog.Description>
 		</Dialog.Header>
 
-		<div class="py-4 space-y-4">
+		<div class="space-y-4 py-4">
 			<div class="space-y-2">
 				<Label for="time-delta" class="text-sm font-medium">Time Adjustment (days)</Label>
-				<div class="flex gap-2 items-center">
+				<div class="flex items-center gap-2">
 					<Input
 						id="time-delta"
 						type="number"
@@ -98,7 +98,7 @@
 					/>
 					<Tooltip.Root>
 						<Tooltip.Trigger>
-							<div class="py-1 px-3 font-mono text-sm text-center rounded border min-w-[80px]">
+							<div class="min-w-[80px] rounded border px-3 py-1 text-center font-mono text-sm">
 								{formattedDelta}
 							</div>
 						</Tooltip.Trigger>
@@ -125,9 +125,9 @@
 
 			{#if showConfirm}
 				<div
-					class="flex gap-2 items-start p-3 bg-yellow-50 rounded-lg border dark:bg-yellow-950/20"
+					class="flex items-start gap-2 rounded-lg border bg-yellow-50 p-3 dark:bg-yellow-950/20"
 				>
-					<CircleAlert class="mt-0.5 w-4 h-4 text-yellow-600 dark:text-yellow-500" />
+					<CircleAlert class="mt-0.5 h-4 w-4 text-yellow-600 dark:text-yellow-500" />
 					<div class="flex-1">
 						<p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
 							Large time adjustment
@@ -136,7 +136,7 @@
 							You're about to adjust time by {formattedDelta}. This will affect the global game time
 							and cannot be easily undone.
 						</p>
-						<div class="flex gap-2 mt-3">
+						<div class="mt-3 flex gap-2">
 							<Button size="sm" variant="default" onclick={handleSubmit}>Confirm</Button>
 							<Button size="sm" variant="outline" onclick={cancelConfirm}>Cancel</Button>
 						</div>

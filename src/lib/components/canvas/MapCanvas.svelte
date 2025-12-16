@@ -38,6 +38,8 @@
 		imageHeight,
 		imageWidth,
 		onHexTriggered,
+		onZoomIn,
+		onZoomOut,
 		onRightClick,
 		onMarkerHover,
 		onMarkerClick,
@@ -137,6 +139,7 @@
 	let previousZoom = $state(zoom);
 	let scale = $derived(absoluteScale * zoom);
 	let position = $state({ x: 0, y: 0 });
+	let scrollSpeed = $derived((1 / zoom) * 0.75);
 
 	let scaledImageWidth = $derived(imageWidth * scale);
 	let scaledImageHeight = $derived(imageHeight * scale);
@@ -312,6 +315,25 @@
 		const clampedY = Math.max(Math.min(maxYPos, pos.y), minYPos);
 
 		return { x: clampedX, y: clampedY };
+	}}
+	onwheel={(e) => {
+		e.evt.preventDefault();
+
+		if (e.evt.ctrlKey) {
+			if (e.evt.deltaY > 0) {
+				onZoomOut?.();
+			} else {
+				onZoomIn?.();
+			}
+			return;
+		}
+
+		const pureX = position.x - e.evt.deltaX * scrollSpeed;
+		const pureY = position.y - e.evt.deltaY * scrollSpeed;
+		const clampedX = Math.max(Math.min(maxXPos, pureX), minXPos);
+		const clampedY = Math.max(Math.min(maxYPos, pureY), minYPos);
+		position.x = clampedX;
+		position.y = clampedY;
 	}}
 	onmousedown={() => {
 		if (activeTool === 'paint' || activeTool === 'select') {
