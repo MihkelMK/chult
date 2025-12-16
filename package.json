@@ -1,7 +1,17 @@
 {
-	"name": "chult-svelte",
+	"name": "chult",
+	"description": "Interactive hex crawler map with DM and Player views",
+	"homepage": "https://github.com/MihkelMK/chult",
+	"license": "GPL-3.0-only",
+	"author": {
+		"name": "Mihkel Martin Kasterpalu",
+		"url": "https://kasterpalu.ee"
+	},
+	"repository": {
+		"url": "https://github.com/MihkelMK/chult"
+	},
 	"private": true,
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
 		"dev": "LAUNCH_EDITOR=svelteDebugNvim.sh vite dev",
