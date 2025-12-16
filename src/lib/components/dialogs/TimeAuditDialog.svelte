@@ -115,7 +115,7 @@
 		</Button>
 	</Dialog.Trigger>
 
-	<Dialog.Content class="flex flex-col gap-2 max-h-[80vh] sm:max-w-[800px]">
+	<Dialog.Content class="flex max-h-[80vh] flex-col gap-2 sm:max-w-[800px]">
 		<Dialog.Header class="mb-4">
 			<Dialog.Title>Audit Changes to Game Time</Dialog.Title>
 			<Dialog.Description>
@@ -127,7 +127,7 @@
 			<Empty.Root>
 				<Empty.Content>
 					<Empty.Media>
-						<Clock class="w-8 h-8 text-muted-foreground" />
+						<Clock class="h-8 w-8 text-muted-foreground" />
 					</Empty.Media>
 					<Empty.Header>
 						<Empty.Title>No time changes</Empty.Title>
@@ -141,7 +141,7 @@
 			</Empty.Root>
 		{:else}
 			<!-- Filter -->
-			<div class="flex gap-2 items-center w-full">
+			<div class="flex w-full items-center gap-2">
 				<p class="text-sm font-medium">Filter type:</p>
 				<ToggleGroup.Root
 					type="single"
@@ -149,10 +149,10 @@
 					onValueChange={(value) => {
 						if (value) filterType = value;
 					}}
-					class="flex flex-wrap gap-1 justify-center"
+					class="flex flex-wrap justify-center gap-1"
 				>
 					{#each typeOptions as option (option.value)}
-						<ToggleGroup.Item size="sm" value={option.value} class="flex-auto h-7 text-xs grow-0">
+						<ToggleGroup.Item size="sm" value={option.value} class="h-7 flex-auto grow-0 text-xs">
 							{option.label}
 						</ToggleGroup.Item>
 					{/each}
@@ -190,7 +190,7 @@
 								</Table.Cell>
 								<Table.Cell class="">
 									{#if entry.notes}
-										<p class="text-sm italic text-muted-foreground">{entry.notes}</p>
+										<p class="text-sm text-muted-foreground italic">{entry.notes}</p>
 									{/if}
 								</Table.Cell>
 							</Table.Row>

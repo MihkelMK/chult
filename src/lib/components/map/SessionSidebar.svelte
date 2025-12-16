@@ -41,9 +41,9 @@
 		<SheetTitle>Session History</SheetTitle>
 	</SheetHeader>
 
-	<div class="overflow-y-auto p-6 space-y-3 h-full">
+	<div class="h-full space-y-3 overflow-y-auto p-6">
 		{#if sortedSessions.length === 0}
-			<div class="py-8 text-sm text-center text-muted-foreground">
+			<div class="py-8 text-center text-sm text-muted-foreground">
 				<p>No sessions yet</p>
 				<p class="mt-2 text-xs">DM can start a session to begin tracking exploration</p>
 			</div>

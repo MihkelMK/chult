@@ -38,9 +38,9 @@
 				<Tooltip.Trigger>
 					<Button variant="ghost" size="sm" onclick={onToggle} class="cursor-pointer">
 						{#if visibleState}
-							<Eye class="w-4 h-4" />
+							<Eye class="h-4 w-4" />
 						{:else}
-							<EyeOff class="w-4 h-4" />
+							<EyeOff class="h-4 w-4" />
 						{/if}
 					</Button>
 				</Tooltip.Trigger>
@@ -48,16 +48,16 @@
 					{visibleState ? `Hide ${name}` : `Show ${name}`}
 				</Tooltip.Content>
 			</Tooltip.Root>
-			<p class="font-mono text-xs select-none mt-[0.175em]">{name}</p>
+			<p class="mt-[0.175em] font-mono text-xs select-none">{name}</p>
 		</div>
 	</div>
 {/snippet}
 
 <Collapsible.Root
-	class="px-1 w-52 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
+	class="w-52 rounded-lg border bg-background/95 px-1 shadow-xs backdrop-blur-sm"
 	bind:open
 >
-	<div class="flex justify-between items-center py-1 pl-2">
+	<div class="flex items-center justify-between py-1 pl-2">
 		<h4 class="text-sm font-semibold">Layers</h4>
 		<Collapsible.Trigger
 			class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'w-9 cursor-pointer p-0' })}
@@ -71,7 +71,7 @@
 		</Collapsible.Trigger>
 	</div>
 	<Collapsible.Content>
-		<div class="flex flex-col py-1 bg-accent">
+		<div class="flex flex-col bg-accent py-1">
 			{@render layerControl('Paths', showPaths, () => (showPaths = !showPaths))}
 
 			{#if showDMMarkers !== undefined && showPlayerMarkers !== undefined}
@@ -101,7 +101,7 @@
 		</div>
 
 		<!-- Tile Transparency Control -->
-		<div class="flex gap-2 justify-between items-center py-1 pl-2">
+		<div class="flex items-center justify-between gap-2 py-1 pl-2">
 			<span class="text-xs select-none">Opacity</span>
 
 			<ToggleGroup.Root
@@ -116,21 +116,21 @@
 					disabled={tileTransparency === '0'}
 					aria-label="Make tiles transparent"
 				>
-					<span class="w-6 font-mono text-xs text-center">0</span>
+					<span class="w-6 text-center font-mono text-xs">0</span>
 				</ToggleGroup.Item>
 				<ToggleGroup.Item
 					value="0.5"
 					disabled={tileTransparency === '0.5'}
 					aria-label="Make tiles half transparent"
 				>
-					<span class="w-6 font-mono text-xs text-center">0.5</span>
+					<span class="w-6 text-center font-mono text-xs">0.5</span>
 				</ToggleGroup.Item>
 				<ToggleGroup.Item
 					value="1"
 					disabled={tileTransparency === '1'}
 					aria-label="Make tiles opaque"
 				>
-					<span class="w-6 font-mono text-xs text-center">1</span>
+					<span class="w-6 text-center font-mono text-xs">1</span>
 				</ToggleGroup.Item>
 			</ToggleGroup.Root>
 		</div>

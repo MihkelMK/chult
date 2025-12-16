@@ -39,11 +39,11 @@
 	<title>{status} - {errorInfo.title}</title>
 </svelte:head>
 
-<div class="flex justify-center items-center p-4 min-h-screen bg-background">
+<div class="flex min-h-screen items-center justify-center bg-background p-4">
 	<Empty.Root class="max-w-md border">
 		<Empty.Header>
 			<Empty.Media>
-				<Icon class="w-12 h-12 text-muted-foreground" />
+				<Icon class="h-12 w-12 text-muted-foreground" />
 			</Empty.Media>
 			<Empty.Title>{errorInfo.title}</Empty.Title>
 			<Empty.Description>{errorInfo.description}</Empty.Description>
@@ -51,11 +51,11 @@
 		<Empty.Content>
 			<div class="flex flex-col gap-2 sm:flex-row">
 				<Button href="/" variant="default">
-					<House class="mr-2 w-4 h-4" />
+					<House class="mr-2 h-4 w-4" />
 					Go Home
 				</Button>
 				<Button onclick={() => history.back()} variant="outline">
-					<ArrowLeft class="mr-2 w-4 h-4" />
+					<ArrowLeft class="mr-2 h-4 w-4" />
 					Go Back
 				</Button>
 			</div>

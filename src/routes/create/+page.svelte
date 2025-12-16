@@ -28,13 +28,13 @@
 	<title>Create Campaign - Chult</title>
 </svelte:head>
 
-<div class="flex justify-center items-center min-h-screen bg-muted/20">
-	<div class="container p-6 mx-auto max-w-md">
+<div class="flex min-h-screen items-center justify-center bg-muted/20">
+	<div class="container mx-auto max-w-md p-6">
 		<Card>
 			<CardHeader class="text-center">
-				<div class="flex justify-center mb-4">
-					<div class="p-3 rounded-full bg-primary/10">
-						<Plus class="w-8 h-8 text-primary" />
+				<div class="mb-4 flex justify-center">
+					<div class="rounded-full bg-primary/10 p-3">
+						<Plus class="h-8 w-8 text-primary" />
 					</div>
 				</div>
 				<CardTitle class="text-2xl">Create Campaign</CardTitle>
@@ -100,9 +100,9 @@
 								disabled={loading}
 							>
 								{#if showToken}
-									<EyeOff class="w-4 h-4" />
+									<EyeOff class="h-4 w-4" />
 								{:else}
-									<Eye class="w-4 h-4" />
+									<Eye class="h-4 w-4" />
 								{/if}
 							</Button>
 						</div>

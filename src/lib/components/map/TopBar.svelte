@@ -36,15 +36,15 @@
 	class="absolute top-4 left-4 z-20 flex w-[calc(100%_-_calc(var(--spacing)_*_8))] flex-col gap-2"
 >
 	<div
-		class="grid grid-cols-3 items-center p-2 w-full rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm"
+		class="grid w-full grid-cols-3 items-center rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
 	>
 		<div class="flex items-center">
-			<div class="flex gap-2 items-center">
+			<div class="flex items-center gap-2">
 				<Button variant="ghost" size="sm" class="cursor-pointer" onclick={onOpenCampaign}>
-					<Menu class="w-4 h-4" />
+					<Menu class="h-4 w-4" />
 				</Button>
 
-				<div class="flex gap-2 items-center">
+				<div class="flex items-center gap-2">
 					<div class="text-sm font-medium">
 						{campaignName || 'Campaign'}
 					</div>
@@ -55,7 +55,7 @@
 			</div>
 		</div>
 
-		<div class="flex gap-2 justify-self-center items-center">
+		<div class="flex items-center gap-2 justify-self-center">
 			{#if hasErrors}
 				<Badge variant="destructive" class="text-xs">Error</Badge>
 			{/if}
@@ -69,7 +69,7 @@
 					<Tooltip.Trigger>
 						{#snippet child({ props })}
 							<button {...props} onclick={onPanToParty} class="transition-opacity hover:opacity-80">
-								<Badge variant="secondary" class="justify-self-end text-xs cursor-pointer">
+								<Badge variant="secondary" class="cursor-pointer justify-self-end text-xs">
 									Party at: {partyTokenPosition.x.toString().padStart(2, '0')}{partyTokenPosition.y
 										.toString()
 										.padStart(2, '0')}
@@ -82,9 +82,9 @@
 			{/if}
 		</div>
 
-		<div class="flex justify-self-end items-center">
-			<div class="flex gap-2 items-center">
-				<div class="flex gap-2 items-center">
+		<div class="flex items-center justify-self-end">
+			<div class="flex items-center gap-2">
+				<div class="flex items-center gap-2">
 					<div class="text-sm font-medium">
 						{#if activeSession && activeSession.isActive}
 							{activeSession.name}
@@ -96,7 +96,7 @@
 
 				<!-- History Button -->
 				<Button variant="ghost" size="sm" onclick={onOpenHistory}>
-					<Clock class="w-4 h-4" />
+					<Clock class="h-4 w-4" />
 				</Button>
 			</div>
 		</div>

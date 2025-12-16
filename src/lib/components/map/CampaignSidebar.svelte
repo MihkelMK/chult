@@ -157,7 +157,7 @@
 	}
 </script>
 
-<SheetContent side="left" class="flex flex-col p-0 w-80 h-full">
+<SheetContent side="left" class="flex h-full w-80 flex-col p-0">
 	<SheetHeader class="flex-shrink-0 px-6 pt-6">
 		<SheetTitle>
 			{effectiveRole === 'dm' ? 'DM Controls' : 'Map Info'}
@@ -165,12 +165,12 @@
 	</SheetHeader>
 
 	<!-- Scrollable Content -->
-	<div class="overflow-hidden flex-1">
-		<ScrollArea class="px-6 h-full">
-			<div class="pb-4 space-y-4">
+	<div class="flex-1 overflow-hidden">
+		<ScrollArea class="h-full px-6">
+			<div class="space-y-4 pb-4">
 				<!-- Player/DM View Toggle -->
 				{#if userRole === 'dm'}
-					<div class="flex justify-between items-center">
+					<div class="flex items-center justify-between">
 						<p class="-mt-0.5">View as:</p>
 						<form action="?/toggleView" method="POST" bind:this={toggleForm}>
 							<ViewAsToggle {effectiveRole} onCheckedChange={() => toggleForm?.submit()} />
@@ -255,13 +255,13 @@
 				<div>
 					{#if hasActiveSession}
 						<div class="space-y-4">
-							<div class="flex justify-between items-center text-sm">
+							<div class="flex items-center justify-between text-sm">
 								<span class="text-muted-foreground">Active Session</span>
 								<Badge variant="default" class="text-xs">
 									Session {activeSession?.sessionNumber}
 								</Badge>
 							</div>
-							<div class="flex justify-between items-center text-sm">
+							<div class="flex items-center justify-between text-sm">
 								<span class="text-muted-foreground">Duration</span>
 								<span class="font-medium tabular-nums">{sessionDuration}</span>
 							</div>
@@ -308,7 +308,7 @@
 	</div>
 
 	<!-- Fixed Footer -->
-	<div class="flex-shrink-0 p-6 space-y-2 border-t">
+	<div class="flex-shrink-0 space-y-2 border-t p-6">
 		{#if effectiveRole === 'dm'}
 			<a
 				href="/{campaignSlug}/settings"

@@ -13,11 +13,11 @@
 	let { zoom, onZoomIn, onZoomOut, onResetZoom }: Props = $props();
 </script>
 
-<div class="flex flex-col gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm">
+<div class="flex flex-col gap-1 rounded-lg border bg-background/95 p-1 shadow-xs backdrop-blur-sm">
 	<Tooltip.Root>
 		<Tooltip.Trigger>
 			<Button variant="ghost" size="sm" onclick={onZoomIn} class="cursor-pointer">
-				<Plus class="w-4 h-4" />
+				<Plus class="h-4 w-4" />
 			</Button>
 		</Tooltip.Trigger>
 		<Tooltip.Content side="right">Zoom In</Tooltip.Content>
@@ -31,7 +31,7 @@
 				onclick={onResetZoom}
 				class="cursor-pointer p-1.5 {zoom === 1 ? 'bg-accent' : ''}"
 			>
-				<span class="font-mono text-xs w-[4ch]">
+				<span class="w-[4ch] font-mono text-xs">
 					{zoom}x
 				</span>
 			</Button>
@@ -42,7 +42,7 @@
 	<Tooltip.Root>
 		<Tooltip.Trigger>
 			<Button variant="ghost" size="sm" onclick={onZoomOut} class="cursor-pointer">
-				<Minus class="w-4 h-4" />
+				<Minus class="h-4 w-4" />
 			</Button>
 		</Tooltip.Trigger>
 		<Tooltip.Content side="right">Zoom Out</Tooltip.Content>

@@ -54,8 +54,8 @@
 		{message}
 	</h2>
 	<h3 class="text-[0]">
-		<span class="text-3xl delay-75 animate-caret-blink">.</span>
-		<span class="text-3xl animate-caret-blink delay-[275ms]">.</span>
-		<span class="text-3xl animate-caret-blink delay-[425ms]">.</span>
+		<span class="animate-caret-blink text-3xl delay-75">.</span>
+		<span class="animate-caret-blink text-3xl delay-[275ms]">.</span>
+		<span class="animate-caret-blink text-3xl delay-[425ms]">.</span>
 	</h3>
 </div>

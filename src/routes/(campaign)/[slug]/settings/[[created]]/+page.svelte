@@ -315,19 +315,20 @@
 </svelte:head>
 
 <Tooltip.Provider>
-	<div class="container p-6 mx-auto space-y-8 max-w-4xl">
+	<div class="container mx-auto max-w-4xl space-y-8 p-6">
 		<!-- Page Header -->
-		<div class="flex justify-between items-center">
-			<div class="flex gap-3 items-center">
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-3">
 				<div>
 					<h1 class="text-2xl font-bold">Campaign Settings</h1>
 					<p class="text-muted-foreground">Configure your campaign map and access tokens</p>
 				</div>
 			</div>
 			<div
-				class="flex items-center p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm">
+				class="flex items-center rounded-lg border bg-background/95 p-1 shadow-xs backdrop-blur-sm"
+			>
 				<Button href="/{data.campaign.slug}" variant="link" size="sm" type="submit">
-					<Map class="mr-2 w-4 h-4" />
+					<Map class="mr-2 h-4 w-4" />
 					Back
 				</Button>
 			</div>
@@ -336,8 +337,8 @@
 		<div class="grid gap-8 md:grid-cols-2">
 			<!-- Welcome Message for New Campaigns -->
 			{#if isNewCampaign}
-				<Alert.Root class="col-span-2 bg-green-50 border-green-200">
-					<Crown class="w-5 h-5 text-green-600" />
+				<Alert.Root class="col-span-2 border-green-200 bg-green-50">
+					<Crown class="h-5 w-5 text-green-600" />
 					<Alert.Title class="text-green-700">Welcome, Dungeon Master!</Alert.Title>
 					<Alert.Description>
 						<p>
@@ -364,8 +365,8 @@
 					<CardContent class="space-y-4">
 						<!-- DM Token -->
 						<div class="space-y-2">
-							<div class="flex gap-2 items-center">
-								<Crown class="w-4 h-4 text-amber-600" />
+							<div class="flex items-center gap-2">
+								<Crown class="h-4 w-4 text-amber-600" />
 								<!-- svelte-ignore a11y_label_has_associated_control -->
 								<label class="text-sm font-medium">Dungeon Master Access</label>
 								<Badge variant="secondary">DM</Badge>
@@ -379,19 +380,20 @@
 								</div>
 								<Button variant="outline" size="sm" onclick={() => (showDmToken = !showDmToken)}>
 									{#if showDmToken}
-										<EyeOff class="w-4 h-4" />
+										<EyeOff class="h-4 w-4" />
 									{:else}
-										<Eye class="w-4 h-4" />
+										<Eye class="h-4 w-4" />
 									{/if}
 								</Button>
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => copyToken(data.dmToken || '', 'dm')}>
+									onclick={() => copyToken(data.dmToken || '', 'dm')}
+								>
 									{#if dmTokenCopied}
-										<Check class="w-4 h-4 text-green-600" />
+										<Check class="h-4 w-4 text-green-600" />
 									{:else}
-										<Copy class="w-4 h-4" />
+										<Copy class="h-4 w-4" />
 									{/if}
 								</Button>
 							</div>
@@ -401,8 +403,8 @@
 
 						<!-- Player Token -->
 						<div class="space-y-2">
-							<div class="flex gap-2 items-center">
-								<Users class="w-4 h-4 text-blue-600" />
+							<div class="flex items-center gap-2">
+								<Users class="h-4 w-4 text-blue-600" />
 								<!-- svelte-ignore a11y_label_has_associated_control -->
 								<label class="text-sm font-medium">Player Access</label>
 								<Badge variant="outline">Player</Badge>
@@ -417,21 +419,23 @@
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => (showPlayerToken = !showPlayerToken)}>
+									onclick={() => (showPlayerToken = !showPlayerToken)}
+								>
 									{#if showPlayerToken}
-										<EyeOff class="w-4 h-4" />
+										<EyeOff class="h-4 w-4" />
 									{:else}
-										<Eye class="w-4 h-4" />
+										<Eye class="h-4 w-4" />
 									{/if}
 								</Button>
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => copyToken(data.playerToken || '', 'player')}>
+									onclick={() => copyToken(data.playerToken || '', 'player')}
+								>
 									{#if playerTokenCopied}
-										<Check class="w-4 h-4 text-green-600" />
+										<Check class="h-4 w-4 text-green-600" />
 									{:else}
-										<Copy class="w-4 h-4" />
+										<Copy class="h-4 w-4" />
 									{/if}
 								</Button>
 							</div>
@@ -448,7 +452,7 @@
 						<!-- Grid Size Controls -->
 						<div class="space-y-4">
 							<div>
-								<label class="block mb-2 text-sm font-medium" for="tilesPerColumnSlider">
+								<label class="mb-2 block text-sm font-medium" for="tilesPerColumnSlider">
 									Tiles per Column: {tilesPerColumn}
 								</label>
 								<Slider
@@ -458,11 +462,12 @@
 									min={5}
 									max={100}
 									step={1}
-									class="w-full" />
+									class="w-full"
+								/>
 							</div>
 
 							<div>
-								<label class="block mb-2 text-sm font-medium" for="tilesPerRowSlider">
+								<label class="mb-2 block text-sm font-medium" for="tilesPerRowSlider">
 									Tiles per Row: {tilesPerRow}
 								</label>
 								<Slider
@@ -472,7 +477,8 @@
 									min={5}
 									max={100}
 									step={1}
-									class="w-full" />
+									class="w-full"
+								/>
 							</div>
 						</div>
 
@@ -481,7 +487,7 @@
 						<!-- Offset Controls -->
 						<div class="space-y-4">
 							<div>
-								<label class="block mb-2 text-sm font-medium" for="offsetXSlider">
+								<label class="mb-2 block text-sm font-medium" for="offsetXSlider">
 									Horizontal Offset: {offsetX}px
 								</label>
 								<Slider
@@ -491,11 +497,12 @@
 									min={-200}
 									max={200}
 									step={1}
-									class="w-full" />
+									class="w-full"
+								/>
 							</div>
 
 							<div>
-								<label class="block mb-2 text-sm font-medium" for="offsetYSlider">
+								<label class="mb-2 block text-sm font-medium" for="offsetYSlider">
 									Vertical Offset: {offsetY}px
 								</label>
 								<Slider
@@ -505,23 +512,26 @@
 									min={-200}
 									max={200}
 									step={1}
-									class="w-full" />
+									class="w-full"
+								/>
 							</div>
 						</div>
 
 						<!-- Save Status and Button -->
 						{#if saveError}
 							<div
-								class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive">
-								<CircleAlert class="w-4 h-4" />
+								class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+							>
+								<CircleAlert class="h-4 w-4" />
 								<span>{saveError}</span>
 							</div>
 						{/if}
 
 						{#if saveSuccess}
 							<div
-								class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
-								<Check class="w-4 h-4" />
+								class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800"
+							>
+								<Check class="h-4 w-4" />
 								<span>Hex grid configuration saved successfully!</span>
 							</div>
 						{/if}
@@ -530,7 +540,8 @@
 						<Button
 							onclick={saveHexGridConfig}
 							disabled={!hasUnsavedChanges || saving}
-							class="w-full">
+							class="w-full"
+						>
 							{#if saving}
 								Saving...
 							{:else if hasUnsavedChanges}
@@ -551,7 +562,7 @@
 					<CardContent class="space-y-4">
 						{#if hasAnySessions}
 							<!-- Session active message -->
-							<div class="flex gap-2 items-center p-3 text-sm text-blue-800 bg-blue-50 rounded-md">
+							<div class="flex items-center gap-2 rounded-md bg-blue-50 p-3 text-sm text-blue-800">
 								<span>
 									Party position cannot be changed manually once sessions have been created. Use the
 									exploration system to move the party.
@@ -561,7 +572,7 @@
 							<!-- Position Display -->
 							<div class="space-y-2">
 								{#if partyTokenX !== null && partyTokenY !== null}
-									<div class="flex gap-2 items-center p-3 rounded-md bg-muted">
+									<div class="flex items-center gap-2 rounded-md bg-muted p-3">
 										<span class="font-mono text-sm">
 											Column: {partyTokenX}, Row: {partyTokenY}
 										</span>
@@ -570,7 +581,7 @@
 										</Button>
 									</div>
 								{:else}
-									<div class="p-3 text-sm rounded-md bg-muted text-muted-foreground">
+									<div class="rounded-md bg-muted p-3 text-sm text-muted-foreground">
 										No position set - party token will be placed at first session start
 									</div>
 								{/if}
@@ -581,7 +592,7 @@
 							<!-- Set Position Instructions -->
 							<div class="space-y-2">
 								<p class="text-sm text-muted-foreground">
-									Use the <Flag class="inline w-3 h-3" /> tool in the map preview
+									Use the <Flag class="inline h-3 w-3" /> tool in the map preview
 								</p>
 							</div>
 						{/if}
@@ -590,16 +601,18 @@
 							<!-- Save Status and Button -->
 							{#if savePartyPositionError}
 								<div
-									class="flex gap-2 items-center p-3 text-sm rounded-md bg-destructive/15 text-destructive">
-									<CircleAlert class="w-4 h-4" />
+									class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+								>
+									<CircleAlert class="h-4 w-4" />
 									<span>{savePartyPositionError}</span>
 								</div>
 							{/if}
 
 							{#if savePartyPositionSuccess}
 								<div
-									class="flex gap-2 items-center p-3 text-sm text-green-800 bg-green-50 rounded-md">
-									<Check class="w-4 h-4" />
+									class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800"
+								>
+									<Check class="h-4 w-4" />
 									<span>Party token position saved successfully!</span>
 								</div>
 							{/if}
@@ -608,7 +621,8 @@
 							<Button
 								onclick={savePartyTokenPosition}
 								disabled={!hasUnsavedPartyPosition || savingPartyPosition}
-								class="w-full">
+								class="w-full"
+							>
 								{#if savingPartyPosition}
 									Saving...
 								{:else if hasUnsavedPartyPosition}
@@ -635,7 +649,8 @@
 							campaignSlug={data.campaign?.slug}
 							mapExists={!!data.mapUrls}
 							onMapUploaded={handleMapUploaded}
-							label="DM Map" />
+							label="DM Map"
+						/>
 
 						{#if hasPlayerMap}
 							<MapUpload
@@ -644,13 +659,15 @@
 								onMapUploaded={handleMapUploaded}
 								onDeleted={handlePlayerMapDeleted}
 								mapType="player"
-								label="Player Map" />
+								label="Player Map"
+							/>
 						{:else}
 							<Button
 								class="w-full cursor-pointer"
 								size="sm"
 								variant="ghost"
-								onclick={() => (hasPlayerMap = true)}>
+								onclick={() => (hasPlayerMap = true)}
+							>
 								Use separate Player map
 							</Button>
 						{/if}
@@ -661,7 +678,7 @@
 				{#if displayMapUrls}
 					<Card>
 						<CardHeader>
-							<div class="flex justify-between align-center">
+							<div class="align-center flex justify-between">
 								<div>
 									<CardTitle>Map Preview</CardTitle>
 									<CardDescription>Preview hex grid on the map</CardDescription>
@@ -673,14 +690,15 @@
 						</CardHeader>
 						<CardContent>
 							<div
-								class="overflow-hidden relative rounded-lg min-h-80"
+								class="relative min-h-80 overflow-hidden rounded-lg"
 								bind:clientHeight={canvasHeight}
 								bind:clientWidth={canvasWidth}
 								style="aspect-ratio: 1/{aspectRatio}; cursor: {previewTool === 'pan'
 									? isDragging
 										? 'grabbing'
 										: 'grab'
-									: 'crosshair'};">
+									: 'crosshair'};"
+							>
 								<MapCanvasWrapper
 									bind:isDragging
 									mapUrls={displayMapUrls}
@@ -705,12 +723,14 @@
 									selectedSet={new SvelteSet<string>()}
 									showAlwaysRevealed={true}
 									showRevealed={true}
-									isDM={true} />
+									isDM={true}
+								/>
 
 								<!-- Toolbar Overlay -->
 								{#if !hasAnySessions}
 									<div
-										class="flex absolute bottom-4 left-4 gap-1 p-1 rounded-lg border shadow-sm bg-background/95 backdrop-blur-sm">
+										class="absolute bottom-4 left-4 flex gap-1 rounded-lg border bg-background/95 p-1 shadow-sm backdrop-blur-sm"
+									>
 										<!-- Pan Tool -->
 										<Tooltip.Root>
 											<Tooltip.Trigger>
@@ -718,8 +738,9 @@
 													variant={previewTool === 'pan' ? 'default' : 'ghost'}
 													size="sm"
 													onclick={() => (previewTool = 'pan')}
-													class="p-0 w-8 h-8">
-													<Hand class="w-4 h-4" />
+													class="h-8 w-8 p-0"
+												>
+													<Hand class="h-4 w-4" />
 												</Button>
 											</Tooltip.Trigger>
 											<Tooltip.Content>
@@ -734,8 +755,9 @@
 													variant={previewTool === 'set-position' ? 'default' : 'ghost'}
 													size="sm"
 													onclick={() => (previewTool = 'set-position')}
-													class="p-0 w-8 h-8">
-													<Flag class="w-4 h-4" />
+													class="h-8 w-8 p-0"
+												>
+													<Flag class="h-4 w-4" />
 												</Button>
 											</Tooltip.Trigger>
 											<Tooltip.Content>
@@ -751,7 +773,8 @@
 										zoom={previewZoom}
 										onResetZoom={resetZoomPreview}
 										onZoomIn={zoomInPreview}
-										onZoomOut={zoomOutPreview} />
+										onZoomOut={zoomOutPreview}
+									/>
 								</div>
 							</div>
 						</CardContent>

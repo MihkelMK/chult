@@ -31,8 +31,8 @@
 	}: Props = $props();
 </script>
 
-<div class="flex gap-1 p-1 rounded-lg border bg-background/95 shadow-xs backdrop-blur-sm">
-	<div class="flex gap-1 items-center">
+<div class="flex gap-1 rounded-lg border bg-background/95 p-1 shadow-xs backdrop-blur-sm">
+	<div class="flex items-center gap-1">
 		<!-- Always-Reveal Toggle -->
 		<Tooltip.Root>
 			<Tooltip.Trigger>
@@ -42,7 +42,7 @@
 					class="cursor-pointer"
 					onclick={() => (alwaysRevealMode = !alwaysRevealMode)}
 				>
-					<Lock class="w-4 h-4" />
+					<Lock class="h-4 w-4" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content>
@@ -61,7 +61,7 @@
 					class="cursor-pointer"
 					onclick={() => (selectedSelectMode = 'add')}
 				>
-					<Plus class="w-4 h-4" />
+					<Plus class="h-4 w-4" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content>Add to selection</Tooltip.Content>
@@ -75,7 +75,7 @@
 					class="cursor-pointer"
 					onclick={() => (selectedSelectMode = 'remove')}
 				>
-					<Minus class="w-4 h-4" />
+					<Minus class="h-4 w-4" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content>Remove from selection</Tooltip.Content>
@@ -93,7 +93,7 @@
 					class="cursor-pointer"
 					onclick={onReveal}
 				>
-					<Eye class="w-4 h-4" />
+					<Eye class="h-4 w-4" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content>Reveal Selected</Tooltip.Content>
@@ -108,7 +108,7 @@
 					class="cursor-pointer"
 					onclick={onHide}
 				>
-					<EyeOff class="w-4 h-4" />
+					<EyeOff class="h-4 w-4" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content>Hide Selected</Tooltip.Content>
@@ -123,7 +123,7 @@
 					class="cursor-pointer"
 					onclick={onClear}
 				>
-					<Trash2 class="w-4 h-4" />
+					<Trash2 class="h-4 w-4" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content>Clear Selection</Tooltip.Content>
@@ -132,13 +132,13 @@
 
 	<!-- Brush Size Slider -->
 	{#if showBrushSize}
-		<div class="flex gap-2 items-center">
-			<div class="flex gap-2 items-center px-2">
+		<div class="flex items-center gap-2">
+			<div class="flex items-center gap-2 px-2">
 				<span class="text-xs text-muted-foreground">Brush Size:</span>
 				<div class="w-20">
 					<Slider type="single" bind:value={brushSize} min={1} max={5} step={1} class="w-full" />
 				</div>
-				<span class="w-6 font-mono text-xs text-center">{brushSize}</span>
+				<span class="w-6 text-center font-mono text-xs">{brushSize}</span>
 			</div>
 		</div>
 	{/if}

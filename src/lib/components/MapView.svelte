@@ -889,10 +889,10 @@
 
 <!-- Full screen layout -->
 <Tooltip.Provider>
-	<div class="flex fixed inset-0 bg-background">
+	<div class="fixed inset-0 flex bg-background">
 		<!-- Map Container with native scroll -->
 		<div
-			class="overflow-auto flex-1 max-w-screen bg-muted/20"
+			class="max-w-screen flex-1 overflow-auto bg-muted/20"
 			style="cursor: {loading
 				? 'loading'
 				: activeTool === 'pan'

@@ -12,7 +12,7 @@
 	let { userRole, slug }: Props = $props();
 </script>
 
-<div class="flex justify-center items-center h-full">
+<div class="flex h-full items-center justify-center">
 	<Empty.Root class="border border-dashed">
 		<Empty.Header>
 			<Empty.Media variant="icon">

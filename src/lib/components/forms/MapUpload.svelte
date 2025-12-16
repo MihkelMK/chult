@@ -167,8 +167,8 @@
 <div class="space-y-4">
 	<!-- Map Status -->
 	{#if mapExists && !showUploadInterface}
-		<div class="flex justify-between items-center rounded-lg">
-			<div class="flex gap-2 items-center">
+		<div class="flex items-center justify-between rounded-lg">
+			<div class="flex items-center gap-2">
 				<div
 					class="flex h-10 w-10 items-center justify-center {mapType === 'dm'
 						? 'bg-green-100'
@@ -185,7 +185,7 @@
 					Replace
 				</Button>
 				<Button variant="outline" size="sm" onclick={openDeleteConfirmDialog}>
-					<Trash2 class="w-4 h-4" />
+					<Trash2 class="h-4 w-4" />
 				</Button>
 			</div>
 		</div>
@@ -196,7 +196,7 @@
 		<div>
 			<div>
 				{#if mapExists}
-					<div class="flex justify-between items-center mb-4">
+					<div class="mb-4 flex items-center justify-between">
 						<h4 class="font-medium">{label ? `Replace ${label}` : 'Replace Map'}</h4>
 						<Button variant="ghost" size="sm" onclick={() => (showUploadInterface = false)}>
 							Cancel
@@ -218,7 +218,7 @@
 				>
 					{#if uploading}
 						<div class="py-6">
-							<LoaderCircle class="mx-auto mb-3 w-8 h-8 animate-spin text-primary" />
+							<LoaderCircle class="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
 							<p class="text-sm font-medium">Processing map...</p>
 							<p class="mt-1 text-xs text-muted-foreground">
 								Large maps may take a moment to optimize
@@ -231,14 +231,14 @@
 						</div>
 					{:else}
 						<div class="space-y-4">
-							<Upload class="mx-auto w-12 h-12 text-muted-foreground" />
+							<Upload class="mx-auto h-12 w-12 text-muted-foreground" />
 							<div>
 								<p class="mb-2 font-medium">
 									{label ? `Drop ${label} here` : 'Drop your D&D map here'}
 								</p>
 								<p class="mb-4 text-sm text-muted-foreground">or click to browse files</p>
 								<Button onclick={() => fileInput.click()}>
-									<Upload class="mr-2 w-4 h-4" />
+									<Upload class="mr-2 h-4 w-4" />
 									Choose Map File
 								</Button>
 							</div>
