@@ -32,5 +32,5 @@
 				Go to settings
 			</Button>
 		</Empty.Content>
-	</Empty.Root>pnpm dlx shadcn-svelte@latest add kbd
+	</Empty.Root>
 </div>
