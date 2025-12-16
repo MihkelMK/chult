@@ -6,7 +6,7 @@ services:
       context: .
       args:
         # Baked into compiled code via $env/static/*
-        POSTGRES_HOST: postgres
+        POSTGRES_HOST: pgbouncer
         PUBLIC_MAX_IMAGE_SIZE: '${PUBLIC_MAX_IMAGE_SIZE}'
       secrets:
         - PRIVATE_DM_TOKEN
@@ -224,7 +224,7 @@ services:
 
   postgres-backup:
     container_name: chult-backup
-    image: prodrigestivill/postgres-backup-local
+    image: prodrigestivill/postgres-backup-local:16-alpine
     environment:
       # Connection details
       POSTGRES_HOST: postgres
@@ -269,8 +269,6 @@ secrets:
     environment: IMGPROXY_SALT
   IMGPROXY_URL:
     environment: IMGPROXY_URL
-  DATABASE_URL:
-    environment: DATABASE_URL
   POSTGRES_USER:
     environment: POSTGRES_USER
   POSTGRES_PASSWORD:
