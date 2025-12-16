@@ -50,20 +50,20 @@ COPY static ./static
 COPY drizzle ./drizzle
 
 # Accept build args for $env/static/* variables (baked into compiled code)
-ARG DATABASE_URL
 ARG PUBLIC_MAX_IMAGE_SIZE
-ARG PRIVATE_DM_TOKEN
-ARG IMGPROXY_KEY
-ARG IMGPROXY_SALT
-ARG IMGPROXY_URL
-
-# Set as environment variables for Vite build
-ENV DATABASE_URL=${DATABASE_URL}
 ENV PUBLIC_MAX_IMAGE_SIZE=${PUBLIC_MAX_IMAGE_SIZE}
-ENV PRIVATE_DM_TOKEN=${PRIVATE_DM_TOKEN}
-ENV IMGPROXY_KEY=${IMGPROXY_KEY}
-ENV IMGPROXY_SALT=${IMGPROXY_SALT}
-ENV IMGPROXY_URL=${IMGPROXY_URL}
+
+# Load secrets read from environment to .env during build
+ARG POSTGRES_HOST
+RUN --mount=type=secret,id=PRIVATE_DM_TOKEN,env=PRIVATE_DM_TOKEN \
+  --mount=type=secret,id=IMGPROXY_KEY,env=IMGPROXY_KEY \
+  --mount=type=secret,id=IMGPROXY_SALT,env=IMGPROXY_SALT \
+  --mount=type=secret,id=IMGPROXY_URL,env=IMGPROXY_URL \
+  --mount=type=secret,id=POSTGRES_USER,env=POSTGRES_USER \
+  --mount=type=secret,id=POSTGRES_PASSWORD,env=POSTGRES_PASSWORD \
+  --mount=type=secret,id=POSTGRES_DB,env=POSTGRES_DB \
+  printf "PRIVATE_DATABASE_URL='postgresql://%s:%s@%s:5432/%s'\nPRIVATE_DM_TOKEN=%s\nIMGPROXY_KEY=%s\nIMGPROXY_SALT=%s\nIMGPROXY_URL=%s\n" \
+  "$POSTGRES_USER" "$POSTGRES_PASSWORD" "${POSTGRES_HOST}" "$POSTGRES_DB" "$PRIVATE_DM_TOKEN" "$IMGPROXY_KEY" "$IMGPROXY_SALT" "$IMGPROXY_URL" > .env
 
 # Build the application with caching and increased memory
 RUN --mount=type=cache,id=chult-pnpm-cache,target=/root/.cache/pnpm \
@@ -104,7 +104,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD nc -z localhost 3000 || exit 1
+  CMD wget -q --tries 1 --spider http://127.0.0.1:3000 || exit 1
 
 # Entrypoint with db migration
 ENTRYPOINT [ "/app/entrypoint.sh" ]

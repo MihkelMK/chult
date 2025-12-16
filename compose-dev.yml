@@ -1,6 +1,8 @@
 services:
   imgproxy:
+    container_name: chult-imgproxy
     image: ghcr.io/imgproxy/imgproxy:latest
+    command: imgproxy -keypath /run/secrets/IMGPROXY_KEY -saltpath /run/secrets/IMGPROXY_SALT
     environment:
       # Basic config
       IMGPROXY_BIND: '0.0.0.0:8080'
@@ -9,8 +11,8 @@ services:
       IMGPROXY_TTL: 3600
 
       # Security - generate these with: openssl rand -hex 64
-      IMGPROXY_KEY: '${IMGPROXY_KEY}'
-      IMGPROXY_SALT: '${IMGPROXY_SALT}'
+      # IMGPROXY_KEY: '' # Now passed in as file
+      # IMGPROXY_SALT: '' # Now passed in as file
       IMGPROXY_SIGNATURE_SIZE: 32
 
       # Format settings
@@ -44,57 +46,98 @@ services:
       # Caching
       IMGPROXY_CACHE_CONTROL_PASSTHROUGH: 'true'
       IMGPROXY_SET_CANONICAL_HEADER: 'true'
-
-      # Dev
-      IMGPROXY_IGNORE_SSL_VERIFICATION: true
-      IMGPROXY_DEVELOPMENT_ERRORS_MODE: true
-
     volumes:
-      - ./uploads:/var/lib/imgproxy:ro # Read-only access to uploads
-      - ./imgproxy-cache:/tmp/imgproxy
+      - ${UPLOADS_PATH}:/var/lib/imgproxy:ro # Read-only access to uploads
+      - imgproxy_cache:/tmp/imgproxy # Named volume for better performance
+    secrets:
+      - IMGPROXY_KEY
+      - IMGPROXY_SALT
     ports:
       - '8080:8080'
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'imgproxy', 'health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   postgres:
+    container_name: chult-postgres
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+      POSTGRES_DB_FILE: /run/secrets/POSTGRES_DB
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
     command: >
-      postgres
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=4MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
-      -c max_connections=100
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      postgres -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=4MB -c min_wal_size=1GB -c max_wal_size=4GB -c max_connections=100
+
+
     ports:
       - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'pg_isready']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   adminer:
+    container_name: chult-adminer
     image: adminer:latest
     ports:
       - '8081:8080' # Adminer default port is 8080, map to 8081 on host
     environment:
       ADMINER_DEFAULT_SERVER: postgres # Connect to the 'postgres' service
-      ADMINER_SERVER: postgres # Hostname of the database service
-      ADMINER_USERNAME: ${POSTGRES_USER}
-      ADMINER_PASSWORD: ${POSTGRES_PASSWORD}
-      ADMINER_DATABASE: ${POSTGRES_DB}
     depends_on:
       - postgres # Ensure postgres starts before adminer
     restart: unless-stopped
 
+secrets:
+  IMGPROXY_KEY:
+    environment: IMGPROXY_KEY
+  IMGPROXY_SALT:
+    environment: IMGPROXY_SALT
+  POSTGRES_USER:
+    environment: POSTGRES_USER
+  POSTGRES_PASSWORD:
+    environment: POSTGRES_PASSWORD
+  POSTGRES_DB:
+    environment: POSTGRES_DB
+
 volumes:
   postgres_data: {}
+  imgproxy_cache: {}
