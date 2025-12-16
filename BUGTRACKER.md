@@ -12,6 +12,7 @@
 - path starts from second position
 - SSE unstable - players movement and session start sometimes not updating without restart
   - `events/` connection closes on MacOS Chrome, pings end (logs in next header)
+- Selection disappears when toggling to pan tool with shift
 
 ## Feature Requests
 
