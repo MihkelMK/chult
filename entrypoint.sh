@@ -3,7 +3,7 @@
 echo "Waiting for PostgreSQL to become available..."
 # Wait for postgres to be ready
 
-until nc -z -v -w30 postgres 5432; do
+until nc -z -v -w30 "$POSTGRES_HOST" 5432; do
   echo "Still waiting for postgres..."
   sleep 1
 done
