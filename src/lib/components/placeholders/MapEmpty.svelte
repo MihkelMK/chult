@@ -12,7 +12,7 @@
 	let { userRole, slug }: Props = $props();
 </script>
 
-<div class="flex h-full items-center justify-center">
+<div class="flex justify-center items-center h-full">
 	<Empty.Root class="border border-dashed">
 		<Empty.Header>
 			<Empty.Media variant="icon">
@@ -28,9 +28,11 @@
 			</Empty.Description>
 		</Empty.Header>
 		<Empty.Content>
-			<Button variant="outline" size="sm" href="/{slug}/settings" class="cursor-pointer">
-				Go to settings
-			</Button>
+			{#if userRole === 'dm'}
+				<Button variant="outline" size="sm" href="/{slug}/settings" class="cursor-pointer">
+					Go to settings
+				</Button>
+			{/if}
 		</Empty.Content>
 	</Empty.Root>
 </div>
