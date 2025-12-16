@@ -1,2 +1,0 @@
-# This file is generated at runtime by entrypoint
-# Format: "username" "password"

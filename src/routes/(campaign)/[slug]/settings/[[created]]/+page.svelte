@@ -277,12 +277,10 @@
 	// Handle hex click on map preview to set party token position
 	function handleHexClickForPartyPosition(event: { key: string }) {
 		if (previewTool !== 'set-position') return;
-		console.log(event.key);
 
 		const [col, row] = event.key.split('-').map(Number);
 		partyTokenX = col;
 		partyTokenY = row;
-		console.log('[Settings] Party token position set to:', { col, row });
 	}
 
 	// Zoom controls for preview

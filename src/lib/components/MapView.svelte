@@ -319,7 +319,6 @@
 
 		// Check if in teleport mode first
 		if (teleportMode === 'selecting-destination') {
-			console.log('teleport to:', clickedKey);
 			handleTeleportDestinationClick(clickedKey);
 			return;
 		}

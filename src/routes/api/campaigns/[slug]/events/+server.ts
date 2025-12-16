@@ -60,7 +60,6 @@ export const GET: RequestHandler = async (event) => {
 				eventEmitter.off(`campaign-${params.slug}`, listener);
 				clearInterval(keepAliveInterval);
 				clearInterval(pingInterval);
-				console.log(`[SSE] Connection closed for campaign: ${params.slug}, role: ${session?.role}`);
 			}
 		}
 	});
