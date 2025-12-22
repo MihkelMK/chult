@@ -212,7 +212,7 @@ services:
       - POSTGRES_PASSWORD
       - POSTGRES_DB
     command: >
-      postgres -c shared_buffers=1536M -c effective_cache_size=4608M -c maintenance_work_mem=384MB -c work_mem=16MB -c max_connections=30 -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=150 -c random_page_cost=1.0 -c effective_io_concurrency=200 -c min_wal_size=1GB -c max_wal_size=4GB -c max_parallel_workers_per_gather=2 -c max_parallel_workers=4 -c max_parallel_maintenance_workers=2 -c parallel_tuple_cost=0.05 -c parallel_setup_cost=500 -c wal_compression=zstd -c wal_init_zero=off -c wal_recycle=on -c tcp_keepalives_idle=60 -c tcp_keepalives_interval=10 -c tcp_keepalives_count=3 -c log_min_duration_statement=1000 -c log_line_prefix='%t [%p]: user=%u,db=%d '
+      postgres -c shared_buffers=1536MB -c effective_cache_size=4608MB -c maintenance_work_mem=384MB -c work_mem=16MB -c max_connections=30 -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=150 -c random_page_cost=1.0 -c effective_io_concurrency=200 -c min_wal_size=1GB -c max_wal_size=4GB -c max_parallel_workers_per_gather=2 -c max_parallel_workers=4 -c max_parallel_maintenance_workers=2 -c parallel_tuple_cost=0.05 -c parallel_setup_cost=500 -c wal_compression=zstd -c wal_init_zero=off -c wal_recycle=on -c tcp_keepalives_idle=60 -c tcp_keepalives_interval=10 -c tcp_keepalives_count=3 -c log_min_duration_statement=1000 -c log_line_prefix='%t [%p]: user=%u,db=%d '
 
 
     volumes:
