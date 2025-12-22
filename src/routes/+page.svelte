@@ -76,6 +76,7 @@
 							placeholder="Enter campaign code"
 							disabled={loading}
 							aria-invalid={loginFailed}
+							autocomplete="username webauthn"
 							oninput={() => (loginFailed = false)}
 						/>
 					</div>
@@ -93,6 +94,7 @@
 								disabled={loading}
 								class="flex-1"
 								aria-invalid={loginFailed}
+								autocomplete="current-password webauthn"
 								oninput={() => (loginFailed = false)}
 							/>
 							<Button
