@@ -53,6 +53,9 @@ COPY drizzle ./drizzle
 ARG PUBLIC_MAX_IMAGE_SIZE
 ENV PUBLIC_MAX_IMAGE_SIZE=${PUBLIC_MAX_IMAGE_SIZE}
 
+# Silence "not defined" error while building. (Error still good for runtime debugging)
+RUN echo PRIVATE_DATABASE_URL="postgresql://user:password@host:5432/database" > .env
+
 # Build the application with caching and increased memory
 RUN --mount=type=cache,id=chult-pnpm-cache,target=/root/.cache/pnpm \
   NODE_OPTIONS="--max-old-space-size=4096" NODE_ENV=production pnpm run build
