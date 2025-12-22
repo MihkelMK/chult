@@ -1,5 +1,10 @@
+import { config } from 'dotenv';
+import { expand } from 'dotenv-expand';
 import { defineConfig } from 'drizzle-kit';
 import fs from 'fs';
+
+// Load environment variables from .env file
+expand(config());
 
 let dbCredentials:
 	| ({
