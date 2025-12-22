@@ -190,13 +190,19 @@
 
 			const result = await response.json();
 
-			// Update the data object to reflect the saved values
-			if (data.campaign) {
-				data.campaign.hexesPerRow = result.config.hexesPerRow;
-				data.campaign.hexesPerCol = result.config.hexesPerCol;
-				data.campaign.hexOffsetX = result.config.hexOffsetX;
-				data.campaign.hexOffsetY = result.config.hexOffsetY;
-			}
+			// Reassign data to trigger reactivity
+			data = {
+				...data,
+				campaign: data.campaign
+					? {
+							...data.campaign,
+							hexesPerRow: result.config.hexesPerRow,
+							hexesPerCol: result.config.hexesPerCol,
+							hexOffsetX: result.config.hexOffsetX,
+							hexOffsetY: result.config.hexOffsetY
+						}
+					: data.campaign
+			};
 
 			toast.success('Hex grid configuration saved successfully!');
 		} catch (err) {
@@ -234,11 +240,17 @@
 
 			const result = await response.json();
 
-			// Update the data object to reflect the saved values
-			if (data.campaign) {
-				data.campaign.partyTokenX = result.config.partyTokenX;
-				data.campaign.partyTokenY = result.config.partyTokenY;
-			}
+			// Reassign data to trigger reactivity
+			data = {
+				...data,
+				campaign: data.campaign
+					? {
+							...data.campaign,
+							partyTokenX: result.config.partyTokenX,
+							partyTokenY: result.config.partyTokenY
+						}
+					: data.campaign
+			};
 
 			toast.success('Party token position saved successfully!');
 		} catch (err) {
