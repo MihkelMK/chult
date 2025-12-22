@@ -35,6 +35,7 @@
 	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
+	import { onMount } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -53,10 +54,10 @@
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
 	let aspectRatio = $derived(Math.fround(data.campaign.imageHeight / data.campaign.imageWidth));
-	let tilesPerColumn = $state(data.campaign?.hexesPerCol);
-	let tilesPerRow = $state(data.campaign?.hexesPerRow);
-	let offsetX = $state(data.campaign?.hexOffsetX);
-	let offsetY = $state(data.campaign?.hexOffsetY);
+	let tilesPerColumn: number | undefined = $state();
+	let tilesPerRow: number | undefined = $state();
+	let offsetX: number | undefined = $state();
+	let offsetY: number | undefined = $state();
 
 	let tilesPerColumnDebounced = new Debounced(() => tilesPerColumn, 1000);
 	let tilesPerRowDebounced = new Debounced(() => tilesPerRow, 1000);
@@ -71,11 +72,11 @@
 	let isDragging = $state(false);
 
 	// Party token position state
-	let partyTokenX = $state<number | null>(data.campaign?.partyTokenX ?? null);
-	let partyTokenY = $state<number | null>(data.campaign?.partyTokenY ?? null);
+	let partyTokenX = $state<number | null>(null);
+	let partyTokenY = $state<number | null>(null);
 
 	// Player map state
-	let hasPlayerMap = $state(data.campaign?.hasPlayerMap ?? false);
+	let hasPlayerMap = $state(false);
 
 	// Check if any sessions exist - if so, disable manual position setting
 	let hasAnySessions = $derived(localState.gameSessions.length > 0);
@@ -307,6 +308,20 @@
 		} else {
 			localState.partyTokenPosition = null;
 		}
+	});
+
+	onMount(() => {
+		tilesPerColumn = data.campaign?.hexesPerCol;
+		tilesPerRow = data.campaign?.hexesPerRow;
+		offsetX = data.campaign?.hexOffsetX;
+		offsetY = data.campaign?.hexOffsetY;
+
+		// Party token position state
+		partyTokenX = data.campaign?.partyTokenX ?? null;
+		partyTokenY = data.campaign?.partyTokenY ?? null;
+
+		// Player map state
+		hasPlayerMap = data.campaign?.hasPlayerMap ?? false;
 	});
 </script>
 
@@ -707,10 +722,10 @@
 									{canvasHeight}
 									{canvasWidth}
 									variant="detail"
-									hexesPerRow={tilesPerRowDebounced.current}
-									hexesPerCol={tilesPerColumnDebounced.current}
-									xOffset={offsetXDebounced.current}
-									yOffset={offsetYDebounced.current}
+									hexesPerRow={tilesPerRowDebounced.current || 0}
+									hexesPerCol={tilesPerColumnDebounced.current || 0}
+									xOffset={offsetXDebounced.current || 0}
+									yOffset={offsetYDebounced.current || 0}
 									imageHeight={data.campaign.imageHeight}
 									imageWidth={data.campaign.imageWidth}
 									activeSelectMode="remove"

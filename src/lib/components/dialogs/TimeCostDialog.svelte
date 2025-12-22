@@ -10,6 +10,7 @@
 	} from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		open: boolean;
@@ -29,7 +30,7 @@
 		onCancel
 	}: Props = $props();
 
-	let timeCost = $state(defaultTimeCost);
+	let timeCost = $state(0);
 
 	// Reset to default when dialog opens
 	$effect(() => {
@@ -60,6 +61,10 @@
 	function handleCancel() {
 		onCancel();
 	}
+
+	onMount(() => {
+		timeCost = defaultTimeCost;
+	});
 </script>
 
 <Dialog bind:open>

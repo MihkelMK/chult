@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import type { UserRole } from '$lib/types';
 	import { Image, LoaderCircle, Trash2, Upload } from '@lucide/svelte';
+	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	interface Props {
@@ -30,7 +31,7 @@
 	let dragActive = $state(false);
 	let uploading = $state(false);
 	let previewUrl = $state('');
-	let showUploadInterface = $state(!mapExists);
+	let showUploadInterface = $state(true);
 
 	// Dialog state
 	let confirmDeleteDialogOpen = $state(false);
@@ -162,6 +163,10 @@
 		e.preventDefault();
 		dragActive = false;
 	}
+
+	onMount(() => {
+		showUploadInterface = !mapExists;
+	});
 </script>
 
 <div class="space-y-4">

@@ -4,6 +4,7 @@
 	import * as Collapsible from '$lib/components/ui/collapsible';
 	import type { GameSessionResponse, Path, PathStep } from '$lib/types';
 	import { ChevronDown, Eye, EyeOff } from '@lucide/svelte';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		session: GameSessionResponse;
@@ -25,7 +26,7 @@
 		onToggleVisibility
 	}: Props = $props();
 
-	let open = $state(isActive); // Active session expanded by default
+	let open = $state(false);
 
 	function formatDuration(durationMinutes: number | null): string {
 		if (!durationMinutes) return '0m';
@@ -62,6 +63,11 @@
 				return 'Unknown';
 		}
 	}
+
+	onMount(() => {
+		// Active session expanded by default
+		open = isActive;
+	});
 </script>
 
 <Collapsible.Root bind:open>

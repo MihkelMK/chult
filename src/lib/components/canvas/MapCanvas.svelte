@@ -4,6 +4,7 @@
 	import type { Hex, MapCanvasProps, MapMarkerResponse } from '$lib/types';
 	import { hexToTileKey, pixelToHex } from '$lib/utils/hexCoordinates';
 	import type { KonvaPointerEvent } from 'konva/lib/PointerEvents';
+	import { onMount } from 'svelte';
 	import { Group, Image, Layer, Rect, RegularPolygon, Stage, Text } from 'svelte-konva';
 
 	let {
@@ -136,7 +137,7 @@
 			? canvasHeight / (imageHeight + dragBoundPaddingPX * 2)
 			: canvasWidth / (imageWidth + dragBoundPaddingPX * 2)
 	);
-	let previousZoom = $state(zoom);
+	let previousZoom: number | undefined = $state();
 	let scale = $derived(absoluteScale * zoom);
 	let position = $state({ x: 0, y: 0 });
 	let scrollSpeed = $derived((1 / zoom) * 0.75);
@@ -216,6 +217,11 @@
 				y: Math.max(Math.min(maxYPos, newY), minYPos)
 			};
 		}
+	});
+
+	// Initial values
+	onMount(() => {
+		previousZoom = zoom;
 	});
 </script>
 
