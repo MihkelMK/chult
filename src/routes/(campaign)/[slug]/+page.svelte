@@ -19,6 +19,8 @@
 	);
 	const isDM = $derived(effectiveRole === 'dm');
 
+	let ready = $state(false);
+
 	// Determine effective role from session
 	onMount(() => {
 		const localState = getLocalState();
@@ -30,6 +32,7 @@
 
 		// Set remote state in context for child components
 		setRemoteState(remoteState);
+		ready = true;
 	});
 </script>
 
@@ -37,4 +40,6 @@
 	<title>{isDM ? 'Interactive Map' : 'Explore'} - {data.campaign.name}</title>
 </svelte:head>
 
-<MapView {data} {effectiveRole} userRole={data.session.role} />
+{#if ready}
+	<MapView {data} {effectiveRole} userRole={data.session.role} />
+{/if}

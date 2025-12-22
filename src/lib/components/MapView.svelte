@@ -17,6 +17,9 @@
 	import { Sheet } from '$lib/components/ui/sheet';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
+	import type { LocalState } from '$lib/stores/localState.svelte';
+	import type { RemoteStateDM } from '$lib/stores/remoteStateDM.svelte';
+	import type { RemoteStatePlayer } from '$lib/stores/remoteStatePlayer.svelte';
 	import type {
 		DialogConfig,
 		HexTriggerEvent,
@@ -32,12 +35,14 @@
 	} from '$lib/types';
 	import type { MapMarkerResponse } from '$lib/types/database';
 	import { PressedKeys, Previous } from 'runed';
+	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { expoIn, expoOut } from 'svelte/easing';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import type { PageData } from '../../routes/(campaign)/[slug]/$types';
 	import TopBar from './map/TopBar.svelte';
+	import LoadingScreen from './placeholders/LoadingScreen.svelte';
 
 	interface Props {
 		data: PageData;
@@ -56,8 +61,8 @@
 	let rightSidebarOpen = $state(false);
 
 	// Get states from context
-	const localState = getLocalState();
-	const remoteState = getRemoteState();
+	let localState = $state<LocalState | undefined>();
+	let remoteState = $state<RemoteStateDM | RemoteStatePlayer | undefined>();
 
 	// Internal state to track what tool was selected
 	let _selectedTool = $state<UITool>('interact');
@@ -85,9 +90,7 @@
 	let hoveredMarker = $state<MapMarkerResponse | null>(null);
 	let tooltipPosition = $state({ x: 0, y: 0 });
 
-	let visiblePathSessions = new SvelteSet<number>(
-		localState.activeSession ? [localState.activeSession.id] : []
-	);
+	let visiblePathSessions = new SvelteSet<number>();
 
 	// Teleport state
 	let teleportMode = $state<'selecting-destination' | null>(null);
@@ -141,6 +144,17 @@
 	let selectionHistory = $state<SvelteSet<string>[]>([new SvelteSet<string>()]);
 	let historyIndex = $state(0);
 
+	// Initialize context states
+	onMount(() => {
+		localState = getLocalState();
+		remoteState = getRemoteState();
+
+		// Initialize visible path sessions with active session
+		if (localState?.activeSession) {
+			visiblePathSessions.add(localState.activeSession.id);
+		}
+	});
+
 	function areSetsEqual(a: SvelteSet<string>, b: SvelteSet<string>): boolean {
 		if (a.size !== b.size) return false;
 		for (const item of a) if (!b.has(item)) return false;
@@ -188,24 +202,25 @@
 	}
 
 	let hasPendingOperations = $derived(
-		effectiveRole === 'dm' && remoteState.pending && remoteState.pending.length > 0
+		effectiveRole === 'dm' && remoteState && remoteState.pending && remoteState.pending.length > 0
 	);
 
 	let hasErrors = $derived(
 		effectiveRole === 'dm' &&
+			remoteState &&
 			'errors' in remoteState &&
 			remoteState.errors &&
 			remoteState.errors.length > 0
 	);
 
 	// Exploration derived state
-	let hasActiveSession = $derived(localState.activeSession !== null);
-	let canExplore = $derived(hasActiveSession && localState.partyTokenPosition !== null);
+	let hasActiveSession = $derived(localState?.activeSession !== null);
+	let canExplore = $derived(hasActiveSession && localState?.partyTokenPosition !== null);
 
 	// Current session duration (updates every second when session is active)
 	let currentTime = $state(Date.now());
 	let sessionDuration = $derived.by(() => {
-		if (!localState.activeSession) return null;
+		if (!localState || !localState.activeSession) return null;
 
 		const startTime = new Date(localState.activeSession.startedAt).getTime();
 		const elapsed = (currentTime - startTime) / 1000; // seconds
@@ -287,6 +302,8 @@
 	}
 
 	function handleSelect(key: string) {
+		if (!localState) return;
+
 		const isRevealed = localState.revealedTilesSet.has(key);
 		const isAlwaysRevealed = localState.alwaysRevealedTilesSet.has(key);
 		const isUnrevealed = !isRevealed && !isAlwaysRevealed;
@@ -345,7 +362,7 @@
 				break;
 			case 'paint':
 				// Paint mode - paint multiple tiles based on brush size
-				if (effectiveRole === 'dm') {
+				if (effectiveRole === 'dm' && localState) {
 					const tilesToPaint = getBrushTiles(clickedKey);
 					// Batch updates to the set for better performance
 					for (const key of tilesToPaint) {
@@ -520,6 +537,8 @@
 
 	// Movement confirmation and execution
 	async function confirmMovement(tileKey: string) {
+		if (!remoteState) return;
+
 		if ('addPlayerMove' in remoteState) {
 			try {
 				await remoteState.addPlayerMove(tileKey);
@@ -573,7 +592,7 @@
 	}
 
 	function isAdjacentToParty(tileKey: string): boolean {
-		if (!localState.partyTokenPosition) return false;
+		if (!localState?.partyTokenPosition) return false;
 
 		const [x, y] = tileKey.split('-').map(Number);
 		const { x: partyX, y: partyY } = localState.partyTokenPosition;
@@ -602,6 +621,7 @@
 	}
 
 	function revealSelectedTiles() {
+		if (!remoteState) return;
 		if (effectiveRole === 'dm' && 'revealTiles' in remoteState) {
 			const selectedCoords = getSelectedTileCoordsFromSet(selectedSet);
 			remoteState.revealTiles(selectedCoords, alwaysRevealMode);
@@ -610,6 +630,7 @@
 	}
 
 	function hideSelectedTiles() {
+		if (!remoteState) return;
 		if (effectiveRole === 'dm' && 'hideTiles' in remoteState) {
 			const selectedCoords = getSelectedTileCoordsFromSet(selectedSet);
 			remoteState.hideTiles(selectedCoords);
@@ -618,6 +639,7 @@
 	}
 
 	function flushPendingOperations() {
+		if (!remoteState) return;
 		if (effectiveRole === 'dm' && 'flush' in remoteState) {
 			remoteState.flush();
 		}
@@ -625,6 +647,8 @@
 
 	// Right-click handler
 	function handleRightClick(event: RightClickEvent) {
+		if (!localState) return;
+
 		// Allow both DM and players for marker creation and marker context menu
 		// Only DM can use other context menus (teleport, etc.)
 		if (effectiveRole !== 'dm' && event.type !== 'tile' && event.type !== 'marker') return;
@@ -690,7 +714,7 @@
 		content?: string;
 		visibleToPlayers: boolean;
 	}) {
-		if (!createMarkerCoords) return;
+		if (!createMarkerCoords || !remoteState) return;
 		if (!('createMarker' in remoteState)) return;
 
 		try {
@@ -747,7 +771,7 @@
 		content?: string;
 		visibleToPlayers: boolean;
 	}) {
-		if (!selectedMarker || !('updateMarker' in remoteState)) return;
+		if (!selectedMarker || !remoteState || !('updateMarker' in remoteState)) return;
 
 		try {
 			await remoteState.updateMarker(selectedMarker.id, data);
@@ -761,7 +785,7 @@
 	}
 
 	async function handleDeleteMarker() {
-		if (!selectedMarker || !('deleteMarker' in remoteState)) return;
+		if (!selectedMarker || !remoteState || !('deleteMarker' in remoteState)) return;
 
 		try {
 			await remoteState.deleteMarker(selectedMarker.id);
@@ -777,7 +801,7 @@
 
 	// Teleport functions
 	function startTeleport() {
-		if (!localState.partyTokenPosition) {
+		if (!localState?.partyTokenPosition) {
 			toast.error('Cannot teleport: no party token position');
 			return;
 		}
@@ -806,7 +830,7 @@
 	}
 
 	async function confirmTeleport(timeCost: number) {
-		if (!teleportOrigin || !pendingTeleportDestination) return;
+		if (!remoteState || !teleportOrigin || !pendingTeleportDestination) return;
 
 		if ('addDMTeleport' in remoteState) {
 			try {
@@ -834,7 +858,7 @@
 	}
 
 	function handlePanToParty() {
-		if (localState.partyTokenPosition) {
+		if (localState?.partyTokenPosition) {
 			// Trigger pan by setting the tile coordinates
 			panToCoords = { ...localState.partyTokenPosition };
 			// Reset after a short delay to allow re-triggering
@@ -887,248 +911,252 @@
 
 <svelte:window bind:innerWidth={canvasWidth} bind:innerHeight={canvasHeight} />
 
-<!-- Full screen layout -->
-<Tooltip.Provider>
-	<div class="fixed inset-0 flex bg-background">
-		<!-- Map Container with native scroll -->
-		<div
-			class="max-w-screen flex-1 overflow-auto bg-muted/20"
-			style="cursor: {loading
-				? 'loading'
-				: activeTool === 'pan'
-					? isDragging
-						? 'grabbing'
-						: 'grab'
-					: activeTool === 'paint' || activeTool === 'select'
-						? activeSelectMode === 'add'
-							? 'crosshair'
-							: 'not-allowed'
-						: 'default'} !important;"
-			role="application"
-			aria-label="Interactive map"
-		>
-			{#if !data.mapUrls}
-				<MapEmpty {userRole} slug={data.campaign.slug} />
-			{:else}
-				<MapCanvasWrapper
-					bind:isDragging
-					{canvasHeight}
-					{canvasWidth}
-					mapUrls={data.mapUrls}
-					variant="detail"
-					isDM={effectiveRole === 'dm'}
-					showAlwaysRevealed={effectiveRole === 'dm' ? showAlwaysRevealed : false}
-					showRevealed={effectiveRole === 'dm' ? showRevealed : false}
-					showUnrevealed={effectiveRole === 'dm' ? showUnrevealed : true}
-					showDMMarkers={effectiveRole === 'dm' ? showDMMarkers : false}
-					showPlayerMarkers={effectiveRole === 'dm' ? showPlayerMarkers : true}
-					tileTransparency={effectiveRole === 'dm' ? Number(tileTransparency) : 0.75}
-					hexesPerRow={data.campaign?.hexesPerRow ?? 20}
-					hexesPerCol={data.campaign?.hexesPerCol ?? 20}
-					xOffset={data.campaign?.hexOffsetX ?? 70}
-					yOffset={(data.campaign?.hexOffsetY ?? 58) - 2}
-					imageHeight={data.campaign?.imageHeight}
-					imageWidth={data.campaign?.imageWidth}
-					{localState}
-					{selectedSet}
-					showCoords={effectiveRole === 'dm' ? 'always' : 'hover'}
-					onHexTriggered={handleTileTrigger}
-					onRightClick={handleRightClick}
-					onMarkerHover={handleMarkerHover}
-					onMarkerClick={handleMarkerClick}
-					onZoomIn={handleZoomIn}
-					onZoomOut={handleZoomOut}
-					{activeTool}
-					selectedTool={_selectedTool}
-					{activeSelectMode}
-					showAnimations={true}
-					previewMode={false}
-					{zoom}
-					{showPaths}
-					{visiblePathSessions}
-					{panToCoords}
-				/>
-			{/if}
-		</div>
-
-		<!-- Top Bar with sidebar toggles -->
-		<TopBar
-			{hasErrors}
-			{effectiveRole}
-			campaignName={data.campaign?.name || data.session?.campaignSlug}
-			activeSession={localState.activeSession}
-			selectedCount={selectedSet.size}
-			showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
-			partyTokenPosition={localState.partyTokenPosition}
-			onOpenCampaign={() => (leftSidebarOpen = true)}
-			onOpenHistory={() => (rightSidebarOpen = true)}
-			onPanToParty={handlePanToParty}
-		/>
-
-		<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
-		{#if effectiveRole === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
+{#if !localState || !remoteState}
+	<LoadingScreen />
+{:else}
+	<!-- Full screen layout -->
+	<Tooltip.Provider>
+		<div class="fixed inset-0 flex bg-background">
+			<!-- Map Container with native scroll -->
 			<div
-				in:fly={{ y: 100, easing: expoOut, duration: 500 }}
-				out:fly={{ y: 100, easing: expoIn, duration: 250 }}
-				class="absolute bottom-16 left-1/2 z-20 -translate-x-1/2"
+				class="max-w-screen flex-1 overflow-auto bg-muted/20"
+				style="cursor: {loading
+					? 'loading'
+					: activeTool === 'pan'
+						? isDragging
+							? 'grabbing'
+							: 'grab'
+						: activeTool === 'paint' || activeTool === 'select'
+							? activeSelectMode === 'add'
+								? 'crosshair'
+								: 'not-allowed'
+							: 'default'} !important;"
+				role="application"
+				aria-label="Interactive map"
 			>
-				<SelectionToolbar
+				{#if !data.mapUrls}
+					<MapEmpty {userRole} slug={data.campaign.slug} />
+				{:else}
+					<MapCanvasWrapper
+						bind:isDragging
+						{canvasHeight}
+						{canvasWidth}
+						mapUrls={data.mapUrls}
+						variant="detail"
+						isDM={effectiveRole === 'dm'}
+						showAlwaysRevealed={effectiveRole === 'dm' ? showAlwaysRevealed : false}
+						showRevealed={effectiveRole === 'dm' ? showRevealed : false}
+						showUnrevealed={effectiveRole === 'dm' ? showUnrevealed : true}
+						showDMMarkers={effectiveRole === 'dm' ? showDMMarkers : false}
+						showPlayerMarkers={effectiveRole === 'dm' ? showPlayerMarkers : true}
+						tileTransparency={effectiveRole === 'dm' ? Number(tileTransparency) : 0.75}
+						hexesPerRow={data.campaign?.hexesPerRow ?? 20}
+						hexesPerCol={data.campaign?.hexesPerCol ?? 20}
+						xOffset={data.campaign?.hexOffsetX ?? 70}
+						yOffset={(data.campaign?.hexOffsetY ?? 58) - 2}
+						imageHeight={data.campaign?.imageHeight}
+						imageWidth={data.campaign?.imageWidth}
+						{localState}
+						{selectedSet}
+						showCoords={effectiveRole === 'dm' ? 'always' : 'hover'}
+						onHexTriggered={handleTileTrigger}
+						onRightClick={handleRightClick}
+						onMarkerHover={handleMarkerHover}
+						onMarkerClick={handleMarkerClick}
+						onZoomIn={handleZoomIn}
+						onZoomOut={handleZoomOut}
+						{activeTool}
+						selectedTool={_selectedTool}
+						{activeSelectMode}
+						showAnimations={true}
+						previewMode={false}
+						{zoom}
+						{showPaths}
+						{visiblePathSessions}
+						{panToCoords}
+					/>
+				{/if}
+			</div>
+
+			<!-- Top Bar with sidebar toggles -->
+			<TopBar
+				{hasErrors}
+				{effectiveRole}
+				campaignName={data.campaign?.name || data.session?.campaignSlug}
+				activeSession={localState.activeSession}
+				selectedCount={selectedSet.size}
+				showSelectedCount={_selectedTool === 'select' || _selectedTool === 'paint'}
+				partyTokenPosition={localState.partyTokenPosition}
+				onOpenCampaign={() => (leftSidebarOpen = true)}
+				onOpenHistory={() => (rightSidebarOpen = true)}
+				onPanToParty={handlePanToParty}
+			/>
+
+			<!-- DM Selection/Paint Toolbar (only when in select or paint mode) -->
+			{#if effectiveRole === 'dm' && (_selectedTool === 'select' || _selectedTool === 'paint')}
+				<div
+					in:fly={{ y: 100, easing: expoOut, duration: 500 }}
+					out:fly={{ y: 100, easing: expoIn, duration: 250 }}
+					class="absolute bottom-16 left-1/2 z-20 -translate-x-1/2"
+				>
+					<SelectionToolbar
+						{activeSelectMode}
+						bind:alwaysRevealMode
+						bind:selectedSelectMode={_selectedSelectMode}
+						bind:brushSize
+						selectedCount={selectedSet.size}
+						showBrushSize={activeTool === 'paint'}
+						onReveal={revealSelectedTiles}
+						onHide={hideSelectedTiles}
+						onClear={() => clearSelection()}
+					/>
+				</div>
+			{/if}
+
+			<!-- Zoom Controls -->
+			<div class="absolute right-4 bottom-4 z-20">
+				<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
+			</div>
+
+			<!-- Keyboard Shortcuts Button -->
+			<div class="absolute right-6 bottom-36 z-20 -mr-px">
+				<KeyboardShortcutsDialog {effectiveRole} />
+			</div>
+
+			<!-- Bottom Toolbar with Cursor Modes -->
+			<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
+				<ToolModeButtons
+					{activeTool}
 					{activeSelectMode}
-					bind:alwaysRevealMode
-					bind:selectedSelectMode={_selectedSelectMode}
-					bind:brushSize
-					selectedCount={selectedSet.size}
-					showBrushSize={activeTool === 'paint'}
-					onReveal={revealSelectedTiles}
-					onHide={hideSelectedTiles}
-					onClear={() => clearSelection()}
+					{brushSize}
+					showDMTools={effectiveRole === 'dm'}
+					showExploreTool={effectiveRole === 'player'}
+					onSelectTool={setSelectedTool}
 				/>
 			</div>
-		{/if}
 
-		<!-- Zoom Controls -->
-		<div class="absolute right-4 bottom-4 z-20">
-			<ZoomControls {zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />
-		</div>
-
-		<!-- Keyboard Shortcuts Button -->
-		<div class="absolute right-6 bottom-36 z-20 -mr-px">
-			<KeyboardShortcutsDialog {effectiveRole} />
-		</div>
-
-		<!-- Bottom Toolbar with Cursor Modes -->
-		<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-			<ToolModeButtons
-				{activeTool}
-				{activeSelectMode}
-				{brushSize}
-				showDMTools={effectiveRole === 'dm'}
-				showExploreTool={effectiveRole === 'player'}
-				onSelectTool={setSelectedTool}
+			<!-- General Confirmation Dialog -->
+			<ConfirmDialog
+				bind:open={showDialog}
+				title={dialogConfig.title}
+				description={dialogConfig.description}
+				actions={dialogConfig.actions}
 			/>
+
+			<!-- Layer Controls -->
+			{#if effectiveRole === 'dm'}
+				<div class="absolute bottom-4 left-4 z-20">
+					<LayerControls
+						bind:showAlwaysRevealed
+						bind:showRevealed
+						bind:showUnrevealed
+						bind:showPaths
+						bind:showDMMarkers
+						bind:showPlayerMarkers
+						{tileTransparency}
+						onTransparencyChange={(value) => (tileTransparency = value)}
+					/>
+				</div>
+			{/if}
+
+			<!-- Left Sidebar - Campaign Management -->
+			<Sheet bind:open={leftSidebarOpen}>
+				<CampaignSidebar
+					bind:showDialog
+					bind:dialogConfig
+					{effectiveRole}
+					{userRole}
+					{hasActiveSession}
+					{sessionDuration}
+					campaignSlug={data.campaign.slug}
+					globalGameTime={localState.globalGameTime}
+					revealedTilesCount={localState.revealedTilesSet.size}
+					alwaysRevealedTilesCount={localState.alwaysRevealedTilesSet.size}
+					timeAuditLog={localState.timeAuditLog}
+					hasPendingOperations={!!hasPendingOperations}
+					pendingCount={remoteState.pending?.length || 0}
+					activeSession={localState.activeSession}
+					onFlushPending={flushPendingOperations}
+				/>
+			</Sheet>
+
+			<!-- Right Sidebar - Session History -->
+			<Sheet bind:open={rightSidebarOpen}>
+				<SessionSidebar
+					sessions={localState.gameSessions}
+					pathsMap={localState.pathsMap}
+					activeSessionId={localState.activeSession?.id || null}
+					visibleSessionIds={visiblePathSessions}
+					activeSessionDuration={sessionDuration}
+					globalGameTime={localState.globalGameTime}
+					onToggleVisibility={handleTogglePathVisibility}
+				/>
+			</Sheet>
 		</div>
 
-		<!-- General Confirmation Dialog -->
-		<ConfirmDialog
-			bind:open={showDialog}
-			title={dialogConfig.title}
-			description={dialogConfig.description}
-			actions={dialogConfig.actions}
+		<!-- Tile Right Click Menu -->
+		<ContextMenu
+			open={contextMenuOpen}
+			position={contextMenuPosition}
+			type={contextMenuType}
+			partyPosition={localState.partyTokenPosition}
+			tile={createMarkerCoords}
+			{userRole}
+			{selectedDMMarker}
+			{selectedPlayerMarker}
+			handleShowMarker={handleMarkerClick}
+			{openCreateMarkerDialog}
+			{startTeleport}
 		/>
 
-		<!-- Layer Controls -->
-		{#if effectiveRole === 'dm'}
-			<div class="absolute bottom-4 left-4 z-20">
-				<LayerControls
-					bind:showAlwaysRevealed
-					bind:showRevealed
-					bind:showUnrevealed
-					bind:showPaths
-					bind:showDMMarkers
-					bind:showPlayerMarkers
-					{tileTransparency}
-					onTransparencyChange={(value) => (tileTransparency = value)}
-				/>
-			</div>
-		{/if}
+		<!-- Time Cost Dialog for Teleport -->
+		<TimeCostDialog
+			bind:open={showTimeCostDialog}
+			title="Set Teleport Time Cost"
+			description="How much game time should this teleport take?"
+			defaultTimeCost={0}
+			onConfirm={confirmTeleport}
+			onCancel={() => {
+				showTimeCostDialog = false;
+				cancelTeleport();
+			}}
+		/>
 
-		<!-- Left Sidebar - Campaign Management -->
-		<Sheet bind:open={leftSidebarOpen}>
-			<CampaignSidebar
-				bind:showDialog
-				bind:dialogConfig
-				{effectiveRole}
-				{userRole}
-				{hasActiveSession}
-				{sessionDuration}
-				campaignSlug={data.campaign.slug}
-				globalGameTime={localState.globalGameTime}
-				revealedTilesCount={localState.revealedTilesSet.size}
-				alwaysRevealedTilesCount={localState.alwaysRevealedTilesSet.size}
-				timeAuditLog={localState.timeAuditLog}
-				hasPendingOperations={!!hasPendingOperations}
-				pendingCount={remoteState.pending?.length || 0}
-				activeSession={localState.activeSession}
-				onFlushPending={flushPendingOperations}
-			/>
-		</Sheet>
+		<!-- Create Marker Dialog -->
+		<MarkerCreateDialog
+			bind:open={showCreateMarkerDialog}
+			coords={createMarkerCoords}
+			isDM={userRole === 'dm'}
+			onConfirm={handleCreateMarker}
+			onCancel={handleCancelCreateMarker}
+		/>
 
-		<!-- Right Sidebar - Session History -->
-		<Sheet bind:open={rightSidebarOpen}>
-			<SessionSidebar
-				sessions={localState.gameSessions}
-				pathsMap={localState.pathsMap}
-				activeSessionId={localState.activeSession?.id || null}
-				visibleSessionIds={visiblePathSessions}
-				activeSessionDuration={sessionDuration}
-				globalGameTime={localState.globalGameTime}
-				onToggleVisibility={handleTogglePathVisibility}
-			/>
-		</Sheet>
-	</div>
+		<!-- Edit Marker Dialog -->
+		<MarkerCreateDialog
+			bind:open={showEditMarkerDialog}
+			coords={selectedMarker ? { x: selectedMarker.x, y: selectedMarker.y } : null}
+			editingMarker={selectedMarker}
+			isDM={userRole === 'dm'}
+			onConfirm={handleUpdateMarker}
+			onCancel={() => (showEditMarkerDialog = false)}
+		/>
 
-	<!-- Tile Right Click Menu -->
-	<ContextMenu
-		open={contextMenuOpen}
-		position={contextMenuPosition}
-		type={contextMenuType}
-		partyPosition={localState.partyTokenPosition}
-		tile={createMarkerCoords}
-		{userRole}
-		{selectedDMMarker}
-		{selectedPlayerMarker}
-		handleShowMarker={handleMarkerClick}
-		{openCreateMarkerDialog}
-		{startTeleport}
-	/>
+		<!-- Marker Details Dialog -->
+		<MarkerDetailsDialog
+			bind:open={showMarkerDetailsDialog}
+			marker={selectedMarker}
+			userRole={effectiveRole}
+			canEdit={effectiveRole === 'dm' ||
+				(!!selectedMarker && selectedMarker.authorRole === effectiveRole)}
+			onEdit={handleEditMarker}
+			onDelete={confirmDeleteMarker}
+			onClose={() => {
+				showMarkerDetailsDialog = false;
+				selectedMarker = null;
+			}}
+		/>
 
-	<!-- Time Cost Dialog for Teleport -->
-	<TimeCostDialog
-		bind:open={showTimeCostDialog}
-		title="Set Teleport Time Cost"
-		description="How much game time should this teleport take?"
-		defaultTimeCost={0}
-		onConfirm={confirmTeleport}
-		onCancel={() => {
-			showTimeCostDialog = false;
-			cancelTeleport();
-		}}
-	/>
-
-	<!-- Create Marker Dialog -->
-	<MarkerCreateDialog
-		bind:open={showCreateMarkerDialog}
-		coords={createMarkerCoords}
-		isDM={userRole === 'dm'}
-		onConfirm={handleCreateMarker}
-		onCancel={handleCancelCreateMarker}
-	/>
-
-	<!-- Edit Marker Dialog -->
-	<MarkerCreateDialog
-		bind:open={showEditMarkerDialog}
-		coords={selectedMarker ? { x: selectedMarker.x, y: selectedMarker.y } : null}
-		editingMarker={selectedMarker}
-		isDM={userRole === 'dm'}
-		onConfirm={handleUpdateMarker}
-		onCancel={() => (showEditMarkerDialog = false)}
-	/>
-
-	<!-- Marker Details Dialog -->
-	<MarkerDetailsDialog
-		bind:open={showMarkerDetailsDialog}
-		marker={selectedMarker}
-		userRole={effectiveRole}
-		canEdit={effectiveRole === 'dm' ||
-			(!!selectedMarker && selectedMarker.authorRole === effectiveRole)}
-		onEdit={handleEditMarker}
-		onDelete={confirmDeleteMarker}
-		onClose={() => {
-			showMarkerDetailsDialog = false;
-			selectedMarker = null;
-		}}
-	/>
-
-	<!-- Marker Hover Tooltip -->
-	<MarkerPreviewPopover {hoveredMarker} {effectiveRole} {tooltipPosition} />
-</Tooltip.Provider>
+		<!-- Marker Hover Tooltip -->
+		<MarkerPreviewPopover {hoveredMarker} {effectiveRole} {tooltipPosition} />
+	</Tooltip.Provider>
+{/if}

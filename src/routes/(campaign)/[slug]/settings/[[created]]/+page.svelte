@@ -5,6 +5,7 @@
 	import MapUpload from '$lib/components/forms/MapUpload.svelte';
 	import ViewAsToggle from '$lib/components/forms/ViewAsToggle.svelte';
 	import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
+	import LoadingScreen from '$lib/components/placeholders/LoadingScreen.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -19,6 +20,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState } from '$lib/contexts/campaignContext';
+	import type { LocalState } from '$lib/stores/localState.svelte';
 	import type { UserRole } from '$lib/types';
 	import {
 		Check,
@@ -33,15 +35,15 @@
 		Users
 	} from '@lucide/svelte';
 	import { Debounced } from 'runed';
+	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
-	import { onMount } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	// Welcome message state
 	const isNewCampaign = page.url.searchParams.get('created');
-	const localState = getLocalState();
+	let localState = $state<LocalState | undefined>();
 
 	// Token visibility state
 	let showDmToken = $state(false);
@@ -79,7 +81,7 @@
 	let hasPlayerMap = $state(false);
 
 	// Check if any sessions exist - if so, disable manual position setting
-	let hasAnySessions = $derived(localState.gameSessions.length > 0);
+	let hasAnySessions = $derived(localState ? localState.gameSessions.length > 0 : false);
 
 	// Track if settings have changed
 	let hasUnsavedChanges = $derived(
@@ -303,6 +305,8 @@
 
 	// Sync party token position to localState for map preview
 	$effect(() => {
+		if (!localState) return;
+
 		if (partyTokenX !== null && partyTokenY !== null) {
 			localState.partyTokenPosition = { x: partyTokenX, y: partyTokenY };
 		} else {
@@ -311,6 +315,8 @@
 	});
 
 	onMount(() => {
+		localState = getLocalState();
+
 		tilesPerColumn = data.campaign?.hexesPerCol;
 		tilesPerRow = data.campaign?.hexesPerRow;
 		offsetX = data.campaign?.hexOffsetX;
@@ -714,83 +720,87 @@
 										: 'grab'
 									: 'crosshair'};"
 							>
-								<MapCanvasWrapper
-									bind:isDragging
-									mapUrls={displayMapUrls}
-									previewMode={true}
-									{localState}
-									{canvasHeight}
-									{canvasWidth}
-									variant="detail"
-									hexesPerRow={tilesPerRowDebounced.current || 0}
-									hexesPerCol={tilesPerColumnDebounced.current || 0}
-									xOffset={offsetXDebounced.current || 0}
-									yOffset={offsetYDebounced.current || 0}
-									imageHeight={data.campaign.imageHeight}
-									imageWidth={data.campaign.imageWidth}
-									activeSelectMode="remove"
-									showAnimations={false}
-									showCoords="never"
-									zoom={previewZoom}
-									activeTool={previewTool}
-									selectedTool={previewTool}
-									onHexTriggered={handleHexClickForPartyPosition}
-									selectedSet={new SvelteSet<string>()}
-									showAlwaysRevealed={true}
-									showRevealed={true}
-									isDM={true}
-								/>
+								{#if !localState}
+									<LoadingScreen />
+								{:else}
+									<MapCanvasWrapper
+										bind:isDragging
+										mapUrls={displayMapUrls}
+										previewMode={true}
+										{localState}
+										{canvasHeight}
+										{canvasWidth}
+										variant="detail"
+										hexesPerRow={tilesPerRowDebounced.current || 0}
+										hexesPerCol={tilesPerColumnDebounced.current || 0}
+										xOffset={offsetXDebounced.current || 0}
+										yOffset={offsetYDebounced.current || 0}
+										imageHeight={data.campaign.imageHeight}
+										imageWidth={data.campaign.imageWidth}
+										activeSelectMode="remove"
+										showAnimations={false}
+										showCoords="never"
+										zoom={previewZoom}
+										activeTool={previewTool}
+										selectedTool={previewTool}
+										onHexTriggered={handleHexClickForPartyPosition}
+										selectedSet={new SvelteSet<string>()}
+										showAlwaysRevealed={true}
+										showRevealed={true}
+										isDM={true}
+									/>
 
-								<!-- Toolbar Overlay -->
-								{#if !hasAnySessions}
-									<div
-										class="absolute bottom-4 left-4 flex gap-1 rounded-lg border bg-background/95 p-1 shadow-sm backdrop-blur-sm"
-									>
-										<!-- Pan Tool -->
-										<Tooltip.Root>
-											<Tooltip.Trigger>
-												<Button
-													variant={previewTool === 'pan' ? 'default' : 'ghost'}
-													size="sm"
-													onclick={() => (previewTool = 'pan')}
-													class="h-8 w-8 p-0"
-												>
-													<Hand class="h-4 w-4" />
-												</Button>
-											</Tooltip.Trigger>
-											<Tooltip.Content>
-												<p>Pan (drag to move)</p>
-											</Tooltip.Content>
-										</Tooltip.Root>
+									<!-- Toolbar Overlay -->
+									{#if !hasAnySessions}
+										<div
+											class="absolute bottom-4 left-4 flex gap-1 rounded-lg border bg-background/95 p-1 shadow-sm backdrop-blur-sm"
+										>
+											<!-- Pan Tool -->
+											<Tooltip.Root>
+												<Tooltip.Trigger>
+													<Button
+														variant={previewTool === 'pan' ? 'default' : 'ghost'}
+														size="sm"
+														onclick={() => (previewTool = 'pan')}
+														class="h-8 w-8 p-0"
+													>
+														<Hand class="h-4 w-4" />
+													</Button>
+												</Tooltip.Trigger>
+												<Tooltip.Content>
+													<p>Pan (drag to move)</p>
+												</Tooltip.Content>
+											</Tooltip.Root>
 
-										<!-- Set Position Tool -->
-										<Tooltip.Root>
-											<Tooltip.Trigger>
-												<Button
-													variant={previewTool === 'set-position' ? 'default' : 'ghost'}
-													size="sm"
-													onclick={() => (previewTool = 'set-position')}
-													class="h-8 w-8 p-0"
-												>
-													<Flag class="h-4 w-4" />
-												</Button>
-											</Tooltip.Trigger>
-											<Tooltip.Content>
-												<p>Set Party Position (click tile)</p>
-											</Tooltip.Content>
-										</Tooltip.Root>
+											<!-- Set Position Tool -->
+											<Tooltip.Root>
+												<Tooltip.Trigger>
+													<Button
+														variant={previewTool === 'set-position' ? 'default' : 'ghost'}
+														size="sm"
+														onclick={() => (previewTool = 'set-position')}
+														class="h-8 w-8 p-0"
+													>
+														<Flag class="h-4 w-4" />
+													</Button>
+												</Tooltip.Trigger>
+												<Tooltip.Content>
+													<p>Set Party Position (click tile)</p>
+												</Tooltip.Content>
+											</Tooltip.Root>
+										</div>
+									{/if}
+
+									<!-- Zoom Controls -->
+									<div class="absolute right-4 bottom-4 z-20">
+										<ZoomControls
+											zoom={previewZoom}
+											onResetZoom={resetZoomPreview}
+											onZoomIn={zoomInPreview}
+											onZoomOut={zoomOutPreview}
+										/>
 									</div>
 								{/if}
-
-								<!-- Zoom Controls -->
-								<div class="absolute right-4 bottom-4 z-20">
-									<ZoomControls
-										zoom={previewZoom}
-										onResetZoom={resetZoomPreview}
-										onZoomIn={zoomInPreview}
-										onZoomOut={zoomOutPreview}
-									/>
-								</div>
 							</div>
 						</CardContent>
 					</Card>

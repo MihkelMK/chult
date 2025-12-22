@@ -9,6 +9,8 @@
 
 	let { data, children }: LayoutProps = $props();
 
+	let ready = $state(false);
+
 	// Determine effective role from session
 	onMount(() => {
 		const effectiveRole = data.session ? data.session.viewAs || data.session.role : 'player';
@@ -23,11 +25,14 @@
 					data.campaign.slug
 				) as LocalStatePlayer);
 		setLocalState(localState as LocalState);
+		ready = true;
 	});
 </script>
 
 <div class="min-h-screen bg-linear-to-br from-slate-50 to-blue-50">
 	<main>
-		{@render children()}
+		{#if ready}
+			{@render children()}
+		{/if}
 	</main>
 </div>
