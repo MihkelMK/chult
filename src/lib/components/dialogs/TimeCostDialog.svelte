@@ -68,7 +68,7 @@
 </script>
 
 <Dialog bind:open>
-	<DialogContent class="z-[60] sm:max-w-[425px]">
+	<DialogContent class="z-60 sm:max-w-105">
 		<DialogHeader>
 			<DialogTitle>{title}</DialogTitle>
 			<DialogDescription>{description}</DialogDescription>

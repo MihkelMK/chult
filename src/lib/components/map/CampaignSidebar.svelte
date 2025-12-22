@@ -158,7 +158,7 @@
 </script>
 
 <SheetContent side="left" class="flex h-full w-80 flex-col p-0">
-	<SheetHeader class="flex-shrink-0 px-6 pt-6">
+	<SheetHeader class="shrink-0 px-6 pt-6">
 		<SheetTitle>
 			{effectiveRole === 'dm' ? 'DM Controls' : 'Map Info'}
 		</SheetTitle>
@@ -308,7 +308,7 @@
 	</div>
 
 	<!-- Fixed Footer -->
-	<div class="flex-shrink-0 space-y-2 border-t p-6">
+	<div class="shrink-0 space-y-2 border-t p-6">
 		{#if effectiveRole === 'dm'}
 			<a
 				href="/{campaignSlug}/settings"
