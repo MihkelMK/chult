@@ -3,7 +3,8 @@ import { expand } from 'dotenv-expand';
 import { defineConfig } from 'drizzle-kit';
 import fs from 'fs';
 
-// Load environment variables from .env file
+// Load environment variables from .env file (only affects development)
+// // In production, environment variables are already set via Docker
 expand(config());
 
 let dbCredentials:
