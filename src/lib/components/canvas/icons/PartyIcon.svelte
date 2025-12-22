@@ -11,12 +11,11 @@
 	let { x, y, radius, color = 'rgb(34, 197, 94)' }: Props = $props();
 
 	// Position the title above the token
-
-	const fontSize = radius * 0.8;
-	const textWidth = fontSize * 2.5; // Approximate width for "Party"
-	const textHeight = fontSize * 1.4;
-	const paddingX = radius * 0.4;
-	const paddingY = paddingX * 0.3;
+	const fontSize = $derived(radius * 0.8);
+	const textWidth = $derived(fontSize * 2.5); // Approximate width for "Party"
+	const textHeight = $derived(fontSize * 1.4);
+	const paddingX = $derived(radius * 0.4);
+	const paddingY = $derived(paddingX * 0.3);
 </script>
 
 <!-- Main token circle -->
