@@ -53,17 +53,8 @@ COPY drizzle ./drizzle
 ARG PUBLIC_MAX_IMAGE_SIZE
 ENV PUBLIC_MAX_IMAGE_SIZE=${PUBLIC_MAX_IMAGE_SIZE}
 
-# Load secrets read from environment to .env during build
-ARG POSTGRES_HOST
-RUN --mount=type=secret,id=PRIVATE_DM_TOKEN,env=PRIVATE_DM_TOKEN \
-  --mount=type=secret,id=IMGPROXY_KEY,env=IMGPROXY_KEY \
-  --mount=type=secret,id=IMGPROXY_SALT,env=IMGPROXY_SALT \
-  --mount=type=secret,id=IMGPROXY_URL,env=IMGPROXY_URL \
-  --mount=type=secret,id=POSTGRES_USER,env=POSTGRES_USER \
-  --mount=type=secret,id=POSTGRES_PASSWORD,env=POSTGRES_PASSWORD \
-  --mount=type=secret,id=POSTGRES_DB,env=POSTGRES_DB \
-  printf "PRIVATE_DATABASE_URL='postgresql://%s:%s@%s:5432/%s'\nPRIVATE_DM_TOKEN=%s\nIMGPROXY_KEY=%s\nIMGPROXY_SALT=%s\nIMGPROXY_URL=%s\n" \
-  "$POSTGRES_USER" "$POSTGRES_PASSWORD" "${POSTGRES_HOST}" "$POSTGRES_DB" "$PRIVATE_DM_TOKEN" "$IMGPROXY_KEY" "$IMGPROXY_SALT" "$IMGPROXY_URL" > .env
+# Silence "not defined" error while building. (Error still good for runtime debugging)
+RUN echo PRIVATE_DATABASE_URL="postgresql://user:password@host:5432/database" > .env
 
 # Build the application with caching and increased memory
 RUN --mount=type=cache,id=chult-pnpm-cache,target=/root/.cache/pnpm \

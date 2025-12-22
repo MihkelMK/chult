@@ -1,4 +1,4 @@
-import { PRIVATE_DM_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { createCampaign } from '$lib/server/campaign';
 import { createSession } from '$lib/server/session';
 import type { Campaign } from '$lib/types';
@@ -18,7 +18,7 @@ export const actions: Actions = {
 			});
 		}
 
-		if (accessToken !== PRIVATE_DM_TOKEN) {
+		if (accessToken !== env.PRIVATE_DM_TOKEN) {
 			return fail(401, { error: 'Invalid DM token', campaignName });
 		}
 
