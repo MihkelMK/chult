@@ -22,20 +22,10 @@
 	import { getLocalState } from '$lib/contexts/campaignContext';
 	import type { LocalState } from '$lib/stores/localState.svelte';
 	import type { UserRole } from '$lib/types';
-	import {
-		Check,
-		CircleAlert,
-		Copy,
-		Crown,
-		Eye,
-		EyeOff,
-		Flag,
-		Hand,
-		Map,
-		Users
-	} from '@lucide/svelte';
+	import { Check, Copy, Crown, Eye, EyeOff, Flag, Hand, Map, Users } from '@lucide/svelte';
 	import { Debounced } from 'runed';
 	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
 
@@ -111,12 +101,15 @@
 			if (type === 'dm') {
 				dmTokenCopied = true;
 				setTimeout(() => (dmTokenCopied = false), 2000);
+				toast.success('DM token copied to clipboard');
 			} else {
 				playerTokenCopied = true;
 				setTimeout(() => (playerTokenCopied = false), 2000);
+				toast.success('Player token copied to clipboard');
 			}
 		} catch (err) {
 			console.error('Failed to copy token:', err);
+			toast.error(`Failed to copy ${type === 'dm' ? 'DM' : 'player'} token`);
 		}
 	}
 
@@ -165,15 +158,11 @@
 
 	// Save hex grid configuration
 	let saving = $state(false);
-	let saveError = $state('');
-	let saveSuccess = $state(false);
 
 	async function saveHexGridConfig() {
 		if (!hasUnsavedChanges) return;
 
 		saving = true;
-		saveError = '';
-		saveSuccess = false;
 
 		try {
 			tilesPerColumnDebounced.updateImmediately();
@@ -200,7 +189,6 @@
 			}
 
 			const result = await response.json();
-			saveSuccess = true;
 
 			// Update the data object to reflect the saved values
 			if (data.campaign) {
@@ -210,12 +198,10 @@
 				data.campaign.hexOffsetY = result.config.hexOffsetY;
 			}
 
-			// Clear success message after 3 seconds
-			setTimeout(() => {
-				saveSuccess = false;
-			}, 3000);
+			toast.success('Hex grid configuration saved successfully!');
 		} catch (err) {
-			saveError = err instanceof Error ? err.message : 'Failed to save configuration';
+			const errorMessage = err instanceof Error ? err.message : 'Failed to save configuration';
+			toast.error(errorMessage);
 		} finally {
 			saving = false;
 		}
@@ -223,15 +209,11 @@
 
 	// Save party token position
 	let savingPartyPosition = $state(false);
-	let savePartyPositionError = $state('');
-	let savePartyPositionSuccess = $state(false);
 
 	async function savePartyTokenPosition() {
 		if (!hasUnsavedPartyPosition) return;
 
 		savingPartyPosition = true;
-		savePartyPositionError = '';
-		savePartyPositionSuccess = false;
 
 		try {
 			const response = await fetch(`/api/campaigns/${data.campaign?.slug}/map/settings`, {
@@ -251,7 +233,6 @@
 			}
 
 			const result = await response.json();
-			savePartyPositionSuccess = true;
 
 			// Update the data object to reflect the saved values
 			if (data.campaign) {
@@ -259,13 +240,11 @@
 				data.campaign.partyTokenY = result.config.partyTokenY;
 			}
 
-			// Clear success message after 3 seconds
-			setTimeout(() => {
-				savePartyPositionSuccess = false;
-			}, 3000);
+			toast.success('Party token position saved successfully!');
 		} catch (err) {
-			savePartyPositionError =
+			const errorMessage =
 				err instanceof Error ? err.message : 'Failed to save party token position';
+			toast.error(errorMessage);
 		} finally {
 			savingPartyPosition = false;
 		}
@@ -538,25 +517,6 @@
 							</div>
 						</div>
 
-						<!-- Save Status and Button -->
-						{#if saveError}
-							<div
-								class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-							>
-								<CircleAlert class="h-4 w-4" />
-								<span>{saveError}</span>
-							</div>
-						{/if}
-
-						{#if saveSuccess}
-							<div
-								class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800"
-							>
-								<Check class="h-4 w-4" />
-								<span>Hex grid configuration saved successfully!</span>
-							</div>
-						{/if}
-
 						<!-- Save Controls -->
 						<Button
 							onclick={saveHexGridConfig}
@@ -619,25 +579,6 @@
 						{/if}
 
 						{#if !hasAnySessions}
-							<!-- Save Status and Button -->
-							{#if savePartyPositionError}
-								<div
-									class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-								>
-									<CircleAlert class="h-4 w-4" />
-									<span>{savePartyPositionError}</span>
-								</div>
-							{/if}
-
-							{#if savePartyPositionSuccess}
-								<div
-									class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800"
-								>
-									<Check class="h-4 w-4" />
-									<span>Party token position saved successfully!</span>
-								</div>
-							{/if}
-
 							<!-- Save Controls -->
 							<Button
 								onclick={savePartyTokenPosition}
