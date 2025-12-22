@@ -138,10 +138,10 @@ services:
       resources:
         limits:
           cpus: '2'
-          memory: 1G
+          memory: 2G
         reservations:
           cpus: '0.5'
-          memory: 256M
+          memory: 512M
     logging:
       driver: 'json-file'
       options:
@@ -160,9 +160,19 @@ services:
       # These are read by the pgbouncer image itself
       DB_HOST: postgres
       POOL_MODE: transaction
-      MAX_CLIENT_CONN: 1000
-      DEFAULT_POOL_SIZE: 25
+      MAX_CLIENT_CONN: 50
+      DEFAULT_POOL_SIZE: 10
+      MAX_DB_CONNECTIONS: 15
       AUTH_TYPE: scram-sha-256 # Support Postgres 18 SCRAM authentication
+
+      # Connection lifecycle management
+      SERVER_IDLE_TIMEOUT: 300 # Close idle server connections after 5 min
+      QUERY_WAIT_TIMEOUT: 10 # Max time queries can wait for a connection (10 sec)
+      SERVER_LIFETIME: 3600 # Recycle server connections every hour
+      SERVER_CONNECT_TIMEOUT: 15 # Connection timeout to PostgreSQL
+
+      # Health checking
+      SERVER_CHECK_DELAY: 30 # Check server connections every 30s
     secrets:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
@@ -181,6 +191,14 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   postgres:
     container_name: chult-postgres
@@ -194,7 +212,7 @@ services:
       - POSTGRES_PASSWORD
       - POSTGRES_DB
     command: >
-      postgres -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=4MB -c min_wal_size=1GB -c max_wal_size=4GB -c max_connections=100
+      postgres -c shared_buffers=1536M -c effective_cache_size=4608M -c maintenance_work_mem=384MB -c work_mem=16MB -c max_connections=30 -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=150 -c random_page_cost=1.0 -c effective_io_concurrency=200 -c min_wal_size=1GB -c max_wal_size=4GB -c max_parallel_workers_per_gather=2 -c max_parallel_workers=4 -c max_parallel_maintenance_workers=2 -c parallel_tuple_cost=0.05 -c parallel_setup_cost=500 -c wal_compression=zstd -c wal_init_zero=off -c wal_recycle=on -c tcp_keepalives_idle=60 -c tcp_keepalives_interval=10 -c tcp_keepalives_count=3 -c log_min_duration_statement=1000 -c log_line_prefix='%t [%p]: user=%u,db=%d '
 
 
     volumes:
@@ -211,11 +229,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 1G
+          cpus: '3'
+          memory: 6G
         reservations:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '1'
+          memory: 2G
     logging:
       driver: 'json-file'
       options:
@@ -254,6 +272,14 @@ services:
       - backend
     restart: unless-stopped
     user: postgres:postgres
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     logging:
       driver: 'json-file'
       options:
