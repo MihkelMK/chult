@@ -1,10 +1,12 @@
-import { config } from 'dotenv';
-import { expand } from 'dotenv-expand';
 import { defineConfig } from 'drizzle-kit';
 import fs from 'fs';
 
-// Load environment variables from .env file
-expand(config());
+// Load environment variables from .env file (development only)
+if (process.env.NODE_ENV !== 'production') {
+	const { config } = await import('dotenv');
+	const { expand } = await import('dotenv-expand');
+	expand(config());
+}
 
 let dbCredentials:
 	| ({
