@@ -162,7 +162,7 @@ services:
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 25
-      AUTH_TYPE: scram-sha-256 # Support Postgres 16 SCRAM authentication
+      AUTH_TYPE: scram-sha-256 # Support Postgres 18 SCRAM authentication
     secrets:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
@@ -184,7 +184,7 @@ services:
 
   postgres:
     container_name: chult-postgres
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
       POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
@@ -224,7 +224,7 @@ services:
 
   postgres-backup:
     container_name: chult-backup
-    image: prodrigestivill/postgres-backup-local:16-alpine
+    image: prodrigestivill/postgres-backup-local:18-alpine
     environment:
       # Connection details
       POSTGRES_HOST: postgres
