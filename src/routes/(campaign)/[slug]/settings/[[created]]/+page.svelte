@@ -5,6 +5,7 @@
 	import MapUpload from '$lib/components/forms/MapUpload.svelte';
 	import ViewAsToggle from '$lib/components/forms/ViewAsToggle.svelte';
 	import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
+	import LoadingScreen from '$lib/components/placeholders/LoadingScreen.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -19,20 +20,12 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { getLocalState } from '$lib/contexts/campaignContext';
+	import type { LocalState } from '$lib/stores/localState.svelte';
 	import type { UserRole } from '$lib/types';
-	import {
-		Check,
-		CircleAlert,
-		Copy,
-		Crown,
-		Eye,
-		EyeOff,
-		Flag,
-		Hand,
-		Map,
-		Users
-	} from '@lucide/svelte';
+	import { Check, Copy, Crown, Eye, EyeOff, Flag, Hand, Map, Users } from '@lucide/svelte';
 	import { Debounced } from 'runed';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
 
@@ -40,7 +33,7 @@
 
 	// Welcome message state
 	const isNewCampaign = page.url.searchParams.get('created');
-	const localState = getLocalState();
+	let localState = $state<LocalState | undefined>();
 
 	// Token visibility state
 	let showDmToken = $state(false);
@@ -53,10 +46,10 @@
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
 	let aspectRatio = $derived(Math.fround(data.campaign.imageHeight / data.campaign.imageWidth));
-	let tilesPerColumn = $state(data.campaign?.hexesPerCol);
-	let tilesPerRow = $state(data.campaign?.hexesPerRow);
-	let offsetX = $state(data.campaign?.hexOffsetX);
-	let offsetY = $state(data.campaign?.hexOffsetY);
+	let tilesPerColumn: number | undefined = $state();
+	let tilesPerRow: number | undefined = $state();
+	let offsetX: number | undefined = $state();
+	let offsetY: number | undefined = $state();
 
 	let tilesPerColumnDebounced = new Debounced(() => tilesPerColumn, 1000);
 	let tilesPerRowDebounced = new Debounced(() => tilesPerRow, 1000);
@@ -71,14 +64,14 @@
 	let isDragging = $state(false);
 
 	// Party token position state
-	let partyTokenX = $state<number | null>(data.campaign?.partyTokenX ?? null);
-	let partyTokenY = $state<number | null>(data.campaign?.partyTokenY ?? null);
+	let partyTokenX = $state<number | null>(null);
+	let partyTokenY = $state<number | null>(null);
 
 	// Player map state
-	let hasPlayerMap = $state(data.campaign?.hasPlayerMap ?? false);
+	let hasPlayerMap = $state(false);
 
 	// Check if any sessions exist - if so, disable manual position setting
-	let hasAnySessions = $derived(localState.gameSessions.length > 0);
+	let hasAnySessions = $derived(localState ? localState.gameSessions.length > 0 : false);
 
 	// Track if settings have changed
 	let hasUnsavedChanges = $derived(
@@ -108,12 +101,15 @@
 			if (type === 'dm') {
 				dmTokenCopied = true;
 				setTimeout(() => (dmTokenCopied = false), 2000);
+				toast.success('DM token copied to clipboard');
 			} else {
 				playerTokenCopied = true;
 				setTimeout(() => (playerTokenCopied = false), 2000);
+				toast.success('Player token copied to clipboard');
 			}
 		} catch (err) {
 			console.error('Failed to copy token:', err);
+			toast.error(`Failed to copy ${type === 'dm' ? 'DM' : 'player'} token`);
 		}
 	}
 
@@ -162,15 +158,11 @@
 
 	// Save hex grid configuration
 	let saving = $state(false);
-	let saveError = $state('');
-	let saveSuccess = $state(false);
 
 	async function saveHexGridConfig() {
 		if (!hasUnsavedChanges) return;
 
 		saving = true;
-		saveError = '';
-		saveSuccess = false;
 
 		try {
 			tilesPerColumnDebounced.updateImmediately();
@@ -197,22 +189,25 @@
 			}
 
 			const result = await response.json();
-			saveSuccess = true;
 
-			// Update the data object to reflect the saved values
-			if (data.campaign) {
-				data.campaign.hexesPerRow = result.config.hexesPerRow;
-				data.campaign.hexesPerCol = result.config.hexesPerCol;
-				data.campaign.hexOffsetX = result.config.hexOffsetX;
-				data.campaign.hexOffsetY = result.config.hexOffsetY;
-			}
+			// Reassign data to trigger reactivity
+			data = {
+				...data,
+				campaign: data.campaign
+					? {
+							...data.campaign,
+							hexesPerRow: result.config.hexesPerRow,
+							hexesPerCol: result.config.hexesPerCol,
+							hexOffsetX: result.config.hexOffsetX,
+							hexOffsetY: result.config.hexOffsetY
+						}
+					: data.campaign
+			};
 
-			// Clear success message after 3 seconds
-			setTimeout(() => {
-				saveSuccess = false;
-			}, 3000);
+			toast.success('Hex grid configuration saved successfully!');
 		} catch (err) {
-			saveError = err instanceof Error ? err.message : 'Failed to save configuration';
+			const errorMessage = err instanceof Error ? err.message : 'Failed to save configuration';
+			toast.error(errorMessage);
 		} finally {
 			saving = false;
 		}
@@ -220,15 +215,11 @@
 
 	// Save party token position
 	let savingPartyPosition = $state(false);
-	let savePartyPositionError = $state('');
-	let savePartyPositionSuccess = $state(false);
 
 	async function savePartyTokenPosition() {
 		if (!hasUnsavedPartyPosition) return;
 
 		savingPartyPosition = true;
-		savePartyPositionError = '';
-		savePartyPositionSuccess = false;
 
 		try {
 			const response = await fetch(`/api/campaigns/${data.campaign?.slug}/map/settings`, {
@@ -248,21 +239,24 @@
 			}
 
 			const result = await response.json();
-			savePartyPositionSuccess = true;
 
-			// Update the data object to reflect the saved values
-			if (data.campaign) {
-				data.campaign.partyTokenX = result.config.partyTokenX;
-				data.campaign.partyTokenY = result.config.partyTokenY;
-			}
+			// Reassign data to trigger reactivity
+			data = {
+				...data,
+				campaign: data.campaign
+					? {
+							...data.campaign,
+							partyTokenX: result.config.partyTokenX,
+							partyTokenY: result.config.partyTokenY
+						}
+					: data.campaign
+			};
 
-			// Clear success message after 3 seconds
-			setTimeout(() => {
-				savePartyPositionSuccess = false;
-			}, 3000);
+			toast.success('Party token position saved successfully!');
 		} catch (err) {
-			savePartyPositionError =
+			const errorMessage =
 				err instanceof Error ? err.message : 'Failed to save party token position';
+			toast.error(errorMessage);
 		} finally {
 			savingPartyPosition = false;
 		}
@@ -302,11 +296,29 @@
 
 	// Sync party token position to localState for map preview
 	$effect(() => {
+		if (!localState) return;
+
 		if (partyTokenX !== null && partyTokenY !== null) {
 			localState.partyTokenPosition = { x: partyTokenX, y: partyTokenY };
 		} else {
 			localState.partyTokenPosition = null;
 		}
+	});
+
+	onMount(() => {
+		localState = getLocalState();
+
+		tilesPerColumn = data.campaign?.hexesPerCol;
+		tilesPerRow = data.campaign?.hexesPerRow;
+		offsetX = data.campaign?.hexOffsetX;
+		offsetY = data.campaign?.hexOffsetY;
+
+		// Party token position state
+		partyTokenX = data.campaign?.partyTokenX ?? null;
+		partyTokenY = data.campaign?.partyTokenY ?? null;
+
+		// Player map state
+		hasPlayerMap = data.campaign?.hasPlayerMap ?? false;
 	});
 </script>
 
@@ -517,25 +529,6 @@
 							</div>
 						</div>
 
-						<!-- Save Status and Button -->
-						{#if saveError}
-							<div
-								class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-							>
-								<CircleAlert class="h-4 w-4" />
-								<span>{saveError}</span>
-							</div>
-						{/if}
-
-						{#if saveSuccess}
-							<div
-								class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800"
-							>
-								<Check class="h-4 w-4" />
-								<span>Hex grid configuration saved successfully!</span>
-							</div>
-						{/if}
-
 						<!-- Save Controls -->
 						<Button
 							onclick={saveHexGridConfig}
@@ -598,25 +591,6 @@
 						{/if}
 
 						{#if !hasAnySessions}
-							<!-- Save Status and Button -->
-							{#if savePartyPositionError}
-								<div
-									class="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-								>
-									<CircleAlert class="h-4 w-4" />
-									<span>{savePartyPositionError}</span>
-								</div>
-							{/if}
-
-							{#if savePartyPositionSuccess}
-								<div
-									class="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800"
-								>
-									<Check class="h-4 w-4" />
-									<span>Party token position saved successfully!</span>
-								</div>
-							{/if}
-
 							<!-- Save Controls -->
 							<Button
 								onclick={savePartyTokenPosition}
@@ -699,83 +673,87 @@
 										: 'grab'
 									: 'crosshair'};"
 							>
-								<MapCanvasWrapper
-									bind:isDragging
-									mapUrls={displayMapUrls}
-									previewMode={true}
-									{localState}
-									{canvasHeight}
-									{canvasWidth}
-									variant="detail"
-									hexesPerRow={tilesPerRowDebounced.current}
-									hexesPerCol={tilesPerColumnDebounced.current}
-									xOffset={offsetXDebounced.current}
-									yOffset={offsetYDebounced.current}
-									imageHeight={data.campaign.imageHeight}
-									imageWidth={data.campaign.imageWidth}
-									activeSelectMode="remove"
-									showAnimations={false}
-									showCoords="never"
-									zoom={previewZoom}
-									activeTool={previewTool}
-									selectedTool={previewTool}
-									onHexTriggered={handleHexClickForPartyPosition}
-									selectedSet={new SvelteSet<string>()}
-									showAlwaysRevealed={true}
-									showRevealed={true}
-									isDM={true}
-								/>
+								{#if !localState}
+									<LoadingScreen />
+								{:else}
+									<MapCanvasWrapper
+										bind:isDragging
+										mapUrls={displayMapUrls}
+										previewMode={true}
+										{localState}
+										{canvasHeight}
+										{canvasWidth}
+										variant="detail"
+										hexesPerRow={tilesPerRowDebounced.current || 0}
+										hexesPerCol={tilesPerColumnDebounced.current || 0}
+										xOffset={offsetXDebounced.current || 0}
+										yOffset={offsetYDebounced.current || 0}
+										imageHeight={data.campaign.imageHeight}
+										imageWidth={data.campaign.imageWidth}
+										activeSelectMode="remove"
+										showAnimations={false}
+										showCoords="never"
+										zoom={previewZoom}
+										activeTool={previewTool}
+										selectedTool={previewTool}
+										onHexTriggered={handleHexClickForPartyPosition}
+										selectedSet={new SvelteSet<string>()}
+										showAlwaysRevealed={true}
+										showRevealed={true}
+										isDM={true}
+									/>
 
-								<!-- Toolbar Overlay -->
-								{#if !hasAnySessions}
-									<div
-										class="absolute bottom-4 left-4 flex gap-1 rounded-lg border bg-background/95 p-1 shadow-sm backdrop-blur-sm"
-									>
-										<!-- Pan Tool -->
-										<Tooltip.Root>
-											<Tooltip.Trigger>
-												<Button
-													variant={previewTool === 'pan' ? 'default' : 'ghost'}
-													size="sm"
-													onclick={() => (previewTool = 'pan')}
-													class="h-8 w-8 p-0"
-												>
-													<Hand class="h-4 w-4" />
-												</Button>
-											</Tooltip.Trigger>
-											<Tooltip.Content>
-												<p>Pan (drag to move)</p>
-											</Tooltip.Content>
-										</Tooltip.Root>
+									<!-- Toolbar Overlay -->
+									{#if !hasAnySessions}
+										<div
+											class="absolute bottom-4 left-4 flex gap-1 rounded-lg border bg-background/95 p-1 shadow-sm backdrop-blur-sm"
+										>
+											<!-- Pan Tool -->
+											<Tooltip.Root>
+												<Tooltip.Trigger>
+													<Button
+														variant={previewTool === 'pan' ? 'default' : 'ghost'}
+														size="sm"
+														onclick={() => (previewTool = 'pan')}
+														class="h-8 w-8 p-0"
+													>
+														<Hand class="h-4 w-4" />
+													</Button>
+												</Tooltip.Trigger>
+												<Tooltip.Content>
+													<p>Pan (drag to move)</p>
+												</Tooltip.Content>
+											</Tooltip.Root>
 
-										<!-- Set Position Tool -->
-										<Tooltip.Root>
-											<Tooltip.Trigger>
-												<Button
-													variant={previewTool === 'set-position' ? 'default' : 'ghost'}
-													size="sm"
-													onclick={() => (previewTool = 'set-position')}
-													class="h-8 w-8 p-0"
-												>
-													<Flag class="h-4 w-4" />
-												</Button>
-											</Tooltip.Trigger>
-											<Tooltip.Content>
-												<p>Set Party Position (click tile)</p>
-											</Tooltip.Content>
-										</Tooltip.Root>
+											<!-- Set Position Tool -->
+											<Tooltip.Root>
+												<Tooltip.Trigger>
+													<Button
+														variant={previewTool === 'set-position' ? 'default' : 'ghost'}
+														size="sm"
+														onclick={() => (previewTool = 'set-position')}
+														class="h-8 w-8 p-0"
+													>
+														<Flag class="h-4 w-4" />
+													</Button>
+												</Tooltip.Trigger>
+												<Tooltip.Content>
+													<p>Set Party Position (click tile)</p>
+												</Tooltip.Content>
+											</Tooltip.Root>
+										</div>
+									{/if}
+
+									<!-- Zoom Controls -->
+									<div class="absolute right-4 bottom-4 z-20">
+										<ZoomControls
+											zoom={previewZoom}
+											onResetZoom={resetZoomPreview}
+											onZoomIn={zoomInPreview}
+											onZoomOut={zoomOutPreview}
+										/>
 									</div>
 								{/if}
-
-								<!-- Zoom Controls -->
-								<div class="absolute right-4 bottom-4 z-20">
-									<ZoomControls
-										zoom={previewZoom}
-										onResetZoom={resetZoomPreview}
-										onZoomIn={zoomInPreview}
-										onZoomOut={zoomOutPreview}
-									/>
-								</div>
 							</div>
 						</CardContent>
 					</Card>

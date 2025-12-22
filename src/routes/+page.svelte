@@ -51,6 +51,7 @@
 						return async ({ result }) => {
 							loading = false;
 							if (result.type === 'redirect') {
+								// eslint-disable-next-line svelte/no-navigation-without-resolve
 								goto(result.location);
 							} else if (result.type === 'failure') {
 								loginFailed = true;
@@ -75,6 +76,7 @@
 							placeholder="Enter campaign code"
 							disabled={loading}
 							aria-invalid={loginFailed}
+							autocomplete="username webauthn"
 							oninput={() => (loginFailed = false)}
 						/>
 					</div>
@@ -92,6 +94,7 @@
 								disabled={loading}
 								class="flex-1"
 								aria-invalid={loginFailed}
+								autocomplete="current-password webauthn"
 								oninput={() => (loginFailed = false)}
 							/>
 							<Button
