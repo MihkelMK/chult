@@ -6,23 +6,20 @@ services:
       context: .
       args:
         # Baked into compiled code via $env/static/*
-        POSTGRES_HOST: pgbouncer
         PUBLIC_MAX_IMAGE_SIZE: '${PUBLIC_MAX_IMAGE_SIZE}'
-      secrets:
-        - PRIVATE_DM_TOKEN
-        - IMGPROXY_KEY
-        - IMGPROXY_SALT
-        - IMGPROXY_URL
-        - POSTGRES_USER
-        - POSTGRES_PASSWORD
-        - POSTGRES_DB
     restart: unless-stopped
     environment:
-      # DB connection details for drizzle migrate
-      POSTGRES_HOST: postgres
+      # DB connection details
+      POSTGRES_HOST: pgbouncer
       POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
       POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
       POSTGRES_DB_FILE: /run/secrets/POSTGRES_DB
+      # App secrets
+      DM_TOKEN_FILE: /run/secrets/DM_TOKEN
+      # Imgproxy connection details
+      IMGPROXY_KEY_FILE: /run/secrets/IMGPROXY_KEY
+      IMGPROXY_SALT_FILE: /run/secrets/IMGPROXY_SALT
+      IMGPROXY_URL_FILE: /run/secrets/IMGPROXY_URL
       # Node.js runtime optimizations
       BODY_SIZE_LIMIT: '${PUBLIC_MAX_IMAGE_SIZE}'
       NODE_ENV: production
@@ -34,6 +31,10 @@ services:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
       - POSTGRES_DB
+      - DM_TOKEN
+      - IMGPROXY_KEY
+      - IMGPROXY_SALT
+      - IMGPROXY_URL
     tmpfs:
       - /tmp:mode=1777,size=256M # Fast temporary storage
     depends_on:
@@ -287,8 +288,8 @@ services:
         max-file: '3'
 
 secrets:
-  PRIVATE_DM_TOKEN:
-    environment: PRIVATE_DM_TOKEN
+  DM_TOKEN:
+    environment: DM_TOKEN
   IMGPROXY_KEY:
     environment: IMGPROXY_KEY
   IMGPROXY_SALT:
