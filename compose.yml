@@ -289,7 +289,7 @@ services:
 
 secrets:
   DM_TOKEN:
-    environment: DM_TOKEN
+    environment: PRIVATE_DM_TOKEN
   IMGPROXY_KEY:
     environment: IMGPROXY_KEY
   IMGPROXY_SALT:
