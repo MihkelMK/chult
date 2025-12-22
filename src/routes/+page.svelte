@@ -51,6 +51,7 @@
 						return async ({ result }) => {
 							loading = false;
 							if (result.type === 'redirect') {
+								// eslint-disable-next-line svelte/no-navigation-without-resolve
 								goto(result.location);
 							} else if (result.type === 'failure') {
 								loginFailed = true;
