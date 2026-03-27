@@ -29,3 +29,6 @@ vite.config.ts.timestamp-*
 uploads/*
 !uploads/.gitkeep
 backups
+
+# Dev docs, not intended for public
+/docs
