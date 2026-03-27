@@ -1,7 +1,7 @@
 services:
   imgproxy:
     container_name: chult-imgproxy
-    image: ghcr.io/imgproxy/imgproxy:latest
+    image: ghcr.io/imgproxy/imgproxy:latest@sha256:68ab5f7b8f1f485e995dfdab7221bfb1e83e59a5e0415b53fa4679fed011e380
     command: imgproxy -keypath /run/secrets/IMGPROXY_KEY -saltpath /run/secrets/IMGPROXY_SALT
     environment:
       # Basic config
@@ -77,7 +77,7 @@ services:
 
   postgres:
     container_name: chult-postgres
-    image: postgres:18-alpine
+    image: postgres:18-alpine@sha256:4da1a4828be12604092fa55311276f08f9224a74a62dcb4708bd7439e2a03911
     environment:
       POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
       POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
@@ -117,7 +117,7 @@ services:
 
   adminer:
     container_name: chult-adminer
-    image: adminer:latest
+    image: adminer:latest@sha256:16a72c6140f64d00a3a9edf8d3d3b18a7b0a29ca31b0453378d9eb71f01f9e34
     ports:
       - '8081:8080' # Adminer default port is 8080, map to 8081 on host
     environment:
