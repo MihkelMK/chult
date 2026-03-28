@@ -2,69 +2,86 @@
 node_modules/
 .pnpm-store/
 
-# Build outputs
-build/
-.svelte-kit/
-.vercel/
-.output/
+# Build output
+.next/
+out/
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
 
-# Development
+# Strapi
+.strapi-updater.json
+.strapi
+public/uploads/*
+
+# Paraglide
+src/lib/paraglide
+project.inlang/cache/plugins
+project.inlang/project_id
+
+# Version control
+.git/
+.gitignore
+
+# Environment
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Docker
+Dockerfile*
+compose*.yml
+.dockerignore
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# SQLite
+*.db
+*.sql
+*.sql.gz
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+LICENSE
+CHANGELOG.md
+*.md
+
+# CI/CD
+.github/
+.forgejo/
+.gitlab-ci.yml
+
+# Logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
 
 # Testing
 coverage/
-.nyc_output/
-**/*.test.ts
-**/*.spec.ts
-tests/
-test/
+__tests__/
+*.test.*
+*.spec.*
 
-# Environment
-.env
-.env.*
-
-# Git
-.git/
-.gitignore
-.gitattributes
-
-# CI/CD
-.github/
-.gitlab-ci.yml
-
-# Documentation
-*.md
-!README.md
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Misc
-*.swp
-*.swo
-*~
-
-# Docker
-Dockerfile*
-docker-compose*.yml
-compose*.yml
-.dockerignore
+# User Data
+uploads/*
+backups
 
 # Production data (should never be in image)
-uploads/
-backups/
 imgproxy-cache/
-*.sql
-*.sql.gz
-
-# Project-specific
-CLAUDE.md
-CODE_GUIDE.md
-EXPLORATION_PLAN.md
-TODO.md
-DEPLOY_TODO.md

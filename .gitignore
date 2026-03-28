@@ -1,6 +1,10 @@
-node_modules
+# Dependencies
+node_modules/
+.pnpm-store/
 
-# Output
+# Build output
+.next/
+out/
 .output
 .vercel
 .netlify
@@ -8,11 +12,28 @@ node_modules
 /.svelte-kit
 /build
 
-# OS
-.DS_Store
-Thumbs.db
+# Strapi Config
+.strapi
+.strapi-updater.json
+.strapi-cloud.json
 
-# Env
+# Strapi Uploads
+public/
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Strapi Output
+dist
+exports
+types/generated/
+src/extensions/documentation/
+
+# Paraglide
+src/lib/paraglide
+project.inlang/cache/plugins
+project.inlang/project_id
+
+# Environment
 .env
 .env.*
 !.env.example
@@ -24,6 +45,24 @@ vite.config.ts.timestamp-*
 
 # SQLite
 *.db
+*.sql
+*.sql.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
 
 # User Data
 uploads/*
@@ -32,3 +71,4 @@ backups
 
 # Dev docs, not intended for public
 /docs
+CLAUDE.md

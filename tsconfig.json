@@ -10,7 +10,14 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler"
-	}
+	},
+	"exclude": [
+		"node_modules", // Default, but often explicitly included for clarity or in combination with 'include'
+		"**/*.spec.ts", // Exclude all files ending with .spec.ts, anywhere in the project
+		"build", // Exclude production builds
+		"static", // Exclude static files
+		"uploads" // Exclude user uploads
+	]
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
 	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
 	//
