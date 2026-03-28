@@ -9,92 +9,92 @@ import type { RequestHandler } from './$types';
 
 // POST /api/campaigns/[slug]/markers - Create new marker
 export const POST: RequestHandler = async ({ params, locals, request }) => {
-	if (!locals.session) {
-		return error(401, 'Unauthorized');
-	}
+  if (!locals.session) {
+    return error(401, 'Unauthorized');
+  }
 
-	// Get campaign and verify access
-	const campaign = await db.query.campaigns.findFirst({
-		where: eq(campaigns.slug, params.slug)
-	});
+  // Get campaign and verify access
+  const campaign = await db.query.campaigns.findFirst({
+    where: eq(campaigns.slug, params.slug),
+  });
 
-	if (!campaign) {
-		return error(404, 'Campaign not found');
-	}
+  if (!campaign) {
+    return error(404, 'Campaign not found');
+  }
 
-	const userRole = locals.session.role as 'dm' | 'player' | undefined;
-	if (!userRole) {
-		return error(403, 'Invalid session');
-	}
+  const userRole = locals.session.role as 'dm' | 'player' | undefined;
+  if (!userRole) {
+    return error(403, 'Invalid session');
+  }
 
-	// Parse request body
-	const body = await request.json();
-	const { x, y, type, title, content, visibleToPlayers, imagePath } = body;
+  // Parse request body
+  const body = await request.json();
+  const { x, y, type, title, content, visibleToPlayers, imagePath } = body;
 
-	// Validation
-	if (typeof x !== 'number' || typeof y !== 'number') {
-		return error(400, 'Invalid coordinates');
-	}
+  // Validation
+  if (typeof x !== 'number' || typeof y !== 'number') {
+    return error(400, 'Invalid coordinates');
+  }
 
-	if (!type || !MARKER_TYPES.includes(type as MarkerType)) {
-		return error(400, 'Invalid marker type');
-	}
+  if (!type || !MARKER_TYPES.includes(type as MarkerType)) {
+    return error(400, 'Invalid marker type');
+  }
 
-	if (!title || typeof title !== 'string' || title.trim().length === 0) {
-		return error(400, 'Title is required');
-	}
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return error(400, 'Title is required');
+  }
 
-	if (!visibleToPlayers && typeof visibleToPlayers !== 'boolean') {
-		return error(400, 'Invalid visibleToPlayers value');
-	}
+  if (!visibleToPlayers && typeof visibleToPlayers !== 'boolean') {
+    return error(400, 'Invalid visibleToPlayers value');
+  }
 
-	if (content !== null && typeof content !== 'string') {
-		return error(400, 'Invalid content');
-	}
+  if (content !== null && typeof content !== 'string') {
+    return error(400, 'Invalid content');
+  }
 
-	if (imagePath !== null && typeof imagePath !== 'string') {
-		return error(400, 'Invalid imagePath');
-	}
+  if (imagePath !== null && typeof imagePath !== 'string') {
+    return error(400, 'Invalid imagePath');
+  }
 
-	// Players can only create visible markers
-	const requestedVisibility = visibleToPlayers ?? true;
-	if (userRole === 'player' && !requestedVisibility) {
-		return error(403, 'Players can only create visible markers');
-	}
+  // Players can only create visible markers
+  const requestedVisibility = visibleToPlayers ?? true;
+  if (userRole === 'player' && !requestedVisibility) {
+    return error(403, 'Players can only create visible markers');
+  }
 
-	// Check if marker with same visibility already exists at this location
-	const existingMarker = await db.query.mapMarkers.findFirst({
-		where: and(
-			eq(mapMarkers.campaignId, campaign.id),
-			eq(mapMarkers.x, x),
-			eq(mapMarkers.y, y),
-			eq(mapMarkers.visibleToPlayers, requestedVisibility)
-		)
-	});
+  // Check if marker with same visibility already exists at this location
+  const existingMarker = await db.query.mapMarkers.findFirst({
+    where: and(
+      eq(mapMarkers.campaignId, campaign.id),
+      eq(mapMarkers.x, x),
+      eq(mapMarkers.y, y),
+      eq(mapMarkers.visibleToPlayers, requestedVisibility)
+    ),
+  });
 
-	if (existingMarker) {
-		const markerType = requestedVisibility ? 'player marker' : 'DM marker';
-		return error(409, `A ${markerType} already exists at this location`);
-	}
+  if (existingMarker) {
+    const markerType = requestedVisibility ? 'player marker' : 'DM marker';
+    return error(409, `A ${markerType} already exists at this location`);
+  }
 
-	// Create marker
-	const [newMarker] = await db
-		.insert(mapMarkers)
-		.values({
-			campaignId: campaign.id,
-			x,
-			y,
-			type,
-			title: title.trim(),
-			content: content?.trim() || null,
-			imagePath: imagePath || null,
-			authorRole: userRole,
-			visibleToPlayers: requestedVisibility // Use validated visibility
-		})
-		.returning();
+  // Create marker
+  const [newMarker] = await db
+    .insert(mapMarkers)
+    .values({
+      campaignId: campaign.id,
+      x,
+      y,
+      type,
+      title: title.trim(),
+      content: content?.trim() || null,
+      imagePath: imagePath || null,
+      authorRole: userRole,
+      visibleToPlayers: requestedVisibility, // Use validated visibility
+    })
+    .returning();
 
-	// Emit SSE event
-	emitEvent(params.slug, 'marker:created', newMarker);
+  // Emit SSE event
+  emitEvent(params.slug, 'marker:created', newMarker);
 
-	return json(newMarker, { status: 201 });
+  return json(newMarker, { status: 201 });
 };

@@ -1,104 +1,98 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import * as Tooltip from '$lib/components/ui/tooltip';
-	import type { GameSessionResponse } from '$lib/types';
-	import { Clock, Menu } from '@lucide/svelte';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Button } from '$lib/components/ui/button';
+  import * as Tooltip from '$lib/components/ui/tooltip';
+  import type { GameSessionResponse } from '$lib/types';
+  import { Clock, Menu } from '@lucide/svelte';
 
-	interface Props {
-		campaignName?: string;
-		effectiveRole: 'player' | 'dm';
-		activeSession: GameSessionResponse | null;
-		hasErrors?: boolean;
-		selectedCount?: number;
-		showSelectedCount?: boolean;
-		partyTokenPosition?: { x: number; y: number } | null;
-		onOpenCampaign?: () => void;
-		onOpenHistory?: () => void;
-		onPanToParty?: () => void;
-	}
+  interface Props {
+    campaignName?: string;
+    effectiveRole: 'player' | 'dm';
+    activeSession: GameSessionResponse | null;
+    hasErrors?: boolean;
+    selectedCount?: number;
+    showSelectedCount?: boolean;
+    partyTokenPosition?: { x: number; y: number } | null;
+    onOpenCampaign?: () => void;
+    onOpenHistory?: () => void;
+    onPanToParty?: () => void;
+  }
 
-	let {
-		campaignName,
-		effectiveRole,
-		activeSession,
-		hasErrors = false,
-		selectedCount = 0,
-		showSelectedCount = false,
-		partyTokenPosition,
-		onOpenCampaign,
-		onOpenHistory,
-		onPanToParty
-	}: Props = $props();
+  let {
+    campaignName,
+    effectiveRole,
+    activeSession,
+    hasErrors = false,
+    selectedCount = 0,
+    showSelectedCount = false,
+    partyTokenPosition,
+    onOpenCampaign,
+    onOpenHistory,
+    onPanToParty,
+  }: Props = $props();
 </script>
 
-<div
-	class="absolute top-4 left-4 z-20 flex w-[calc(100%_-_calc(var(--spacing)_*_8))] flex-col gap-2"
->
-	<div
-		class="grid w-full grid-cols-3 items-center rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
-	>
-		<div class="flex items-center">
-			<div class="flex items-center gap-2">
-				<Button variant="ghost" size="sm" class="cursor-pointer" onclick={onOpenCampaign}>
-					<Menu class="h-4 w-4" />
-				</Button>
+<div class="absolute top-4 left-4 z-20 flex w-[calc(100%_-_calc(var(--spacing)_*_8))] flex-col gap-2">
+  <div class="grid w-full grid-cols-3 items-center rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm">
+    <div class="flex items-center">
+      <div class="flex items-center gap-2">
+        <Button variant="ghost" size="sm" class="cursor-pointer" onclick={onOpenCampaign}>
+          <Menu class="h-4 w-4" />
+        </Button>
 
-				<div class="flex items-center gap-2">
-					<div class="text-sm font-medium">
-						{campaignName || 'Campaign'}
-					</div>
-					<Badge variant="secondary" class="text-xs">
-						{effectiveRole === 'dm' ? 'DM' : 'Player'}
-					</Badge>
-				</div>
-			</div>
-		</div>
+        <div class="flex items-center gap-2">
+          <div class="text-sm font-medium">
+            {campaignName || 'Campaign'}
+          </div>
+          <Badge variant="secondary" class="text-xs">
+            {effectiveRole === 'dm' ? 'DM' : 'Player'}
+          </Badge>
+        </div>
+      </div>
+    </div>
 
-		<div class="flex items-center gap-2 justify-self-center">
-			{#if hasErrors}
-				<Badge variant="destructive" class="text-xs">Error</Badge>
-			{/if}
+    <div class="flex items-center gap-2 justify-self-center">
+      {#if hasErrors}
+        <Badge variant="destructive" class="text-xs">Error</Badge>
+      {/if}
 
-			{#if showSelectedCount}
-				<Badge variant="secondary" class="justify-self-end text-xs">
-					{selectedCount} selected
-				</Badge>
-			{:else if partyTokenPosition}
-				<Tooltip.Root>
-					<Tooltip.Trigger>
-						{#snippet child({ props })}
-							<button {...props} onclick={onPanToParty} class="transition-opacity hover:opacity-80">
-								<Badge variant="secondary" class="cursor-pointer justify-self-end text-xs">
-									Party at: {partyTokenPosition.x.toString().padStart(2, '0')}{partyTokenPosition.y
-										.toString()
-										.padStart(2, '0')}
-								</Badge>
-							</button>
-						{/snippet}
-					</Tooltip.Trigger>
-					<Tooltip.Content side="bottom">Click to pan to party token</Tooltip.Content>
-				</Tooltip.Root>
-			{/if}
-		</div>
+      {#if showSelectedCount}
+        <Badge variant="secondary" class="justify-self-end text-xs">
+          {selectedCount} selected
+        </Badge>
+      {:else if partyTokenPosition}
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <button {...props} onclick={onPanToParty} class="transition-opacity hover:opacity-80">
+                <Badge variant="secondary" class="cursor-pointer justify-self-end text-xs">
+                  Party at: {partyTokenPosition.x.toString().padStart(2, '0')}{partyTokenPosition.y.toString().padStart(2, '0')}
+                </Badge>
+              </button>
+            {/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content side="bottom">Click to pan to party token</Tooltip.Content>
+        </Tooltip.Root>
+      {/if}
+    </div>
 
-		<div class="flex items-center justify-self-end">
-			<div class="flex items-center gap-2">
-				<div class="flex items-center gap-2">
-					<div class="text-sm font-medium">
-						{#if activeSession && activeSession.isActive}
-							{activeSession.name}
-						{:else}
-							Session not active
-						{/if}
-					</div>
-				</div>
+    <div class="flex items-center justify-self-end">
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2">
+          <div class="text-sm font-medium">
+            {#if activeSession && activeSession.isActive}
+              {activeSession.name}
+            {:else}
+              Session not active
+            {/if}
+          </div>
+        </div>
 
-				<!-- History Button -->
-				<Button variant="ghost" size="sm" onclick={onOpenHistory}>
-					<Clock class="h-4 w-4" />
-				</Button>
-			</div>
-		</div>
-	</div>
+        <!-- History Button -->
+        <Button variant="ghost" size="sm" onclick={onOpenHistory}>
+          <Clock class="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  </div>
 </div>

@@ -6,132 +6,121 @@ import { eq } from 'drizzle-orm';
 import { db } from './db';
 
 export interface SessionData {
-	campaignId: number;
-	campaignSlug: string;
-	role: UserRole;
-	viewAs?: UserRole;
-	expiresAt: number;
+  campaignId: number;
+  campaignSlug: string;
+  role: UserRole;
+  viewAs?: UserRole;
+  expiresAt: number;
 }
 
 // In-memory session store (use Redis in production)
 const sessions = new Map<string, SessionData>();
 
 function generateSessionId(): string {
-	return crypto.randomUUID();
+  return crypto.randomUUID();
 }
 
 function isSessionExpired(session: SessionData): boolean {
-	return Date.now() > session.expiresAt;
+  return Date.now() > session.expiresAt;
 }
 
-export async function validateCampaignAccess(
-	campaignSlug: string,
-	token: string,
-	requiredRole?: UserRole
-) {
-	const campaign = await db
-		.select()
-		.from(campaigns)
-		.where(eq(campaigns.slug, campaignSlug))
-		.limit(1);
+export async function validateCampaignAccess(campaignSlug: string, token: string, requiredRole?: UserRole) {
+  const campaign = await db.select().from(campaigns).where(eq(campaigns.slug, campaignSlug)).limit(1);
 
-	if (!campaign[0]) {
-		return null;
-	}
+  if (!campaign[0]) {
+    return null;
+  }
 
-	const camp = campaign[0];
-	let role: UserRole | null = null;
+  const camp = campaign[0];
+  let role: UserRole | null = null;
 
-	if (token === camp.dmToken) {
-		role = 'dm';
-	} else if (token === camp.playerToken) {
-		role = 'player';
-	}
+  if (token === camp.dmToken) {
+    role = 'dm';
+  } else if (token === camp.playerToken) {
+    role = 'player';
+  }
 
-	if (!role || (requiredRole && role !== requiredRole)) {
-		return null;
-	}
+  if (!role || (requiredRole && role !== requiredRole)) {
+    return null;
+  }
 
-	return {
-		campaign: camp,
-		role
-	};
+  return {
+    campaign: camp,
+    role,
+  };
 }
 
-export async function createSession(
-	event: RequestEvent,
-	sessionData: Omit<SessionData, 'expiresAt'> | SessionData
-) {
-	const sessionId = event.cookies.get('session') || generateSessionId();
-	const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+export async function createSession(event: RequestEvent, sessionData: Omit<SessionData, 'expiresAt'> | SessionData) {
+  const sessionId = event.cookies.get('session') || generateSessionId();
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
-	const session: SessionData = {
-		...sessionData,
-		expiresAt
-	};
+  const session: SessionData = {
+    ...sessionData,
+    expiresAt,
+  };
 
-	// Store in Redis/database in production instead of Map
-	// if (import.meta.env.PROD) {
-	// 	await redis.setex(`session:${sessionId}`, 86400, JSON.stringify(session));
-	// } else {
-	// 	sessions.set(sessionId, session);
-	// }
-	sessions.set(sessionId, session);
+  // Store in Redis/database in production instead of Map
+  // if (import.meta.env.PROD) {
+  // 	await redis.setex(`session:${sessionId}`, 86400, JSON.stringify(session));
+  // } else {
+  // 	sessions.set(sessionId, session);
+  // }
+  sessions.set(sessionId, session);
 
-	// Set HTTP-only cookie
-	event.cookies.set('session', sessionId, {
-		path: '/',
-		httpOnly: true,
-		secure: !dev,
-		sameSite: 'lax',
-		maxAge: 24 * 60 * 60 // 24 hours
-	});
+  // Set HTTP-only cookie
+  event.cookies.set('session', sessionId, {
+    path: '/',
+    httpOnly: true,
+    secure: !dev,
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60, // 24 hours
+  });
 
-	return sessionId;
+  return sessionId;
 }
 
 export function getSession(event: RequestEvent): SessionData | null {
-	const sessionId = event.cookies.get('session');
+  const sessionId = event.cookies.get('session');
 
-	if (!sessionId) {
-		return null;
-	}
+  if (!sessionId) {
+    return null;
+  }
 
-	const session = sessions.get(sessionId);
+  const session = sessions.get(sessionId);
 
-	if (!session || isSessionExpired(session)) {
-		if (session) {
-			sessions.delete(sessionId);
-			event.cookies.delete('session', { path: '/' });
-		}
-		return null;
-	}
+  if (!session || isSessionExpired(session)) {
+    if (session) {
+      sessions.delete(sessionId);
+      event.cookies.delete('session', { path: '/' });
+    }
+    return null;
+  }
 
-	return session;
+  return session;
 }
 
 export function destroySession(event: RequestEvent): void {
-	const sessionId = event.cookies.get('session');
+  const sessionId = event.cookies.get('session');
 
-	if (sessionId) {
-		sessions.delete(sessionId);
-	}
+  if (sessionId) {
+    sessions.delete(sessionId);
+  }
 
-	event.cookies.delete('session', { path: '/' });
+  event.cookies.delete('session', { path: '/' });
 }
 
 export function requireAuth(event: RequestEvent, requiredRole?: UserRole) {
-	const session = getSession(event);
+  const session = getSession(event);
 
-	if (!session) {
-		return null;
-	}
+  if (!session) {
+    return null;
+  }
 
-	const effectiveRole = session.viewAs || session.role;
+  const effectiveRole = session.viewAs || session.role;
 
-	if (requiredRole && requiredRole === 'dm' && effectiveRole !== 'dm') {
-		return null;
-	}
+  if (requiredRole && requiredRole === 'dm' && effectiveRole !== 'dm') {
+    return null;
+  }
 
-	return session;
+  return session;
 }

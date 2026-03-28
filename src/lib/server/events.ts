@@ -9,15 +9,10 @@ const eventEmitter = new EventEmitter();
 export default eventEmitter;
 
 // Helper function to emit events for a specific campaign
-export function emitEvent(
-	campaignSlug: string,
-	eventType: string,
-	data: unknown,
-	role: EventRole = 'all'
-) {
-	eventEmitter.emit(`campaign-${campaignSlug}`, {
-		event: eventType,
-		data,
-		role
-	});
+export function emitEvent(campaignSlug: string, eventType: string, data: unknown, role: EventRole = 'all') {
+  eventEmitter.emit(`campaign-${campaignSlug}`, {
+    event: eventType,
+    data,
+    role,
+  });
 }

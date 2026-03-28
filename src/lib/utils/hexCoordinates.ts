@@ -8,8 +8,8 @@
  */
 
 export interface HexCoordinates {
-	col: number;
-	row: number;
+  col: number;
+  row: number;
 }
 
 /**
@@ -31,58 +31,56 @@ export interface HexCoordinates {
  * @returns Hex coordinates {col, row} or null if out of bounds
  */
 export function pixelToHex(
-	pixelX: number,
-	pixelY: number,
-	hexRadius: number,
-	hexHeight: number,
-	horizontalSpacing: number,
-	verticalSpacing: number,
-	hexesPerRow: number,
-	hexesPerCol: number
+  pixelX: number,
+  pixelY: number,
+  hexRadius: number,
+  hexHeight: number,
+  horizontalSpacing: number,
+  verticalSpacing: number,
+  hexesPerRow: number,
+  hexesPerCol: number
 ): HexCoordinates | null {
-	// Step 1: Estimate column from X position
-	// centerX = col * horizontalSpacing + hexRadius
-	// col ≈ (pixelX - hexRadius) / horizontalSpacing
-	const estimatedCol = Math.round((pixelX - hexRadius) / horizontalSpacing);
+  // Step 1: Estimate column from X position
+  // centerX = col * horizontalSpacing + hexRadius
+  // col ≈ (pixelX - hexRadius) / horizontalSpacing
+  const estimatedCol = Math.round((pixelX - hexRadius) / horizontalSpacing);
 
-	// Clamp to valid range
-	if (estimatedCol < 0 || estimatedCol >= hexesPerRow) {
-		return null;
-	}
+  // Clamp to valid range
+  if (estimatedCol < 0 || estimatedCol >= hexesPerRow) {
+    return null;
+  }
 
-	// Step 2: Calculate the Y offset for this column
-	// Odd columns are shifted down by half a hex height
-	const isOddCol = estimatedCol % 2 === 1;
-	const offsetY = isOddCol ? verticalSpacing * 0.5 : 0;
+  // Step 2: Calculate the Y offset for this column
+  // Odd columns are shifted down by half a hex height
+  const isOddCol = estimatedCol % 2 === 1;
+  const offsetY = isOddCol ? verticalSpacing * 0.5 : 0;
 
-	// Step 3: Estimate row from Y position, accounting for column offset
-	// centerY = row * verticalSpacing + offsetY + hexHeight / 2
-	// row ≈ (pixelY - offsetY - hexHeight / 2) / verticalSpacing
-	const estimatedRow = Math.round((pixelY - offsetY - hexHeight / 2) / verticalSpacing);
+  // Step 3: Estimate row from Y position, accounting for column offset
+  // centerY = row * verticalSpacing + offsetY + hexHeight / 2
+  // row ≈ (pixelY - offsetY - hexHeight / 2) / verticalSpacing
+  const estimatedRow = Math.round((pixelY - offsetY - hexHeight / 2) / verticalSpacing);
 
-	// Clamp to valid range
-	if (estimatedRow < 0 || estimatedRow >= hexesPerCol) {
-		return null;
-	}
+  // Clamp to valid range
+  if (estimatedRow < 0 || estimatedRow >= hexesPerCol) {
+    return null;
+  }
 
-	// Step 4: Verify the calculated position is reasonable
-	// Calculate what the center would be for this hex
-	const expectedCenterX = estimatedCol * horizontalSpacing + hexRadius;
-	const expectedCenterY = estimatedRow * verticalSpacing + offsetY + hexHeight / 2;
+  // Step 4: Verify the calculated position is reasonable
+  // Calculate what the center would be for this hex
+  const expectedCenterX = estimatedCol * horizontalSpacing + hexRadius;
+  const expectedCenterY = estimatedRow * verticalSpacing + offsetY + hexHeight / 2;
 
-	// Check if click is within a reasonable distance (1.5x hex radius)
-	const distance = Math.sqrt(
-		Math.pow(pixelX - expectedCenterX, 2) + Math.pow(pixelY - expectedCenterY, 2)
-	);
+  // Check if click is within a reasonable distance (1.5x hex radius)
+  const distance = Math.sqrt(Math.pow(pixelX - expectedCenterX, 2) + Math.pow(pixelY - expectedCenterY, 2));
 
-	if (distance > hexRadius * 1.5) {
-		return null;
-	}
+  if (distance > hexRadius * 1.5) {
+    return null;
+  }
 
-	return {
-		col: estimatedCol,
-		row: estimatedRow
-	};
+  return {
+    col: estimatedCol,
+    row: estimatedRow,
+  };
 }
 
 /**
@@ -92,7 +90,7 @@ export function pixelToHex(
  * @returns Tile key in format "col-row"
  */
 export function hexToTileKey(coords: HexCoordinates): string {
-	return `${coords.col}-${coords.row}`;
+  return `${coords.col}-${coords.row}`;
 }
 
 /**
@@ -102,13 +100,13 @@ export function hexToTileKey(coords: HexCoordinates): string {
  * @returns Hex coordinates {col, row} or null if invalid format
  */
 export function tileKeyToHex(tileKey: string): HexCoordinates | null {
-	const parts = tileKey.split('-');
-	if (parts.length !== 2) return null;
+  const parts = tileKey.split('-');
+  if (parts.length !== 2) return null;
 
-	const col = parseInt(parts[0], 10);
-	const row = parseInt(parts[1], 10);
+  const col = parseInt(parts[0], 10);
+  const row = parseInt(parts[1], 10);
 
-	if (isNaN(col) || isNaN(row)) return null;
+  if (isNaN(col) || isNaN(row)) return null;
 
-	return { col, row };
+  return { col, row };
 }

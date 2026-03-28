@@ -6,37 +6,31 @@ import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async (event) => {
-	const session = requireAuth(event, 'dm');
+  const session = requireAuth(event, 'dm');
 
-	if (!session) {
-		return error(401, 'Unauthorized');
-	}
+  if (!session) {
+    return error(401, 'Unauthorized');
+  }
 
-	if (session.campaignSlug !== event.params.slug) {
-		return error(403, 'Access denied');
-	}
+  if (session.campaignSlug !== event.params.slug) {
+    return error(403, 'Access denied');
+  }
 
-	try {
-		const { x, y } = await event.request.json();
+  try {
+    const { x, y } = await event.request.json();
 
-		if (typeof x !== 'number' || typeof y !== 'number') {
-			return error(400, 'Invalid coordinates');
-		}
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      return error(400, 'Invalid coordinates');
+    }
 
-		// Remove the revealed tile
-		await db
-			.delete(revealedTiles)
-			.where(
-				and(
-					eq(revealedTiles.campaignId, session.campaignId),
-					eq(revealedTiles.x, x),
-					eq(revealedTiles.y, y)
-				)
-			);
+    // Remove the revealed tile
+    await db
+      .delete(revealedTiles)
+      .where(and(eq(revealedTiles.campaignId, session.campaignId), eq(revealedTiles.x, x), eq(revealedTiles.y, y)));
 
-		return json({ success: true });
-	} catch (err) {
-		console.error('Hide tile error:', err);
-		return error(500, 'Failed to hide tile');
-	}
+    return json({ success: true });
+  } catch (err) {
+    console.error('Hide tile error:', err);
+    return error(500, 'Failed to hide tile');
+  }
 };

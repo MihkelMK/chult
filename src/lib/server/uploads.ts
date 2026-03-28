@@ -10,149 +10,139 @@ const MAX_FILE_SIZE = Number(PUBLIC_MAX_IMAGE_SIZE); // 50MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export interface UploadResult {
-	success: boolean;
-	filename?: string;
-	error?: string;
-	originalDimensions?: { width: number; height: number };
+  success: boolean;
+  filename?: string;
+  error?: string;
+  originalDimensions?: { width: number; height: number };
 }
 
 export async function ensureUploadDir(campaignSlug: string): Promise<void> {
-	const campaignDir = path.join(UPLOAD_DIR, campaignSlug);
-	if (!existsSync(campaignDir)) {
-		await mkdir(campaignDir, { recursive: true });
-	}
+  const campaignDir = path.join(UPLOAD_DIR, campaignSlug);
+  if (!existsSync(campaignDir)) {
+    await mkdir(campaignDir, { recursive: true });
+  }
 }
 
 export async function validateImageFile(
-	file: File
+  file: File
 ): Promise<{ valid: boolean; error?: string; dimensions?: { width: number; height: number } }> {
-	if (file.size > MAX_FILE_SIZE) {
-		return { valid: false, error: 'File size must be less than 50MB' };
-	}
+  if (file.size > MAX_FILE_SIZE) {
+    return { valid: false, error: 'File size must be less than 50MB' };
+  }
 
-	if (!ALLOWED_TYPES.includes(file.type)) {
-		return { valid: false, error: 'Only JPEG, PNG, and WebP images are allowed' };
-	}
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and WebP images are allowed' };
+  }
 
-	// Basic validation - let imgproxy handle the detailed processing
-	try {
-		const buffer = Buffer.from(await file.arrayBuffer());
+  // Basic validation - let imgproxy handle the detailed processing
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-		// Simple dimension check using a lightweight method
-		let width = 0,
-			height = 0;
+    // Simple dimension check using a lightweight method
+    let width = 0,
+      height = 0;
 
-		if (file.type === 'image/jpeg') {
-			// Simple JPEG dimension reading
-			const dimensions = getJPEGDimensions(buffer);
-			width = dimensions.width;
-			height = dimensions.height;
-		} else {
-			// For PNG/WebP, we'll trust the file and let imgproxy validate
-			width = 1000; // Assume it's valid
-			height = 1000;
-		}
+    if (file.type === 'image/jpeg') {
+      // Simple JPEG dimension reading
+      const dimensions = getJPEGDimensions(buffer);
+      width = dimensions.width;
+      height = dimensions.height;
+    } else {
+      // For PNG/WebP, we'll trust the file and let imgproxy validate
+      width = 1000; // Assume it's valid
+      height = 1000;
+    }
 
-		if (width < 500 || height < 500) {
-			return { valid: false, error: 'Image must be at least 500x500 pixels' };
-		}
+    if (width < 500 || height < 500) {
+      return { valid: false, error: 'Image must be at least 500x500 pixels' };
+    }
 
-		return { valid: true, dimensions: { width, height } };
-	} catch {
-		return { valid: false, error: 'Invalid or corrupted image file' };
-	}
+    return { valid: true, dimensions: { width, height } };
+  } catch {
+    return { valid: false, error: 'Invalid or corrupted image file' };
+  }
 }
 
 // Simple JPEG dimension reader (no dependencies)
 function getJPEGDimensions(buffer: Buffer): { width: number; height: number } {
-	let offset = 2;
+  let offset = 2;
 
-	while (offset < buffer.length) {
-		const marker = buffer.readUInt16BE(offset);
-		offset += 2;
+  while (offset < buffer.length) {
+    const marker = buffer.readUInt16BE(offset);
+    offset += 2;
 
-		if (marker >= 0xffc0 && marker <= 0xffc3) {
-			offset += 3; // Skip length and precision
-			const height = buffer.readUInt16BE(offset);
-			const width = buffer.readUInt16BE(offset + 2);
-			return { width, height };
-		}
+    if (marker >= 0xffc0 && marker <= 0xffc3) {
+      offset += 3; // Skip length and precision
+      const height = buffer.readUInt16BE(offset);
+      const width = buffer.readUInt16BE(offset + 2);
+      return { width, height };
+    }
 
-		const segmentLength = buffer.readUInt16BE(offset);
-		offset += segmentLength;
-	}
+    const segmentLength = buffer.readUInt16BE(offset);
+    offset += segmentLength;
+  }
 
-	return { width: 1000, height: 1000 }; // Fallback
+  return { width: 1000, height: 1000 }; // Fallback
 }
 
 // Compute SHA-256 hash of file for cache busting
 export async function computeFileHash(filepath: string): Promise<string> {
-	try {
-		const buffer = await readFile(filepath);
-		const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-		return hash.slice(0, 12); // First 12 chars is sufficient for cache busting
-	} catch (error) {
-		console.error('Error computing file hash:', error);
-		// Return timestamp-based fallback if file can't be read
-		return Date.now().toString(36);
-	}
+  try {
+    const buffer = await readFile(filepath);
+    const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+    return hash.slice(0, 12); // First 12 chars is sufficient for cache busting
+  } catch (error) {
+    console.error('Error computing file hash:', error);
+    // Return timestamp-based fallback if file can't be read
+    return Date.now().toString(36);
+  }
 }
 
-export async function saveMapImage(
-	campaignSlug: string,
-	file: File,
-	mapType: UserRole = 'dm'
-): Promise<UploadResult> {
-	try {
-		const validation = await validateImageFile(file);
-		if (!validation.valid) {
-			return { success: false, error: validation.error };
-		}
+export async function saveMapImage(campaignSlug: string, file: File, mapType: UserRole = 'dm'): Promise<UploadResult> {
+  try {
+    const validation = await validateImageFile(file);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
 
-		await ensureUploadDir(campaignSlug);
+    await ensureUploadDir(campaignSlug);
 
-		// Save as map.jpg (DM) or player-map.jpg (player)
-		const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
-		const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
+    // Save as map.jpg (DM) or player-map.jpg (player)
+    const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
+    const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
 
-		// Save original file - let imgproxy handle all processing
-		const buffer = Buffer.from(await file.arrayBuffer());
-		await writeFile(filepath, buffer);
+    // Save original file - let imgproxy handle all processing
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(filepath, buffer);
 
-		return {
-			success: true,
-			filename,
-			originalDimensions: validation.dimensions
-		};
-	} catch (error) {
-		console.error('Error saving map image:', error);
-		return { success: false, error: 'Failed to save image' };
-	}
+    return {
+      success: true,
+      filename,
+      originalDimensions: validation.dimensions,
+    };
+  } catch (error) {
+    console.error('Error saving map image:', error);
+    return { success: false, error: 'Failed to save image' };
+  }
 }
 
-export async function deleteMapImage(
-	campaignSlug: string,
-	mapType: UserRole = 'dm'
-): Promise<void> {
-	const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
-	const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
-	try {
-		await unlink(filepath);
-	} catch {
-		// File doesn't exist
-	}
+export async function deleteMapImage(campaignSlug: string, mapType: UserRole = 'dm'): Promise<void> {
+  const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
+  const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
+  try {
+    await unlink(filepath);
+  } catch {
+    // File doesn't exist
+  }
 }
 
-export async function hasMapImage(
-	campaignSlug: string,
-	mapType: UserRole = 'dm'
-): Promise<boolean> {
-	const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
-	const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
-	try {
-		await stat(filepath);
-		return true;
-	} catch {
-		return false;
-	}
+export async function hasMapImage(campaignSlug: string, mapType: UserRole = 'dm'): Promise<boolean> {
+  const filename = mapType === 'player' ? 'player-map.jpg' : 'map.jpg';
+  const filepath = path.join(UPLOAD_DIR, campaignSlug, filename);
+  try {
+    await stat(filepath);
+    return true;
+  } catch {
+    return false;
+  }
 }

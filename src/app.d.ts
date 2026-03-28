@@ -4,12 +4,12 @@ import type { SessionData } from '$lib/server/session';
 
 // for information about these interfaces
 declare global {
-	namespace App {
-		interface Locals {
-			session: SessionData | null;
-		}
-	} // interface Error {}
-	// interface Locals {}
+  namespace App {
+    interface Locals {
+      session: SessionData | null;
+    }
+  } // interface Error {}
+  // interface Locals {}
 } // interface PageData {}
 // interface PageState {}
 

@@ -7,14 +7,14 @@ import { defineConfig } from 'drizzle-kit';
 expand(config());
 
 if (!process.env.PRIVATE_DATABASE_URL) {
-	throw new Error('PRIVATE_DATABASE_URL environment variable is not set.');
+  throw new Error('PRIVATE_DATABASE_URL environment variable is not set.');
 }
 
 export default defineConfig({
-	schema: './src/lib/server/db/schema.ts',
-	out: './drizzle',
-	dialect: 'postgresql',
-	dbCredentials: { url: process.env.PRIVATE_DATABASE_URL },
-	verbose: true,
-	strict: true
+  schema: './src/lib/server/db/schema.ts',
+  out: './drizzle',
+  dialect: 'postgresql',
+  dbCredentials: { url: process.env.PRIVATE_DATABASE_URL },
+  verbose: true,
+  strict: true,
 });

@@ -5,24 +5,21 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
-	const session = requireAuth(event);
+  const session = requireAuth(event);
 
-	if (!session) {
-		return error(401, 'Unauthorized');
-	}
+  if (!session) {
+    return error(401, 'Unauthorized');
+  }
 
-	if (session.campaignSlug !== event.params.slug) {
-		return error(403, 'Access denied');
-	}
+  if (session.campaignSlug !== event.params.slug) {
+    return error(403, 'Access denied');
+  }
 
-	const campaignData = (await getCampaignData(
-		session.campaignId,
-		session.role === 'player'
-	)) as CampaignDataResponse;
+  const campaignData = (await getCampaignData(session.campaignId, session.role === 'player')) as CampaignDataResponse;
 
-	if (!campaignData) {
-		return error(404, 'Campaign not found');
-	}
+  if (!campaignData) {
+    return error(404, 'Campaign not found');
+  }
 
-	return json(campaignData);
+  return json(campaignData);
 };
