@@ -1,0 +1,70 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+env:
+  DOCKER_HOST: tcp://dind:2375
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Log in to registry
+        uses: docker/login-action@v4
+        with:
+          registry: git.kodu.lenn.uk
+          username: ${{ vars.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Generate image metadata
+        uses: docker/metadata-action@v6
+        id: meta
+        with:
+          images: git.kodu.lenn.uk/websites/chult_web
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=sha,format=short
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver: docker
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            PUBLIC_MAX_IMAGE_SIZE=52428800
+
+      - name: Trigger prod deploy
+        if: github.ref == 'refs/heads/main'
+        env:
+          KOMODO_SECRET: ${{ secrets.KOMODO_WEBHOOK_SECRET }}
+        run: |
+          curl -fsS -X POST "${{ vars.KOMODO_DEPLOY_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Gitlab-Token: ${KOMODO_SECRET}" \
+            -d '{"ref":"${{ github.ref }}"}'
+
+      - name: Trigger dev deploy
+        if: github.ref == 'refs/heads/dev'
+        env:
+          KOMODO_SECRET: ${{ secrets.KOMODO_WEBHOOK_SECRET }}
+        run: |
+          curl -fsS -X POST "${{ vars.KOMODO_DEV_DEPLOY_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Gitlab-Token: ${KOMODO_SECRET}" \
+            -d '{"ref":"${{ github.ref }}"}'
