@@ -1,4 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["local>renovate-bot/renovate-config"]
+  "extends": ["local>renovate-bot/renovate-config"],
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["postgres", "prodrigestivill/postgres-backup-local"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false,
+      "description": "Postgres major version upgrades require manual migration — do not update automatically"
+    }
+  ]
 }
