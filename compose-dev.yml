@@ -117,7 +117,7 @@ services:
 
   adminer:
     container_name: chult-adminer
-    image: adminer:latest@sha256:16a72c6140f64d00a3a9edf8d3d3b18a7b0a29ca31b0453378d9eb71f01f9e34
+    image: adminer:latest@sha256:3a1582df310cf49a3c9cad2882496eed4596563f8d33250703f8b26e538cef7d
     ports:
       - '8081:8080' # Adminer default port is 8080, map to 8081 on host
     environment:
