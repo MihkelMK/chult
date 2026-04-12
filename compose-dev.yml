@@ -1,7 +1,7 @@
 services:
   imgproxy:
     container_name: chult-imgproxy
-    image: ghcr.io/imgproxy/imgproxy:latest@sha256:68ab5f7b8f1f485e995dfdab7221bfb1e83e59a5e0415b53fa4679fed011e380
+    image: ghcr.io/imgproxy/imgproxy:latest@sha256:2431fbc04ba06d2d598af7a4565286dd7e1a48a5eeb6365878119d75d7db75c0
     command: imgproxy -keypath /run/secrets/IMGPROXY_KEY -saltpath /run/secrets/IMGPROXY_SALT
     environment:
       # Basic config
