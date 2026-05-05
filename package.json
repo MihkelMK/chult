@@ -69,7 +69,7 @@
     "drizzle-kit": "0.31.10",
     "drizzle-orm": "0.45.2",
     "eventemitter3": "5.0.4",
-    "konva": "10.2.5",
+    "konva": "10.3.0",
     "postgres": "3.4.9",
     "runed": "0.37.1",
     "svelte-konva": "1.0.1"
