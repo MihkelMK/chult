@@ -6,6 +6,7 @@ import globals from 'globals';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript-eslint';
 import svelteConfig from './svelte.config.js';
+import sonarjs from 'eslint-plugin-sonarjs';
 
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
@@ -16,6 +17,7 @@ export default ts.config(
   ...svelte.configs.recommended,
   prettier,
   ...svelte.configs.prettier,
+  sonarjs.configs.recommended,
   {
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },
