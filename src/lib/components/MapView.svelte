@@ -82,6 +82,8 @@
   let showEditMarkerDialog = $state(false);
   let showMarkerDetailsDialog = $state(false);
   let createMarkerCoords = $state<TileCoords | null>(null);
+  // Which visibility the create dialog should open with, set by the context-menu item that triggered it
+  let createMarkerVisibleToPlayers = $state(false);
   let selectedMarker = $state<MapMarkerResponse | null>(null);
   let selectedDMMarker = $state<MapMarkerResponse | null>(null);
   let selectedPlayerMarker = $state<MapMarkerResponse | null>(null);
@@ -141,6 +143,10 @@
   let showDMMarkers = $state(true); // DM only: show hidden markers
   let showPlayerMarkers = $state(true); // DM only: show visible markers
   let tileTransparency = $state('1'); // 0 = transparent, 1 = opaque
+
+  // Which marker layers the canvas draws. DM-only rendering preference
+  let dmMarkerLayerVisible = $derived(effectiveRole === 'dm' && showDMMarkers);
+  let playerMarkerLayerVisible = $derived(effectiveRole === 'dm' ? showPlayerMarkers : true);
 
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
@@ -692,8 +698,9 @@
   }
 
   // Marker creation
-  function openCreateMarkerDialog() {
+  function openCreateMarkerDialog(visibleToPlayers: boolean) {
     if (createMarkerCoords) {
+      createMarkerVisibleToPlayers = visibleToPlayers;
       showCreateMarkerDialog = true;
       contextMenuOpen = false;
     }
@@ -917,8 +924,8 @@
             showAlwaysRevealed={effectiveRole === 'dm' ? showAlwaysRevealed : false}
             showRevealed={effectiveRole === 'dm' ? showRevealed : false}
             showUnrevealed={effectiveRole === 'dm' ? showUnrevealed : true}
-            showDMMarkers={effectiveRole === 'dm' ? showDMMarkers : false}
-            showPlayerMarkers={effectiveRole === 'dm' ? showPlayerMarkers : true}
+            showDMMarkers={dmMarkerLayerVisible}
+            showPlayerMarkers={playerMarkerLayerVisible}
             tileTransparency={effectiveRole === 'dm' ? Number(tileTransparency) : 0.75}
             hexesPerRow={data.campaign?.hexesPerRow ?? 20}
             hexesPerCol={data.campaign?.hexesPerCol ?? 20}
@@ -1085,7 +1092,8 @@
     <MarkerCreateDialog
       bind:open={showCreateMarkerDialog}
       coords={createMarkerCoords}
-      isDM={userRole === 'dm'}
+      isDM={effectiveRole === 'dm'}
+      defaultVisibleToPlayers={createMarkerVisibleToPlayers}
       onConfirm={handleCreateMarker}
       onCancel={handleCancelCreateMarker} />
 
@@ -1094,7 +1102,7 @@
       bind:open={showEditMarkerDialog}
       coords={selectedMarker ? { x: selectedMarker.x, y: selectedMarker.y } : null}
       editingMarker={selectedMarker}
-      isDM={userRole === 'dm'}
+      isDM={effectiveRole === 'dm'}
       onConfirm={handleUpdateMarker}
       onCancel={() => (showEditMarkerDialog = false)} />
 

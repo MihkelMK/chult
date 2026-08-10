@@ -12,7 +12,7 @@
     selectedDMMarker: MapMarkerResponse | null;
     selectedPlayerMarker: MapMarkerResponse | null;
     startTeleport: () => void;
-    openCreateMarkerDialog: () => void;
+    openCreateMarkerDialog: (visibleToPlayers: boolean) => void;
     handleShowMarker: (marker: MapMarkerResponse) => void;
   }
 
@@ -50,19 +50,19 @@
   </DropdownMenu.Item>
 {/snippet}
 
-{#snippet createMarkerItem(type: string)}
-  <DropdownMenu.Item class="cursor-pointer" onclick={openCreateMarkerDialog}>
+{#snippet createMarkerItem(type: string, visibleToPlayers: boolean)}
+  <DropdownMenu.Item class="cursor-pointer" onclick={() => openCreateMarkerDialog(visibleToPlayers)}>
     Create
     {type}
     Marker
   </DropdownMenu.Item>
 {/snippet}
 
-{#snippet editOrCreateMarkerItem(type: string, marker: MapMarkerResponse | null)}
+{#snippet editOrCreateMarkerItem(type: string, marker: MapMarkerResponse | null, visibleToPlayers: boolean)}
   {#if marker}
     {@render editMarkerItem(type, marker)}
   {:else}
-    {@render createMarkerItem(type)}
+    {@render createMarkerItem(type, visibleToPlayers)}
   {/if}
 {/snippet}
 
@@ -81,13 +81,16 @@
       {/if}
 
       {#if type === 'tile'}
-        <DropdownMenu.Item class="cursor-pointer" onclick={openCreateMarkerDialog}>Create Marker</DropdownMenu.Item>
+        <!-- Unqualified "Create Marker": DM-only for a DM, visible for a player (the only kind they may create) -->
+        <DropdownMenu.Item class="cursor-pointer" onclick={() => openCreateMarkerDialog(effectiveRole !== 'dm')}>
+          Create Marker
+        </DropdownMenu.Item>
       {:else if type === 'marker'}
         {#if effectiveRole === 'dm'}
-          {@render editOrCreateMarkerItem('DM', selectedDMMarker)}
-          {@render editOrCreateMarkerItem('Player', selectedPlayerMarker)}
+          {@render editOrCreateMarkerItem('DM', selectedDMMarker, false)}
+          {@render editOrCreateMarkerItem('Player', selectedPlayerMarker, true)}
         {:else}
-          {@render editOrCreateMarkerItem('', selectedPlayerMarker)}
+          {@render editOrCreateMarkerItem('', selectedPlayerMarker, true)}
         {/if}
       {/if}
     </DropdownMenu.Content>
