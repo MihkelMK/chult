@@ -8,7 +8,7 @@
     tile: TileCoords | null;
     type: RightClickEventType | null;
     open: boolean;
-    userRole: UserRole;
+    effectiveRole: UserRole;
     selectedDMMarker: MapMarkerResponse | null;
     selectedPlayerMarker: MapMarkerResponse | null;
     startTeleport: () => void;
@@ -22,7 +22,7 @@
     tile,
     type,
     open = $bindable(),
-    userRole,
+    effectiveRole,
     selectedDMMarker,
     selectedPlayerMarker,
     startTeleport,
@@ -75,7 +75,7 @@
         </DropdownMenu.Label>
         <DropdownMenu.Separator />
 
-        {#if userRole === 'dm' && isPartyOnTile}
+        {#if effectiveRole === 'dm' && isPartyOnTile}
           <DropdownMenu.Item class="cursor-pointer" onclick={startTeleport}>Teleport Party</DropdownMenu.Item>
         {/if}
       {/if}
@@ -83,7 +83,7 @@
       {#if type === 'tile'}
         <DropdownMenu.Item class="cursor-pointer" onclick={openCreateMarkerDialog}>Create Marker</DropdownMenu.Item>
       {:else if type === 'marker'}
-        {#if userRole === 'dm'}
+        {#if effectiveRole === 'dm'}
           {@render editOrCreateMarkerItem('DM', selectedDMMarker)}
           {@render editOrCreateMarkerItem('Player', selectedPlayerMarker)}
         {:else}

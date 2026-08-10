@@ -24,5 +24,5 @@ export interface ImageOptions {
   format?: 'webp' | 'jpeg' | 'png' | 'avif';
   dpr?: number;
   preset?: 'thumbnail' | 'small' | 'medium' | 'large';
-  gravity?: 'no' | 'so' | 'ea' | 'we' | 'nowe' | 'nowe' | 'soea' | 'sowe' | 'ce' | 'sm';
+  gravity?: 'no' | 'so' | 'ea' | 'we' | 'nowe' | 'noea' | 'soea' | 'sowe' | 'ce' | 'sm';
 }

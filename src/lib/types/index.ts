@@ -23,13 +23,11 @@ export interface HexTriggerEvent {
   key: string;
 }
 
-export type RightClickEventType = 'tile' | 'token' | 'marker' | 'poi';
+export type RightClickEventType = 'tile' | 'marker';
 
 export interface RightClickEvent {
   type: RightClickEventType;
-  key?: string; // For tiles
-  coords?: TileCoords; // For anything with position
-  markers?: { dm?: MapMarkerResponse; player?: MapMarkerResponse }; // For markers (O(1) lookup from background layer)
+  coords: TileCoords; // Tile the click resolved to
   screenX: number; // Screen X position for menu
   screenY: number; // Screen Y position for menu
 }
@@ -130,7 +128,6 @@ export interface MapCanvasProps extends MapCanvasSharedProps {
     playerMarker?: MapMarkerResponse;
     tile: Hex;
   }>;
-  markersByTile: SvelteMap<string, { dm?: MapMarkerResponse; player?: MapMarkerResponse }>; // For O(1) marker lookup on right-click (key: "x-y")
   showPaths?: boolean;
   visiblePathSessions?: Set<number>;
   sessions: GameSessionResponse[];

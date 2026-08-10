@@ -222,14 +222,9 @@
         dmMarker = markers.dm;
       }
 
-      // Player markers (visible) - show based on role and toggle
-      if (markers.player) {
-        if (isDM && showPlayerMarkers) {
-          playerMarker = markers.player;
-        } else if (!isDM) {
-          // Players always see player markers
-          playerMarker = markers.player;
-        }
+      // Player markers (visible): DMs see them when toggle is on; players always see them
+      if (markers.player && (!isDM || showPlayerMarkers)) {
+        playerMarker = markers.player;
       }
 
       // Only add entry if at least one marker is visible
@@ -266,7 +261,6 @@
       {adjacentTiles}
       {partyTokenTile}
       {markerTiles}
-      markersByTile={localState.markersByTile}
       {image}
       {zoom}
       {activeTool}

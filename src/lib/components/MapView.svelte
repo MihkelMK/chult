@@ -117,9 +117,19 @@
 
   // Use these values to determine actual expected action
   let activeTool = $derived(shiftHeld ? 'pan' : _selectedTool);
-  let activeSelectMode = $derived<SelectMode>(
-    !ctrlHeld ? _selectedSelectMode : _selectedSelectMode === 'add' ? 'remove' : 'add'
-  );
+  let activeSelectMode = $derived.by<SelectMode>(() => {
+    if (!ctrlHeld) return _selectedSelectMode;
+    return _selectedSelectMode === 'add' ? 'remove' : 'add';
+  });
+
+  let mapCursor = $derived.by(() => {
+    if (loading) return 'loading';
+    if (activeTool === 'pan') return isDragging ? 'grabbing' : 'grab';
+    if (activeTool === 'paint' || activeTool === 'select') {
+      return activeSelectMode === 'add' ? 'crosshair' : 'not-allowed';
+    }
+    return 'default';
+  });
 
   let loading = $state(false);
   let brushSize = $state<number>(3); // Brush radius (1-5)
@@ -324,70 +334,79 @@
     }
   }
 
+  function handlePaint(originKey: string) {
+    if (!localState) return;
+
+    // Get selection based on brush size
+    const tilesToPaint = getBrushTiles(originKey);
+
+    // Batch updates to the set for better performance
+    for (const key of tilesToPaint) {
+      const isRevealed = localState.revealedTilesSet.has(key);
+      const isAlwaysRevealed = localState.alwaysRevealedTilesSet.has(key);
+      const isUnrevealed = !isRevealed && !isAlwaysRevealed;
+
+      // Only select tiles from visible layers
+      const canSelect =
+        (isUnrevealed && showUnrevealed) || (isRevealed && showRevealed) || (isAlwaysRevealed && showAlwaysRevealed);
+
+      if (!canSelect) {
+        continue;
+      }
+
+      // Return if tile selected and we want to add or if tile not selected and we want to remove
+      if (selectedSet.has(key) === (activeSelectMode === 'add')) {
+        continue;
+      }
+
+      if (activeSelectMode === 'add') {
+        selectedSet.add(key);
+      } else {
+        selectedSet.delete(key);
+      }
+    }
+  }
+
   // Event handlers based on cursor mode
   function handleTileTrigger(event: HexTriggerEvent) {
-    const clickedKey = event.key;
-
-    // Check if in teleport mode first
-    if (teleportMode === 'selecting-destination') {
-      handleTeleportDestinationClick(clickedKey);
+    if (activeTool === 'interact' || activeTool === 'pan') {
       return;
     }
 
-    switch (activeTool) {
-      case 'interact':
-        // TODO: open tile content modal
-        break;
-      case 'explore':
-        // Player exploration mode - check if tile is adjacent and if there's an active session
-        if (canExplore && isAdjacentToParty(clickedKey)) {
-          showMovementConfirmation(clickedKey);
-        } else if (!canExplore) {
-          toast.error('Can only explore when in active session');
-        } else if (!isAdjacentToParty(clickedKey)) {
-          toast.error('Tile is not adjacent to party position');
-        }
-        break;
-      case 'select':
-        // Multi-select mode - toggle selection
-        if (effectiveRole === 'dm') {
-          handleSelect(clickedKey);
-        }
-        break;
-      case 'paint':
-        // Paint mode - paint multiple tiles based on brush size
-        if (effectiveRole === 'dm' && localState) {
-          const tilesToPaint = getBrushTiles(clickedKey);
-          // Batch updates to the set for better performance
-          for (const key of tilesToPaint) {
-            const isRevealed = localState.revealedTilesSet.has(key);
-            const isAlwaysRevealed = localState.alwaysRevealedTilesSet.has(key);
-            const isUnrevealed = !isRevealed && !isAlwaysRevealed;
+    // Player Tools
+    // exploration mode - check if tile is adjacent and if there's an active session
+    if (activeTool === 'explore') {
+      if (!canExplore) {
+        toast.error('Can only explore when in active session');
+        return;
+      }
+      if (!isAdjacentToParty(event.key)) {
+        toast.error('Tile is not adjacent to party position');
+        return;
+      }
 
-            // Only select tiles from visible layers
-            const canSelect =
-              (isUnrevealed && showUnrevealed) || (isRevealed && showRevealed) || (isAlwaysRevealed && showAlwaysRevealed);
+      showMovementConfirmation(event.key);
+      return;
+    }
 
-            if (!canSelect) {
-              continue;
-            }
+    // DM Tools
+    if (effectiveRole !== 'dm') return;
 
-            // Return if tile selected and we want to add or if tile not selected and we want to remove
-            if (selectedSet.has(key) === (activeSelectMode === 'add')) {
-              continue;
-            }
+    // Teleport mode - click sends players to that tile
+    if (teleportMode === 'selecting-destination') {
+      handleTeleportDestinationClick(event.key);
+      return;
+    }
 
-            if (activeSelectMode === 'add') {
-              selectedSet.add(key);
-            } else {
-              selectedSet.delete(key);
-            }
-          }
-        }
-        break;
-      case 'pan':
-        // Pan mode - do nothing on tile click
-        break;
+    // Multi-select mode - toggle tile in selection
+    if (activeTool === 'select') {
+      handleSelect(event.key);
+      return;
+    }
+
+    // Paint mode - paint multiple tiles based on brush size
+    if (activeTool === 'paint') {
+      handlePaint(event.key);
     }
   }
 
@@ -641,10 +660,6 @@
   function handleRightClick(event: RightClickEvent) {
     if (!localState) return;
 
-    // Allow both DM and players for marker creation and marker context menu
-    // Only DM can use other context menus (teleport, etc.)
-    if (effectiveRole !== 'dm' && event.type !== 'tile' && event.type !== 'marker') return;
-
     // If menu is already open, close it first to restore pointer events
     // Then reopen at new position on next tick
     const wasOpen = contextMenuOpen;
@@ -652,35 +667,19 @@
       contextMenuOpen = false;
     }
 
+    // Menu reflects what markers exist on the tile, not which layers are toggled on: a DM can
+    // still act on a marker whose layer is hidden. Only the role gate applies, so the menu type
+    // never leaks a DM marker's existence to a player.
+    const tileKey = `${event.coords.x}-${event.coords.y}`;
+    const markersAtTile = localState.markersByTile.get(tileKey);
+    const dmMarker = effectiveRole === 'dm' ? (markersAtTile?.dm ?? null) : null;
+    const playerMarker = markersAtTile?.player ?? null;
+
+    contextMenuType = dmMarker || playerMarker ? 'marker' : 'tile';
     contextMenuPosition = { x: event.screenX, y: event.screenY };
-    contextMenuType = event.type;
-
-    // Store coords and lookup markers at tile (O(1) lookup)
-    if (event.coords) {
-      createMarkerCoords = event.coords;
-
-      // Check for markers at this tile
-      const tileKey = `${event.coords.x}-${event.coords.y}`;
-      const markersAtTile = localState.markersByTile.get(tileKey);
-
-      if (event.type === 'marker' && event.markers) {
-        // Direct marker click - use the provided marker
-        if (event.markers.dm) {
-          selectedDMMarker = event.markers.dm;
-        }
-        if (event.markers.player) {
-          selectedPlayerMarker = event.markers.player;
-        }
-      } else {
-        // Tile right-click - check for both DM and player markers
-        selectedDMMarker = null;
-        selectedDMMarker = null;
-      }
-
-      // Store markers for context menu
-      selectedDMMarker = markersAtTile?.dm || null;
-      selectedPlayerMarker = markersAtTile?.player || null;
-    }
+    selectedDMMarker = dmMarker;
+    selectedPlayerMarker = playerMarker;
+    createMarkerCoords = event.coords;
 
     // Open menu on next tick to ensure state updates properly
     if (wasOpen) {
@@ -902,17 +901,7 @@
       <!-- Map Container with native scroll -->
       <div
         class="max-w-screen flex-1 overflow-auto bg-muted/20"
-        style="cursor: {loading
-          ? 'loading'
-          : activeTool === 'pan'
-            ? isDragging
-              ? 'grabbing'
-              : 'grab'
-            : activeTool === 'paint' || activeTool === 'select'
-              ? activeSelectMode === 'add'
-                ? 'crosshair'
-                : 'not-allowed'
-              : 'default'} !important;"
+        style:cursor|important={mapCursor}
         role="application"
         aria-label="Interactive map">
         {#if !data.mapUrls}
@@ -1073,7 +1062,7 @@
       type={contextMenuType}
       partyPosition={localState.partyTokenPosition}
       tile={createMarkerCoords}
-      {userRole}
+      {effectiveRole}
       {selectedDMMarker}
       {selectedPlayerMarker}
       handleShowMarker={handleMarkerClick}

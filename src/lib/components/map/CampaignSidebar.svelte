@@ -46,7 +46,9 @@
     hasActiveSession,
     activeSession,
     sessionDuration,
+    // eslint-disable-next-line no-useless-assignment -- $bindable() requires a default expression syntactically
     showDialog = $bindable(),
+    // eslint-disable-next-line no-useless-assignment -- $bindable() requires a default expression syntactically
     dialogConfig = $bindable(),
     onFlushPending,
   }: Props = $props();
