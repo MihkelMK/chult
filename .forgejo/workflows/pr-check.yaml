@@ -30,3 +30,9 @@ jobs:
 
       - name: Type check
         run: pnpm check
+
+      - name: Audit dependencies
+        run: pnpm audit --prod --audit-level=high
+
+      - name: Scan code
+        run: opengrep scan --config p/javascript --config p/typescript --config p/secrets --config p/nodejsscan --config p/supply-chain .
