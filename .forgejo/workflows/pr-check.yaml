@@ -34,5 +34,12 @@ jobs:
       - name: Audit dependencies
         run: pnpm audit --prod --audit-level=high
 
+      - name: Install opengrep
+        run: |
+          # renovate: datasource=github-releases depName=opengrep/opengrep
+          OPENGREP_VERSION=v1.26.0
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash -s -- -v "$OPENGREP_VERSION"
+          echo "$HOME/.opengrep/cli/latest" >> "$GITHUB_PATH"
+
       - name: Scan code
         run: opengrep scan --config p/javascript --config p/typescript --config p/secrets --config p/nodejsscan --config p/supply-chain .

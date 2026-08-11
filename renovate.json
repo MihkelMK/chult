@@ -9,5 +9,14 @@
       "enabled": false,
       "description": "Postgres major version upgrades require manual migration — do not update automatically"
     }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.forgejo/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\s+OPENGREP_VERSION=(?<currentValue>v?\\S+)"
+      ]
+    }
   ]
 }
