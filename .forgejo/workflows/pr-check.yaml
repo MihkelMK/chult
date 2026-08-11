@@ -30,3 +30,27 @@ jobs:
 
       - name: Type check
         run: pnpm check
+
+      - name: Audit dependencies
+        run: pnpm audit --prod --audit-level=high
+
+      - name: Install opengrep
+        run: |
+          # Release binary + checksum instead of `curl | bash`: the upstream install.sh
+          # is served from the default branch, so it is unpinned code running in CI.
+          # Upstream publishes no checksums file, so OPENGREP_SHA256 is pinned by hand.
+          # Renovate bumps OPENGREP_VERSION only. When it does, this step fails at
+          # `sha256sum -c` until the hash is updated too. That is deliberate: fail closed.
+          # renovate: datasource=github-releases depName=opengrep/opengrep
+          OPENGREP_VERSION=v1.26.0
+          OPENGREP_SHA256=40c21299eeddabf743b856daa843d24f9d4a027130671cd45b3b21776fd9ab26
+          # Installed under $HOME: the runner is not root, so /usr/local/bin is not writable
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL -o "$HOME/.local/bin/opengrep" \
+            "https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}/opengrep_manylinux_x86"
+          echo "${OPENGREP_SHA256}  $HOME/.local/bin/opengrep" | sha256sum -c -
+          chmod +x "$HOME/.local/bin/opengrep"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Scan code
+        run: opengrep scan --error --config p/javascript --config p/typescript --config p/secrets --config p/nodejsscan --config p/supply-chain .

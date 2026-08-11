@@ -23,7 +23,7 @@ RUN --mount=type=cache,id=chult-pnpm-store,target=/root/.local/share/pnpm/store 
 
 #
 # BUILD STAGE
-# 
+#
 FROM base AS build
 
 RUN corepack enable && \

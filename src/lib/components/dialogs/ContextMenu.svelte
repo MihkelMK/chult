@@ -1,18 +1,18 @@
 <script lang="ts">
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-  import type { MapMarkerResponse, RightClickEventType, TileCoords, UserRole } from '$lib/types';
+  import type { ContextMenuType, MapMarkerResponse, TileCoords, UserRole } from '$lib/types';
 
   interface Props {
     position: { x: number; y: number };
     partyPosition: TileCoords | null;
     tile: TileCoords | null;
-    type: RightClickEventType | null;
+    type: ContextMenuType | null;
     open: boolean;
-    userRole: UserRole;
+    effectiveRole: UserRole;
     selectedDMMarker: MapMarkerResponse | null;
     selectedPlayerMarker: MapMarkerResponse | null;
     startTeleport: () => void;
-    openCreateMarkerDialog: () => void;
+    openCreateMarkerDialog: (visibleToPlayers: boolean) => void;
     handleShowMarker: (marker: MapMarkerResponse) => void;
   }
 
@@ -22,7 +22,7 @@
     tile,
     type,
     open = $bindable(),
-    userRole,
+    effectiveRole,
     selectedDMMarker,
     selectedPlayerMarker,
     startTeleport,
@@ -50,19 +50,19 @@
   </DropdownMenu.Item>
 {/snippet}
 
-{#snippet createMarkerItem(type: string)}
-  <DropdownMenu.Item class="cursor-pointer" onclick={openCreateMarkerDialog}>
+{#snippet createMarkerItem(type: string, visibleToPlayers: boolean)}
+  <DropdownMenu.Item class="cursor-pointer" onclick={() => openCreateMarkerDialog(visibleToPlayers)}>
     Create
     {type}
     Marker
   </DropdownMenu.Item>
 {/snippet}
 
-{#snippet editOrCreateMarkerItem(type: string, marker: MapMarkerResponse | null)}
+{#snippet editOrCreateMarkerItem(type: string, marker: MapMarkerResponse | null, visibleToPlayers: boolean)}
   {#if marker}
     {@render editMarkerItem(type, marker)}
   {:else}
-    {@render createMarkerItem(type)}
+    {@render createMarkerItem(type, visibleToPlayers)}
   {/if}
 {/snippet}
 
@@ -75,19 +75,22 @@
         </DropdownMenu.Label>
         <DropdownMenu.Separator />
 
-        {#if userRole === 'dm' && isPartyOnTile}
+        {#if effectiveRole === 'dm' && isPartyOnTile}
           <DropdownMenu.Item class="cursor-pointer" onclick={startTeleport}>Teleport Party</DropdownMenu.Item>
         {/if}
       {/if}
 
       {#if type === 'tile'}
-        <DropdownMenu.Item class="cursor-pointer" onclick={openCreateMarkerDialog}>Create Marker</DropdownMenu.Item>
+        <!-- Unqualified "Create Marker": DM-only for a DM, visible for a player (the only kind they may create) -->
+        <DropdownMenu.Item class="cursor-pointer" onclick={() => openCreateMarkerDialog(effectiveRole !== 'dm')}>
+          Create Marker
+        </DropdownMenu.Item>
       {:else if type === 'marker'}
-        {#if userRole === 'dm'}
-          {@render editOrCreateMarkerItem('DM', selectedDMMarker)}
-          {@render editOrCreateMarkerItem('Player', selectedPlayerMarker)}
+        {#if effectiveRole === 'dm'}
+          {@render editOrCreateMarkerItem('DM', selectedDMMarker, false)}
+          {@render editOrCreateMarkerItem('Player', selectedPlayerMarker, true)}
         {:else}
-          {@render editOrCreateMarkerItem('', selectedPlayerMarker)}
+          {@render editOrCreateMarkerItem('', selectedPlayerMarker, true)}
         {/if}
       {/if}
     </DropdownMenu.Content>

@@ -57,6 +57,12 @@
   let previewTool = $state<'pan' | 'set-position'>('pan');
   let isDragging = $state(false);
 
+  // Dynamic cursor
+  let mapCursor = $derived.by(() => {
+    if (previewTool !== 'pan') return 'crosshair';
+    return isDragging ? 'grabbing' : 'grab';
+  });
+
   // Party token position state
   let partyTokenX = $state<number | null>(null);
   let partyTokenY = $state<number | null>(null);
@@ -609,11 +615,7 @@
                 class="relative min-h-80 overflow-hidden rounded-lg"
                 bind:clientHeight={canvasHeight}
                 bind:clientWidth={canvasWidth}
-                style="aspect-ratio: 1/{aspectRatio}; cursor: {previewTool === 'pan'
-                  ? isDragging
-                    ? 'grabbing'
-                    : 'grab'
-                  : 'crosshair'};">
+                style="aspect-ratio: 1/{aspectRatio}; cursor: {mapCursor};">
                 {#if !localState}
                   <LoadingScreen />
                 {:else}

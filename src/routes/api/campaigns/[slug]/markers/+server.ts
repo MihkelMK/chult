@@ -7,6 +7,32 @@ import { error, json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
+type CreateMarkerInput = {
+  x: number;
+  y: number;
+  type: MarkerType;
+  title: string;
+  content: string | null;
+  imagePath: string | null;
+  visibleToPlayers: boolean | undefined;
+};
+
+function parseCreateMarkerBody(body: Record<string, unknown>): CreateMarkerInput {
+  const { x, y, type, title, content, visibleToPlayers, imagePath } = body;
+
+  if (typeof x !== 'number' || typeof y !== 'number') error(400, 'Invalid coordinates');
+  if (!type || !MARKER_TYPES.includes(type as MarkerType)) error(400, 'Invalid marker type');
+  if (!title || typeof title !== 'string' || title.trim().length === 0) error(400, 'Title is required');
+  // undefined is allowed: `visibleToPlayers ?? true` below treats it as "default to visible"
+  if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') error(400, 'Invalid visibleToPlayers value');
+  if (content !== null && typeof content !== 'string') error(400, 'Invalid content');
+  if (imagePath !== null && typeof imagePath !== 'string') error(400, 'Invalid imagePath');
+
+  // `error()` returns never, so the guards above already narrowed everything except `type`
+  // (Array.includes() is not a type predicate)
+  return { x, y, type: type as MarkerType, title, content, imagePath, visibleToPlayers };
+}
+
 // POST /api/campaigns/[slug]/markers - Create new marker
 export const POST: RequestHandler = async ({ params, locals, request }) => {
   if (!locals.session) {
@@ -27,34 +53,7 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
     return error(403, 'Invalid session');
   }
 
-  // Parse request body
-  const body = await request.json();
-  const { x, y, type, title, content, visibleToPlayers, imagePath } = body;
-
-  // Validation
-  if (typeof x !== 'number' || typeof y !== 'number') {
-    return error(400, 'Invalid coordinates');
-  }
-
-  if (!type || !MARKER_TYPES.includes(type as MarkerType)) {
-    return error(400, 'Invalid marker type');
-  }
-
-  if (!title || typeof title !== 'string' || title.trim().length === 0) {
-    return error(400, 'Title is required');
-  }
-
-  if (!visibleToPlayers && typeof visibleToPlayers !== 'boolean') {
-    return error(400, 'Invalid visibleToPlayers value');
-  }
-
-  if (content !== null && typeof content !== 'string') {
-    return error(400, 'Invalid content');
-  }
-
-  if (imagePath !== null && typeof imagePath !== 'string') {
-    return error(400, 'Invalid imagePath');
-  }
+  const { x, y, type, title, content, visibleToPlayers, imagePath } = parseCreateMarkerBody(await request.json());
 
   // Players can only create visible markers
   const requestedVisibility = visibleToPlayers ?? true;

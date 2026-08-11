@@ -21,6 +21,7 @@
   let {
     brushSize = $bindable(),
     alwaysRevealMode = $bindable(),
+    // eslint-disable-next-line no-useless-assignment -- $bindable() requires a default expression syntactically
     selectedSelectMode = $bindable(),
     activeSelectMode,
     selectedCount,

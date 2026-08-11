@@ -2,8 +2,19 @@ import { dev } from '$app/environment';
 import { campaigns } from '$lib/server/db/schema';
 import type { UserRole } from '$lib/types';
 import type { RequestEvent } from '@sveltejs/kit';
+import { timingSafeEqual } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { db } from './db';
+
+// timingSafeEqual() throws on length mismatch, so the lengths must be compared first.
+// That leaks the token length, which is fine here: tokens are a fixed 12 characters, so
+// the length is public anyway. Do not reuse this for variable-length secrets.
+function constantTimeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, 'utf8');
+  const bBuf = Buffer.from(b, 'utf8');
+  if (aBuf.length !== bBuf.length) return false;
+  return timingSafeEqual(aBuf, bBuf);
+}
 
 export interface SessionData {
   campaignId: number;
@@ -34,9 +45,9 @@ export async function validateCampaignAccess(campaignSlug: string, token: string
   const camp = campaign[0];
   let role: UserRole | null = null;
 
-  if (token === camp.dmToken) {
+  if (constantTimeEqual(token, camp.dmToken)) {
     role = 'dm';
-  } else if (token === camp.playerToken) {
+  } else if (constantTimeEqual(token, camp.playerToken)) {
     role = 'player';
   }
 

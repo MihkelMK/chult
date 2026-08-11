@@ -2,9 +2,39 @@ import { db } from '$lib/server/db';
 import { campaigns, gameSessions, paths, revealedTiles, timeAuditLog } from '$lib/server/db/schema';
 import { emitEvent } from '$lib/server/events';
 import type { PathStep } from '$lib/types';
-import { error, json } from '@sveltejs/kit';
+import { error, isHttpError, json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
+
+function parseTileKey(tileKey: unknown): { tileKey: string; col: number; row: number } {
+  if (!tileKey || typeof tileKey !== 'string') throw error(400, 'Invalid tileKey');
+  const [col, row] = tileKey.split('-').map(Number);
+  if (isNaN(col) || isNaN(row)) throw error(400, 'Invalid tile coordinates');
+  return { tileKey, col, row };
+}
+
+// Adjacent hexes in odd-q offset coordinates.
+function isAdjacentHex(fromX: number, fromY: number, toX: number, toY: number): boolean {
+  const offsets =
+    fromX % 2 === 1
+      ? [
+          [0, -1],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+          [-1, 1],
+          [-1, 0],
+        ]
+      : [
+          [0, -1],
+          [1, -1],
+          [1, 0],
+          [0, 1],
+          [-1, 0],
+          [-1, -1],
+        ];
+  return offsets.some(([dx, dy]) => fromX + dx === toX && fromY + dy === toY);
+}
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
   // Both DM and players can make player moves
@@ -17,17 +47,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
   }
 
   try {
-    const { tileKey } = await request.json();
-
-    if (!tileKey || typeof tileKey !== 'string') {
-      throw error(400, 'Invalid tileKey');
-    }
-
-    // Parse tile coordinates
-    const [col, row] = tileKey.split('-').map(Number);
-    if (isNaN(col) || isNaN(row)) {
-      throw error(400, 'Invalid tile coordinates');
-    }
+    const { tileKey, col, row } = parseTileKey((await request.json()).tileKey);
 
     // Get campaign
     const [campaign] = await db.select().from(campaigns).where(eq(campaigns.slug, params.slug)).limit(1);
@@ -47,7 +67,6 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
       throw error(400, 'No active session');
     }
 
-    // Validate that tile is adjacent to current party position
     const currentX = campaign.partyTokenX;
     const currentY = campaign.partyTokenY;
 
@@ -55,29 +74,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
       throw error(400, 'Party token position not set');
     }
 
-    // Calculate adjacent hexes using odd-q offset coordinates
-    const isOddCol = currentX % 2 === 1;
-    const adjacentOffsets = isOddCol
-      ? [
-          [0, -1],
-          [1, 0],
-          [1, 1],
-          [0, 1],
-          [-1, 1],
-          [-1, 0],
-        ] // Odd column
-      : [
-          [0, -1],
-          [1, -1],
-          [1, 0],
-          [0, 1],
-          [-1, 0],
-          [-1, -1],
-        ]; // Even column
-
-    const isAdjacent = adjacentOffsets.some(([dx, dy]) => currentX + dx === col && currentY + dy === row);
-
-    if (!isAdjacent) {
+    if (!isAdjacentHex(currentX, currentY, col, row)) {
       throw error(400, 'Tile is not adjacent to party position');
     }
 
@@ -179,10 +176,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
     return json({ success: true, step, gameTime: newGameTime });
   } catch (err) {
+    // HttpError is not an Error subclass, so it must be re-thrown explicitly to keep its status
+    if (isHttpError(err)) throw err;
     console.error('Failed to add player move:', err);
-    if (err instanceof Error && 'status' in err) {
-      throw err;
-    }
     throw error(500, 'Failed to add player move');
   }
 };

@@ -26,6 +26,8 @@
   ];
 
   function randomMessage(): string {
+    // Cosmetic loading placeholder. No security use.
+    // eslint-disable-next-line sonarjs/pseudo-random
     return messages[Math.floor(Math.random() * messages.length)];
   }
 

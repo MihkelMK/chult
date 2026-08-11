@@ -39,15 +39,28 @@ jobs:
         with:
           driver: docker
 
-      - name: Build and push
+      - name: Build
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: .
-          push: true
+          push: false
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             PUBLIC_MAX_IMAGE_SIZE=52428800
+
+      - name: Scan image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          format: table
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Push image
+        run: echo "${{ steps.meta.outputs.tags }}" | xargs -r -n1 docker push
 
       - name: Trigger prod deploy
         if: github.ref == 'refs/heads/main'

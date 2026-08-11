@@ -26,6 +26,12 @@
   let previewUrl = $state('');
   let showUploadInterface = $state(true);
 
+  let dropZoneClass = $derived.by(() => {
+    if (dragActive) return 'border-primary bg-primary/5';
+    if (uploading) return 'border-muted-foreground/50 bg-muted/50';
+    return 'border-muted-foreground/25 hover:border-muted-foreground/50';
+  });
+
   // Dialog state
   let confirmDeleteDialogOpen = $state(false);
 
@@ -198,11 +204,7 @@
         <!-- Upload Area -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-          class="rounded-lg border-2 border-dashed p-6 text-center transition-colors {dragActive
-            ? 'border-primary bg-primary/5'
-            : uploading
-              ? 'border-muted-foreground/50 bg-muted/50'
-              : 'border-muted-foreground/25 hover:border-muted-foreground/50'}"
+          class="rounded-lg border-2 border-dashed p-6 text-center transition-colors {dropZoneClass}"
           ondrop={handleDrop}
           ondragover={handleDragOver}
           ondragleave={handleDragLeave}>

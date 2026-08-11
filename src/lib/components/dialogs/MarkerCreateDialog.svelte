@@ -22,12 +22,22 @@
     open: boolean;
     coords: TileCoords | null;
     isDM: boolean;
+    /** Visibility the form starts on in create mode. Defaults to visible for players, DM-only for a DM. */
+    defaultVisibleToPlayers?: boolean;
     editingMarker?: MapMarkerResponse | null;
     onConfirm: (data: { type: MarkerType; title: string; content?: string; visibleToPlayers: boolean }) => void;
     onCancel: () => void;
   }
 
-  let { open = $bindable(), coords, isDM, editingMarker = null, onConfirm, onCancel }: Props = $props();
+  let {
+    open = $bindable(),
+    coords,
+    isDM,
+    defaultVisibleToPlayers,
+    editingMarker = null,
+    onConfirm,
+    onCancel,
+  }: Props = $props();
 
   // Form state
   let selectedType = $state<MarkerType>('generic');
@@ -51,7 +61,7 @@
         selectedType = 'generic';
         title = '';
         description = '';
-        visibleToPlayers = !isDM;
+        visibleToPlayers = defaultVisibleToPlayers ?? !isDM;
       }
     }
   });

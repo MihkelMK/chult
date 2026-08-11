@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { campaigns, gameSessions } from '$lib/server/db/schema';
 import { emitEvent } from '$lib/server/events';
-import { error, json } from '@sveltejs/kit';
+import { error, isHttpError, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -46,10 +46,9 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 
     return json({ success: true });
   } catch (err) {
+    // HttpError is not an Error subclass, so it must be re-thrown explicitly to keep its status
+    if (isHttpError(err)) throw err;
     console.error('Failed to delete session:', err);
-    if (err instanceof Error && 'status' in err) {
-      throw err;
-    }
     throw error(500, 'Failed to delete session');
   }
 };

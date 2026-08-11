@@ -1,7 +1,8 @@
-import prettier from 'eslint-config-prettier';
-import { includeIgnoreFile } from '@eslint/compat';
 import js from '@eslint/js';
+import prettier from 'eslint-config-prettier';
+import sonarjs from 'eslint-plugin-sonarjs';
 import svelte from 'eslint-plugin-svelte';
+import { defineConfig, includeIgnoreFile } from 'eslint/config';
 import globals from 'globals';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript-eslint';
@@ -9,13 +10,14 @@ import svelteConfig from './svelte.config.js';
 
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
-export default ts.config(
-  includeIgnoreFile(gitignorePath),
+export default defineConfig([
+  includeIgnoreFile(gitignorePath, { gitignoreResolution: true }),
   js.configs.recommended,
   ...ts.configs.recommended,
   ...svelte.configs.recommended,
   prettier,
   ...svelte.configs.prettier,
+  sonarjs.configs.recommended,
   {
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },
@@ -33,6 +35,13 @@ export default ts.config(
     },
   },
   {
+    files: ['src/lib/components/ui/**/*'],
+    rules: {
+      // shadcn-svelte source files. Code quality nit, fixes would be overwritten on component update
+      'sonarjs/no-redundant-optional': 'off',
+    },
+  },
+  {
     files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
     languageOptions: {
       parserOptions: {
@@ -42,5 +51,10 @@ export default ts.config(
         svelteConfig,
       },
     },
-  }
-);
+    rules: {
+      // sonarjs cannot see that Svelte snippets ({@render foo()}) return template output;
+      // it flags every snippet call as "empty return value". Disable for Svelte files.
+      'sonarjs/no-use-of-empty-return-value': 'off',
+    },
+  },
+]);

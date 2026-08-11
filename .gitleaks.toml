@@ -1,0 +1,31 @@
+title = "chult"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.test$''',
+  '''\.env\.local\.example$''',
+]
+
+# postgres:// DSN with credentials embedded (used via drizzle-orm)
+[[rules]]
+id = "postgres-dsn"
+description = "PostgreSQL DSN with credentials"
+regex = '''postgres(?:ql)?://[^:]+:[^@\s]{4,}@[^/\s]+/\w+'''
+tags = ["database", "postgres"]
+
+# imgproxy signing key and salt must be hex-encoded strings
+[[rules]]
+id = "imgproxy-signing"
+description = "imgproxy signing key or salt (hex)"
+regex = '''IMGPROXY_(?:KEY|SALT)\s*=\s*[0-9a-fA-F]{32,}'''
+tags = ["imgproxy"]
+
+[[rules]]
+id = "private-dm-token"
+description = "Private DM/notification token"
+regex = '''PRIVATE_DM_TOKEN\s*=\s*\S{20,}'''
+tags = ["token"]

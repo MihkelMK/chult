@@ -2,7 +2,7 @@
   import MapMarker from '$lib/components/canvas/MapMarker.svelte';
   import MovementPaths from '$lib/components/canvas/MovementPaths.svelte';
   import type { Hex, MapCanvasProps, MapMarkerResponse } from '$lib/types';
-  import { hexToTileKey, pixelToHex } from '$lib/utils/hexCoordinates';
+  import { pixelToHex } from '$lib/utils/hexCoordinates';
   import type { KonvaPointerEvent } from 'konva/lib/PointerEvents';
   import { onMount } from 'svelte';
   import { Group, Image, Layer, Rect, RegularPolygon, Stage, Text } from 'svelte-konva';
@@ -18,7 +18,6 @@
     adjacentTiles,
     partyTokenTile,
     markerTiles = [],
-    markersByTile,
     xOffset = 0,
     yOffset = 0,
     hexesPerCol,
@@ -85,6 +84,8 @@
   function handleBackgroundRightClick(e: KonvaPointerEvent) {
     e.evt.preventDefault();
 
+    if (!onRightClick) return;
+
     const stage = e.target.getStage();
     const pointerPos = stage?.getPointerPosition();
     if (!pointerPos) return;
@@ -104,18 +105,9 @@
       hexesPerCol
     );
 
-    if (coords && onRightClick) {
-      const tileKey = hexToTileKey(coords);
-      const tileCoords = { x: coords.col, y: coords.row };
-
-      // O(1) marker lookup using Map - decides context menu type
-      const markers = markersByTile.get(tileKey);
-
+    if (coords) {
       onRightClick({
-        type: markers ? 'marker' : 'tile',
-        key: tileKey,
-        coords: tileCoords,
-        markers: markers,
+        coords: { x: coords.col, y: coords.row },
         screenX: e.evt.clientX,
         screenY: e.evt.clientY,
       });
@@ -228,6 +220,9 @@
 {/snippet}
 
 {#snippet tile(hex: Hex, isRevealed: boolean, isAlways: boolean)}
+  {@const revealedFill = isRevealed ? '#bfd5fc' : '#fdfaf0'}
+  {@const stateFill = isAlways ? '#faa16a' : revealedFill}
+  {@const tileFill = previewMode ? '' : stateFill}
   <RegularPolygon
     x={hex.centerX}
     y={hex.centerY}
@@ -235,7 +230,7 @@
     radius={hexRadius}
     sides={6}
     rotation={90}
-    fill={previewMode ? '' : isAlways ? '#faa16a' : isRevealed ? '#bfd5fc' : '#fdfaf0'}
+    fill={tileFill}
     opacity={isDM ? tileTransparency : 1}
     stroke={isAlways ? '#f97316' : 'black'}
     perfectDrawEnabled={false}
