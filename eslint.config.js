@@ -35,6 +35,13 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/lib/components/ui/**/*'],
+    rules: {
+      // shadcn-svelte source files. Code quality nit, fixes would be overwritten on component update
+      'sonarjs/no-redundant-optional': 'off',
+    },
+  },
+  {
     files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
     languageOptions: {
       parserOptions: {
