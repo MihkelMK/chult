@@ -17,6 +17,15 @@
   - `if (!visibleToPlayers && typeof visibleToPlayers !== 'boolean')` lets truthy non-booleans (`"yes"`, `1`, `{}`) pass, and rejects `undefined` even though `requestedVisibility = visibleToPlayers ?? true` expects `undefined` to mean "default true"
   - Fix: `if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') error(400, ...)`
   - Masked in practice because the client always sends a boolean
+- Hex adjacency / odd-q offset tables are duplicated between backend and frontend
+  - `isAdjacentHex()` in `src/routes/api/campaigns/[slug]/movement/player/+server.ts` reimplements the same odd-q offset math used by the frontend hex grid (see `CODE_GUIDE.md` — "Hexagonal Grid Coordinate System")
+  - Divergence risk if one side changes rotation/offset convention
+  - Consolidate into a shared `$lib/utils/hex.ts` importable by both server and client
+- PATCH `/api/campaigns/[slug]/map/settings` catch block translates errors by string-matching `'Invalid'` in the message
+  - `if (err instanceof Error && err.message.includes('Invalid')) throw error(400, err.message)`
+  - Fragile: any validator whose message drops the word "Invalid" silently becomes a 500
+  - Also re-wraps SvelteKit `HttpError`s that already carry a status
+  - Fix: use `isHttpError(err)` to preserve original status (see CODE_GUIDE.md Pattern 12)
 
 ## Feature Requests
 
