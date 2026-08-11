@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db/index';
 import { campaigns } from '$lib/server/db/schema';
-import { error, json } from '@sveltejs/kit';
+import { error, isHttpError, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -84,10 +84,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
       config: result[0],
     });
   } catch (err) {
+    // HttpError is not an Error subclass, so it must be re-thrown explicitly to keep its status
+    if (isHttpError(err)) throw err;
     console.error('Error updating campaign settings:', err);
-    if (err instanceof Error && err.message.includes('Invalid')) {
-      throw error(400, err.message);
-    }
     throw error(500, 'Failed to update campaign settings');
   }
 };
