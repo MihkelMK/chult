@@ -11,12 +11,15 @@ export interface TileCoords {
   y: number;
 }
 
-export interface Hex {
+export interface HexPosition {
+  centerX: number;
+  centerY: number;
+}
+
+export interface Hex extends HexPosition {
   id: string;
   row: number;
   col: number;
-  centerX: number;
-  centerY: number;
 }
 
 export interface HexTriggerEvent {
@@ -134,4 +137,28 @@ export interface MapCanvasProps extends MapCanvasSharedProps {
   pathsMap: SvelteMap<number, Path>;
   hexGrid: readonly Hex[];
   panToTile?: Hex | null;
+}
+
+export interface PixelPoint {
+  x: number;
+  y: number;
+}
+
+export interface PathSegment {
+  points: number[];
+  isTeleport: boolean;
+}
+
+export interface PathArrow {
+  points: number[];
+}
+
+export interface PathState {
+  segments: PathSegment[];
+  stepDots: PixelPoint[];
+  arrows: PathArrow[];
+  currentSegment: number[];
+  startPoint: PixelPoint | null;
+  endPoint: PixelPoint | null;
+  lastPoint: PixelPoint | null;
 }

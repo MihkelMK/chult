@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { GameSessionResponse, Path } from '$lib/types';
+  import type { GameSessionResponse, Hex, HexPosition, Path, PathState } from '$lib/types';
+  import { flushSegment, handleStep } from '$lib/utils/movementPaths';
   import { Circle, Group, Line } from 'svelte-konva';
   import { SvelteMap } from 'svelte/reactivity';
 
@@ -9,25 +10,19 @@
     visibleSessionIds: Set<number>;
     showPaths: boolean;
     hexRadius: number;
-    hexGrid: readonly { id: string; col: number; row: number; centerX: number; centerY: number }[];
+    hexGrid: readonly Hex[];
   }
 
   let { sessions, pathsMap, visibleSessionIds, showPaths, hexRadius, hexGrid }: Props = $props();
 
   // Create map for quick hex lookups
   let hexMap = $derived.by(() => {
-    const map = new SvelteMap<string, { centerX: number; centerY: number }>();
+    const map = new SvelteMap<string, HexPosition>();
     for (const hex of hexGrid) {
       map.set(`${hex.col}-${hex.row}`, { centerX: hex.centerX, centerY: hex.centerY });
     }
     return map;
   });
-
-  // Get center coordinates for a tile key
-  function getTileCenter(tileKey: string): { x: number; y: number } | null {
-    const hex = hexMap.get(tileKey);
-    return hex ? { x: hex.centerX, y: hex.centerY } : null;
-  }
 
   // Get color and opacity based on session age
   function getSessionStyle(sessionIndex: number, totalSessions: number): { color: string; opacity: number } {
@@ -46,19 +41,28 @@
     }
   }
 
-  // Calculate arrow points for direction indicator
-  function getArrowPoints(x1: number, y1: number, x2: number, y2: number, arrowSize: number): number[] {
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    const arrowAngle = Math.PI / 6; // 30 degrees
+  // Render path segments for a session
+  function renderSessionPath(session: GameSessionResponse, sessionIndex: number) {
+    const path = pathsMap.get(session.id);
+    if (!path || path.steps.length === 0) return null;
 
-    return [
-      x2,
-      y2,
-      x2 - arrowSize * Math.cos(angle - arrowAngle),
-      y2 - arrowSize * Math.sin(angle - arrowAngle),
-      x2 - arrowSize * Math.cos(angle + arrowAngle),
-      y2 - arrowSize * Math.sin(angle + arrowAngle),
-    ];
+    const { color, opacity } = getSessionStyle(sessionIndex, sessions.length);
+
+    const state: PathState = {
+      segments: [],
+      stepDots: [],
+      arrows: [],
+      currentSegment: [],
+      startPoint: null,
+      endPoint: null,
+      lastPoint: null,
+    };
+
+    // Build segments from steps
+    for (const step of path.steps) handleStep(step, state, hexMap, hexRadius);
+    flushSegment(state);
+
+    return { ...state, color, opacity };
   }
 
   // Split path into individual line segments with gaps around dots
@@ -94,133 +98,6 @@
     }
 
     return segments;
-  }
-
-  // Render path segments for a session
-  function renderSessionPath(session: GameSessionResponse, sessionIndex: number) {
-    const path = pathsMap.get(session.id);
-    if (!path || path.steps.length === 0) return null;
-
-    const { color, opacity } = getSessionStyle(sessionIndex, sessions.length);
-
-    interface PathSegment {
-      points: number[];
-      isTeleport: boolean;
-    }
-
-    interface StepDot {
-      x: number;
-      y: number;
-    }
-
-    interface Arrow {
-      points: number[];
-    }
-
-    const segments: PathSegment[] = [];
-    const stepDots: StepDot[] = [];
-    const arrows: Arrow[] = [];
-    let currentSegment: number[] = [];
-    let startPoint: { x: number; y: number } | null = null;
-    let endPoint: { x: number; y: number } | null = null;
-    let lastPoint: { x: number; y: number } | null = null;
-
-    // Build segments from steps
-    for (const step of path.steps) {
-      switch (step.type) {
-        case 'player_move': {
-          const center = getTileCenter(step.tileKey);
-          if (center) {
-            if (!startPoint) startPoint = center;
-            endPoint = center;
-
-            // Add dot for this step
-            stepDots.push({ x: center.x, y: center.y });
-
-            // Add arrow if we have a previous point
-            if (lastPoint) {
-              const midX = (lastPoint.x + center.x) / 2;
-              const midY = (lastPoint.y + center.y) / 2;
-              arrows.push({
-                points: getArrowPoints(lastPoint.x, lastPoint.y, midX, midY, hexRadius * 0.4),
-              });
-            }
-
-            currentSegment.push(center.x, center.y);
-            lastPoint = center;
-          }
-          break;
-        }
-        case 'dm_teleport': {
-          // End current segment if exists
-          if (currentSegment.length >= 4) {
-            segments.push({ points: currentSegment, isTeleport: false });
-            currentSegment = [];
-          }
-
-          // Create teleport segment
-          const fromCenter = lastPoint || getTileCenter(step.fromTile);
-          const toCenter = getTileCenter(step.toTile);
-
-          if (fromCenter && toCenter) {
-            if (!startPoint) startPoint = fromCenter;
-            endPoint = toCenter;
-
-            // Add dot for teleport destination
-            stepDots.push({ x: toCenter.x, y: toCenter.y });
-
-            // Add arrow for teleport
-            const midX = (fromCenter.x + toCenter.x) / 2;
-            const midY = (fromCenter.y + toCenter.y) / 2;
-            arrows.push({
-              points: getArrowPoints(fromCenter.x, fromCenter.y, midX, midY, hexRadius * 0.5),
-            });
-
-            segments.push({
-              points: [fromCenter.x, fromCenter.y, toCenter.x, toCenter.y],
-              isTeleport: true,
-            });
-            lastPoint = toCenter;
-            // Start new segment from teleport destination
-            currentSegment = [toCenter.x, toCenter.y];
-          }
-          break;
-        }
-        case 'dm_path': {
-          // Add all tiles in the path to current segment
-          for (const tile of step.tiles) {
-            const center = getTileCenter(tile);
-            if (center) {
-              if (!startPoint) startPoint = center;
-              endPoint = center;
-
-              // Add dot for this step
-              stepDots.push({ x: center.x, y: center.y });
-
-              // Add arrow if we have a previous point
-              if (lastPoint) {
-                const midX = (lastPoint.x + center.x) / 2;
-                const midY = (lastPoint.y + center.y) / 2;
-                arrows.push({
-                  points: getArrowPoints(lastPoint.x, lastPoint.y, midX, midY, hexRadius * 0.4),
-                });
-              }
-
-              currentSegment.push(center.x, center.y);
-              lastPoint = center;
-            }
-          }
-          break;
-        }
-      }
-    }
-
-    // Add final segment if exists
-    if (currentSegment.length >= 4) {
-      segments.push({ points: currentSegment, isTeleport: false });
-    }
-
-    return { segments, stepDots, arrows, startPoint, endPoint, color, opacity };
   }
 
   // Filter visible sessions
