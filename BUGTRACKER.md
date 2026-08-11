@@ -13,6 +13,10 @@
 - SSE unstable - players movement and session start sometimes not updating without restart
   - `events/` connection closes on MacOS Chrome, pings end (logs in next header)
 - Selection disappears when toggling to pan tool with shift
+- POST `/api/campaigns/[slug]/markers` `visibleToPlayers` validation is inverted
+  - `if (!visibleToPlayers && typeof visibleToPlayers !== 'boolean')` lets truthy non-booleans (`"yes"`, `1`, `{}`) pass, and rejects `undefined` even though `requestedVisibility = visibleToPlayers ?? true` expects `undefined` to mean "default true"
+  - Fix: `if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') error(400, ...)`
+  - Masked in practice because the client always sends a boolean
 
 ## Feature Requests
 
