@@ -50,14 +50,48 @@ jobs:
           build-args: |
             PUBLIC_MAX_IMAGE_SIZE=52428800
 
-      - name: Scan image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      - name: Install trivy
+        run: |
+          # Release tarball + checksum instead of aquasecurity/trivy-action: that action
+          # installs the binary through a nested composite action, and its $GITHUB_PATH
+          # export does not reach later steps on this runner, so the scan died with
+          # "trivy: command not found".
+          # Upstream does publish trivy_<version>_checksums.txt, but the hash is pinned
+          # here by hand. Renovate bumps TRIVY_VERSION only. When it does, this step fails
+          # at `sha256sum -c` until the hash is updated too. That is deliberate: fail closed.
+          # renovate: datasource=github-releases depName=aquasecurity/trivy
+          TRIVY_VERSION=v0.73.0
+          TRIVY_SHA256=2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b
+          # Installed under $HOME: the runner is not root, so /usr/local/bin is not writable
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL -o /tmp/trivy.tar.gz \
+            "https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}/trivy_${TRIVY_VERSION#v}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  /tmp/trivy.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/trivy.tar.gz -C "$HOME/.local/bin" trivy
+          rm -f /tmp/trivy.tar.gz
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache trivy vulnerability database
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
-          format: table
-          exit-code: '1'
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
+          path: ${{ github.workspace }}/.cache/trivy
+          # The run id never hits, so every run restores the newest cache through
+          # restore-keys and then saves the DB back under a fresh key. Trivy refreshes a
+          # stale DB itself, so a restored old cache costs a download, never a stale scan.
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: trivy-db-
+
+      - name: Scan image
+        env:
+          IMAGE_REF: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
+        run: |
+          trivy image \
+            --format table \
+            --exit-code 1 \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            "$IMAGE_REF"
 
       - name: Push image
         run: echo "${{ steps.meta.outputs.tags }}" | xargs -r -n1 docker push
