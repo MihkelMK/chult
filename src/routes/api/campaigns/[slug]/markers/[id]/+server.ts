@@ -24,13 +24,9 @@ function parsePatchMarkerBody(body: Record<string, unknown>): PatchMarkerInput {
   if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') error(400, 'Invalid visibleToPlayers value');
   if (imagePath !== undefined && imagePath !== null && typeof imagePath !== 'string') error(400, 'Invalid imagePath');
 
-  return {
-    type: type as MarkerType | undefined,
-    title: title as string | undefined,
-    content: content as string | null | undefined,
-    visibleToPlayers: visibleToPlayers as boolean | undefined,
-    imagePath: imagePath as string | null | undefined,
-  };
+  // `error()` returns never, so the guards above already narrowed everything except `type`
+  // (Array.includes() is not a type predicate)
+  return { type: type as MarkerType | undefined, title, content, visibleToPlayers, imagePath };
 }
 
 function buildMarkerUpdates(input: PatchMarkerInput) {

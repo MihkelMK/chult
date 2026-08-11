@@ -23,19 +23,14 @@ function parseCreateMarkerBody(body: Record<string, unknown>): CreateMarkerInput
   if (typeof x !== 'number' || typeof y !== 'number') error(400, 'Invalid coordinates');
   if (!type || !MARKER_TYPES.includes(type as MarkerType)) error(400, 'Invalid marker type');
   if (!title || typeof title !== 'string' || title.trim().length === 0) error(400, 'Title is required');
-  if (!visibleToPlayers && typeof visibleToPlayers !== 'boolean') error(400, 'Invalid visibleToPlayers value');
+  // undefined is allowed: `visibleToPlayers ?? true` below treats it as "default to visible"
+  if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') error(400, 'Invalid visibleToPlayers value');
   if (content !== null && typeof content !== 'string') error(400, 'Invalid content');
   if (imagePath !== null && typeof imagePath !== 'string') error(400, 'Invalid imagePath');
 
-  return {
-    x: x as number,
-    y: y as number,
-    type: type as MarkerType,
-    title: title as string,
-    content: content as string | null,
-    imagePath: imagePath as string | null,
-    visibleToPlayers: visibleToPlayers as boolean | undefined,
-  };
+  // `error()` returns never, so the guards above already narrowed everything except `type`
+  // (Array.includes() is not a type predicate)
+  return { x, y, type: type as MarkerType, title, content, imagePath, visibleToPlayers };
 }
 
 // POST /api/campaigns/[slug]/markers - Create new marker
