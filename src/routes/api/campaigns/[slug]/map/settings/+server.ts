@@ -4,6 +4,46 @@ import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
+type UpdateData = Record<string, number | Date | null | boolean>;
+
+function assignRange(target: UpdateData, key: string, value: unknown, min: number, max: number) {
+  if (value === undefined) return;
+  if (typeof value !== 'number' || value < min || value > max) {
+    throw error(400, `Invalid ${key} value`);
+  }
+  target[key] = value;
+}
+
+function assignNullableNumber(target: UpdateData, key: string, value: unknown) {
+  if (value === undefined) return;
+  if (value !== null && typeof value !== 'number') {
+    throw error(400, `Invalid ${key} value`);
+  }
+  target[key] = value as number | null;
+}
+
+function assignBoolean(target: UpdateData, key: string, value: unknown) {
+  if (value === undefined) return;
+  if (typeof value !== 'boolean') {
+    throw error(400, `Invalid ${key} value`);
+  }
+  target[key] = value;
+}
+
+function buildSettingsUpdate(body: Record<string, unknown>): UpdateData {
+  const updateData: UpdateData = { updatedAt: new Date() };
+
+  assignRange(updateData, 'hexesPerRow', body.hexesPerRow, 5, 100);
+  assignRange(updateData, 'hexesPerCol', body.hexesPerCol, 5, 100);
+  assignRange(updateData, 'hexOffsetX', body.hexOffsetX, -200, 200);
+  assignRange(updateData, 'hexOffsetY', body.hexOffsetY, -200, 200);
+  assignNullableNumber(updateData, 'partyTokenX', body.partyTokenX);
+  assignNullableNumber(updateData, 'partyTokenY', body.partyTokenY);
+  assignBoolean(updateData, 'hasPlayerMap', body.hasPlayerMap);
+
+  return updateData;
+}
+
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
   // Verify authentication
   if (!locals.session) {
@@ -21,65 +61,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
   }
 
   try {
-    const body = await request.json();
-    const { hexesPerRow, hexesPerCol, hexOffsetX, hexOffsetY, partyTokenX, partyTokenY, hasPlayerMap } = body;
-
-    // Build update object dynamically based on what was provided
-    const updateData: Record<string, number | Date | null | boolean> = {
-      updatedAt: new Date(),
-    };
-
-    // Validate and add hex grid settings if provided
-    if (hexesPerRow !== undefined) {
-      if (typeof hexesPerRow !== 'number' || hexesPerRow < 5 || hexesPerRow > 100) {
-        throw error(400, 'Invalid hexesPerRow value');
-      }
-      updateData.hexesPerRow = hexesPerRow;
-    }
-
-    if (hexesPerCol !== undefined) {
-      if (typeof hexesPerCol !== 'number' || hexesPerCol < 5 || hexesPerCol > 100) {
-        throw error(400, 'Invalid hexesPerCol value');
-      }
-      updateData.hexesPerCol = hexesPerCol;
-    }
-
-    if (hexOffsetX !== undefined) {
-      if (typeof hexOffsetX !== 'number' || hexOffsetX < -200 || hexOffsetX > 200) {
-        throw error(400, 'Invalid hexOffsetX value');
-      }
-      updateData.hexOffsetX = hexOffsetX;
-    }
-
-    if (hexOffsetY !== undefined) {
-      if (typeof hexOffsetY !== 'number' || hexOffsetY < -200 || hexOffsetY > 200) {
-        throw error(400, 'Invalid hexOffsetY value');
-      }
-      updateData.hexOffsetY = hexOffsetY;
-    }
-
-    // Validate and add party token position if provided
-    if (partyTokenX !== undefined) {
-      if (partyTokenX !== null && typeof partyTokenX !== 'number') {
-        throw error(400, 'Invalid partyTokenX value');
-      }
-      updateData.partyTokenX = partyTokenX;
-    }
-
-    if (partyTokenY !== undefined) {
-      if (partyTokenY !== null && typeof partyTokenY !== 'number') {
-        throw error(400, 'Invalid partyTokenY value');
-      }
-      updateData.partyTokenY = partyTokenY;
-    }
-
-    // Validate and add hasPlayerMap flag if provided
-    if (hasPlayerMap !== undefined) {
-      if (typeof hasPlayerMap !== 'boolean') {
-        throw error(400, 'Invalid hasPlayerMap value');
-      }
-      updateData.hasPlayerMap = hasPlayerMap;
-    }
+    const updateData = buildSettingsUpdate(await request.json());
 
     // Update the campaign in database
     const result = await db.update(campaigns).set(updateData).where(eq(campaigns.slug, params.slug)).returning({
