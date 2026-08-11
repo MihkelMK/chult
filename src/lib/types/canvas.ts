@@ -26,10 +26,7 @@ export interface HexTriggerEvent {
   key: string;
 }
 
-export type RightClickEventType = 'tile' | 'marker';
-
 export interface RightClickEvent {
-  type: RightClickEventType;
   coords: TileCoords; // Tile the click resolved to
   screenX: number; // Screen X position for menu
   screenY: number; // Screen Y position for menu

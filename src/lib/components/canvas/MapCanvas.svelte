@@ -107,7 +107,6 @@
 
     if (coords) {
       onRightClick({
-        type: 'tile',
         coords: { x: coords.col, y: coords.row },
         screenX: e.evt.clientX,
         screenY: e.evt.clientY,

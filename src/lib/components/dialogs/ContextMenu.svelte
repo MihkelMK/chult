@@ -1,12 +1,12 @@
 <script lang="ts">
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-  import type { MapMarkerResponse, RightClickEventType, TileCoords, UserRole } from '$lib/types';
+  import type { ContextMenuType, MapMarkerResponse, TileCoords, UserRole } from '$lib/types';
 
   interface Props {
     position: { x: number; y: number };
     partyPosition: TileCoords | null;
     tile: TileCoords | null;
-    type: RightClickEventType | null;
+    type: ContextMenuType | null;
     open: boolean;
     effectiveRole: UserRole;
     selectedDMMarker: MapMarkerResponse | null;

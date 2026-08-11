@@ -4,6 +4,9 @@ export type UIToolDM = 'select' | 'paint' | 'set-position';
 export type UITool = UIToolGeneric | UIToolDM | UIToolPlayer;
 export type SelectMode = 'add' | 'remove';
 
+// Which context menu to render. Derived from what is on the tile, not from the click event.
+export type ContextMenuType = 'tile' | 'marker';
+
 export type MarkerType =
   | 'settlement' // Cities, towns, villages
   | 'dungeon' // Dungeons, caves, lairs

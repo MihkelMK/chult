@@ -21,11 +21,11 @@
   import type { RemoteStateDM } from '$lib/stores/remoteStateDM.svelte';
   import type { RemoteStatePlayer } from '$lib/stores/remoteStatePlayer.svelte';
   import type {
+    ContextMenuType,
     DialogConfig,
     HexTriggerEvent,
     MarkerType,
     RightClickEvent,
-    RightClickEventType,
     SelectMode,
     TileCoords,
     UITool,
@@ -75,7 +75,7 @@
   // Context menu state
   let contextMenuOpen = $state(false);
   let contextMenuPosition = $state({ x: 0, y: 0 });
-  let contextMenuType = $state<RightClickEventType | null>(null);
+  let contextMenuType = $state<ContextMenuType | null>(null);
 
   // Marker dialog state
   let showCreateMarkerDialog = $state(false);
