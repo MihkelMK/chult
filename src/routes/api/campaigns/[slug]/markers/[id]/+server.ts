@@ -7,6 +7,44 @@ import { error, json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
+type PatchMarkerInput = {
+  type?: MarkerType;
+  title?: string;
+  content?: string | null;
+  visibleToPlayers?: boolean;
+  imagePath?: string | null;
+};
+
+function parsePatchMarkerBody(body: Record<string, unknown>): PatchMarkerInput {
+  const { type, title, content, visibleToPlayers, imagePath } = body;
+
+  if (type !== undefined && !MARKER_TYPES.includes(type as MarkerType)) error(400, 'Invalid marker type');
+  if (title !== undefined && (typeof title !== 'string' || title.trim().length === 0)) error(400, 'Title cannot be empty');
+  if (content !== undefined && content !== null && typeof content !== 'string') error(400, 'Invalid content');
+  if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') error(400, 'Invalid visibleToPlayers value');
+  if (imagePath !== undefined && imagePath !== null && typeof imagePath !== 'string') error(400, 'Invalid imagePath');
+
+  return {
+    type: type as MarkerType | undefined,
+    title: title as string | undefined,
+    content: content as string | null | undefined,
+    visibleToPlayers: visibleToPlayers as boolean | undefined,
+    imagePath: imagePath as string | null | undefined,
+  };
+}
+
+function buildMarkerUpdates(input: PatchMarkerInput) {
+  const updates: Partial<typeof mapMarkers.$inferInsert> = { updatedAt: new Date() };
+
+  if (input.type !== undefined) updates.type = input.type;
+  if (input.title !== undefined) updates.title = input.title.trim();
+  if (input.content !== undefined) updates.content = input.content?.trim() || null;
+  if (input.visibleToPlayers !== undefined) updates.visibleToPlayers = input.visibleToPlayers;
+  if (input.imagePath !== undefined) updates.imagePath = input.imagePath || null;
+
+  return updates;
+}
+
 // PATCH /api/campaigns/[slug]/markers/[id] - Update marker
 export const PATCH: RequestHandler = async ({ params, locals, request }) => {
   if (!locals.session) {
@@ -46,45 +84,7 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
     return error(403, 'You can only edit your own markers');
   }
 
-  // Parse request body
-  const body = await request.json();
-  const { type, title, content, visibleToPlayers, imagePath } = body;
-
-  // Validation
-  if (type !== undefined) {
-    if (!MARKER_TYPES.includes(type as MarkerType)) {
-      return error(400, 'Invalid marker type');
-    }
-  }
-
-  if (title !== undefined) {
-    if (typeof title !== 'string' || title.trim().length === 0) {
-      return error(400, 'Title cannot be empty');
-    }
-  }
-
-  if (content !== undefined && content !== null && typeof content !== 'string') {
-    return error(400, 'Invalid content');
-  }
-
-  if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') {
-    return error(400, 'Invalid visibleToPlayers value');
-  }
-
-  if (imagePath !== undefined && imagePath !== null && typeof imagePath !== 'string') {
-    return error(400, 'Invalid imagePath');
-  }
-
-  // Build update object (only include provided fields)
-  const updates: Partial<typeof existingMarker> = {
-    updatedAt: new Date(),
-  };
-
-  if (type !== undefined) updates.type = type;
-  if (title !== undefined) updates.title = title.trim();
-  if (content !== undefined) updates.content = content?.trim() || null;
-  if (visibleToPlayers !== undefined) updates.visibleToPlayers = visibleToPlayers;
-  if (imagePath !== undefined) updates.imagePath = imagePath || null;
+  const updates = buildMarkerUpdates(parsePatchMarkerBody(await request.json()));
 
   // Update marker
   const [updatedMarker] = await db.update(mapMarkers).set(updates).where(eq(mapMarkers.id, markerId)).returning();
