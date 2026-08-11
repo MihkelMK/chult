@@ -6,6 +6,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { db } from './db';
 
+// timingSafeEqual() throws on length mismatch, so the lengths must be compared first.
+// That leaks the token length, which is fine here: tokens are a fixed 12 characters, so
+// the length is public anyway. Do not reuse this for variable-length secrets.
 function constantTimeEqual(a: string, b: string): boolean {
   const aBuf = Buffer.from(a, 'utf8');
   const bBuf = Buffer.from(b, 'utf8');

@@ -2,7 +2,7 @@ import type { DMTeleport, HexPosition, PathState, PathStep, PixelPoint } from '$
 
 type HexMap = ReadonlyMap<string, HexPosition>;
 
-export function handleStep(step: PathStep, state: PathState, hexMap: HexMap, hexRadius: number) {
+export function handleStep(step: PathStep, state: PathState, hexMap: HexMap, hexRadius: number): void {
   switch (step.type) {
     case 'player_move':
       addTile(getTileCenter(step.tileKey, hexMap), state, hexRadius * 0.4);
@@ -14,6 +14,8 @@ export function handleStep(step: PathStep, state: PathState, hexMap: HexMap, hex
       addTeleport(step, state, hexMap, hexRadius * 0.5);
       break;
     default: {
+      // Compile-time check that every PathStep variant is handled above. Unknown steps are
+      // ignored at runtime rather than thrown on: a malformed step must not break map render.
       const _exhaustive: never = step;
       return _exhaustive;
     }

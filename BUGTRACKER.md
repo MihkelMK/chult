@@ -13,19 +13,24 @@
 - SSE unstable - players movement and session start sometimes not updating without restart
   - `events/` connection closes on MacOS Chrome, pings end (logs in next header)
 - Selection disappears when toggling to pan tool with shift
-- POST `/api/campaigns/[slug]/markers` `visibleToPlayers` validation is inverted
-  - `if (!visibleToPlayers && typeof visibleToPlayers !== 'boolean')` lets truthy non-booleans (`"yes"`, `1`, `{}`) pass, and rejects `undefined` even though `requestedVisibility = visibleToPlayers ?? true` expects `undefined` to mean "default true"
-  - Fix: `if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') error(400, ...)`
-  - Masked in practice because the client always sends a boolean
+- Party token text offset from background on 3423 tile
+- ~~POST `/api/campaigns/[slug]/markers` `visibleToPlayers` validation is inverted~~ (fixed)
+  - `if (!visibleToPlayers && typeof visibleToPlayers !== 'boolean')` let truthy non-booleans (`"yes"`, `1`, `{}`) pass, and rejected `undefined` even though `requestedVisibility = visibleToPlayers ?? true` expects `undefined` to mean "default true"
+  - Was masked in practice because the client always sends a boolean
+  - Fixed: `if (visibleToPlayers !== undefined && typeof visibleToPlayers !== 'boolean') error(400, ...)`
 - Hex adjacency / odd-q offset tables are duplicated between backend and frontend
   - `isAdjacentHex()` in `src/routes/api/campaigns/[slug]/movement/player/+server.ts` reimplements the same odd-q offset math used by the frontend hex grid (see `CODE_GUIDE.md` — "Hexagonal Grid Coordinate System")
   - Divergence risk if one side changes rotation/offset convention
   - Consolidate into a shared `$lib/utils/hex.ts` importable by both server and client
-- PATCH `/api/campaigns/[slug]/map/settings` catch block translates errors by string-matching `'Invalid'` in the message
-  - `if (err instanceof Error && err.message.includes('Invalid')) throw error(400, err.message)`
-  - Fragile: any validator whose message drops the word "Invalid" silently becomes a 500
-  - Also re-wraps SvelteKit `HttpError`s that already carry a status
-  - Fix: use `isHttpError(err)` to preserve original status (see CODE_GUIDE.md Pattern 12)
+- ~~API catch blocks swallow every `error()` status and return 500~~ (fixed)
+  - `err instanceof Error` is never true for SvelteKit's `HttpError` — it is a plain class, not an `Error` subclass
+  - So `if (err instanceof Error && 'status' in err) throw err` (and the `err.message.includes('Invalid')` variant in map/settings) never matched, and every 400/403/404 thrown inside a `try` came back as 500
+  - Affected: `map/settings`, `movement/player`, `movement/dm/teleport`, `sessions/start`, `sessions/end`, `sessions/[id]`
+  - Fixed by using `isHttpError(err)` (CODE_GUIDE.md Pattern 12)
+- No test framework in the repo
+  - The refactor extracted pure, trivially testable functions: `isAdjacentHex()`, `handleStep()`/`flushSegment()` in `$lib/utils/movementPaths.ts`, `buildSettingsUpdate()`, and the marker body parsers
+  - The odd-q offset table and the request validators are where a silent regression would live — both are currently covered only by manual play
+  - Would need vitest + a `pnpm test` script + a step in `pr-check.yaml`
 
 ## Feature Requests
 
