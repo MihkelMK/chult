@@ -104,7 +104,7 @@ export class RemoteStatePlayer {
     // Create temporary marker for optimistic update.
     // Temp id is discarded when the server response replaces it. No security use.
     // eslint-disable-next-line sonarjs/pseudo-random
-    const tempId = -Math.floor(Math.random() * 1000000) - 1;
+    const tempId = -Math.floor(Math.random() * 1000000) - 1; // nosemgrep: ajinabraham.njsscan.crypto.crypto_node.node_insecure_random_generator
     const tempMarker: MapMarkerResponse = {
       ...data,
       id: tempId,
