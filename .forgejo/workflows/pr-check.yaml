@@ -42,4 +42,4 @@ jobs:
           echo "$HOME/.opengrep/cli/latest" >> "$GITHUB_PATH"
 
       - name: Scan code
-        run: opengrep scan --config p/javascript --config p/typescript --config p/secrets --config p/nodejsscan --config p/supply-chain .
+        run: opengrep scan --error --config p/javascript --config p/typescript --config p/secrets --config p/nodejsscan --config p/supply-chain .
