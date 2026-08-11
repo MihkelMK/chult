@@ -5,9 +5,9 @@ useDefault = true
 
 [allowlist]
 paths = [
-  '''.env\.example$''',
-  '''.env\.test$''',
-  '''.env\.local\.example$''',
+  '''\.env\.example$''',
+  '''\.env\.test$''',
+  '''\.env\.local\.example$''',
 ]
 
 # postgres:// DSN with credentials embedded (used via drizzle-orm)
