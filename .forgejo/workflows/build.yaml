@@ -60,10 +60,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Push image
-        run: |
-          echo "${{ steps.meta.outputs.tags }}" | while IFS= read -r tag; do
-            [ -n "$tag" ] && docker push "$tag"
-          done
+        run: echo "${{ steps.meta.outputs.tags }}" | xargs -r -n1 docker push
 
       - name: Trigger prod deploy
         if: github.ref == 'refs/heads/main'
