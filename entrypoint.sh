@@ -22,14 +22,9 @@ until nc -z -v -w30 "$POSTGRES_HOST" 5432; do
   sleep 1
 done
 
-echo "PostgreSQL is available. Running migrations..."
-# Run migrations (uses POSTGRES_*_FILE env vars from drizzle.config.ts)
-
-pnpm db:migrate
-
 # Export all secrets as environment variables for runtime
 # These are read by the app via $env/dynamic/private (not baked into build)
-# Respects *_FILE env vars for all secrets (same pattern as drizzle.config.ts)
+# Respects *_FILE env vars for all secrets
 echo "Loading runtime configuration from Docker secrets..."
 
 # Read all secrets using *_FILE pattern
@@ -37,8 +32,19 @@ POSTGRES_USER=$(read_secret POSTGRES_USER)
 POSTGRES_PASSWORD=$(read_secret POSTGRES_PASSWORD)
 POSTGRES_DB=$(read_secret POSTGRES_DB)
 
-# Construct database URL
+# Construct database URL. This has to happen before migrations run: the migration
+# runner reads PRIVATE_DATABASE_URL from the environment and nothing else sets it.
 export PRIVATE_DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}"
+
+echo "PostgreSQL is available. Running migrations..."
+
+# Uses drizzle-orm's migrator rather than `drizzle-kit migrate` so drizzle-kit does
+# not have to be installed in the production image. Failing here is fatal on purpose:
+# starting the app against an unmigrated schema fails later and less clearly.
+if ! node /app/scripts/migrate.js; then
+  echo "Migrations failed, refusing to start." >&2
+  exit 1
+fi
 
 # Application secrets
 PRIVATE_DM_TOKEN="$(read_secret DM_TOKEN)"
