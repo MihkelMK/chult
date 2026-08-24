@@ -6,10 +6,13 @@
 -- its primary key while 0000 also creates map_markers_campaign_id_idx. So prod
 -- is NOT simply "post-0001" and must not be baselined until the real delta is
 -- known. This lists every index and constraint prod has, and diffs the index
--- set against what 0000 + 0001 produce.
+-- set against what 0000 + 0001 + 0002 produce.
+--
+-- Run this after a deploy that has applied 0002. Run it before that deploy and
+-- the two map_markers unique indexes correctly report MISSING.
 
-\echo '== G. Indexes prod has, versus what 0000 + 0001 create =='
--- status column: MISSING = 0000/0001 creates it, prod lacks it.
+\echo '== G. Indexes prod has, versus what 0000 + 0001 + 0002 create =='
+-- status column: MISSING = 0000/0001/0002 creates it, prod lacks it.
 --                EXTRA   = prod has it, migrations do not create it.
 --                ok      = present in both.
 WITH expected(indexname) AS (
@@ -39,6 +42,10 @@ WITH expected(indexname) AS (
     ('revealed_tiles_campaign_id_idx'),
     ('time_audit_log_campaign_id_idx'),
     ('time_audit_log_campaign_id_timestamp_idx'),
+    -- partial unique indexes from 0002. Both cover (campaign_id, x, y), split
+    -- by visible_to_players so a DM marker and a player marker can share a hex.
+    ('map_markers_dm_unique_idx'),
+    ('map_markers_player_unique_idx'),
     -- created by the migrator itself
     ('__drizzle_migrations_pkey')
 ),
