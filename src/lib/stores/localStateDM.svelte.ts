@@ -1,5 +1,6 @@
 import type {
   CampaignDataResponse,
+  PlayerCampaignDataResponse,
   GameSessionResponse,
   MapMarkerResponse,
   PathStep,
@@ -28,6 +29,11 @@ export class LocalStateDM extends LocalState {
     // Event listeners for synchronization
     this.addEventListener('tiles:revealed:batch', (tiles) => this.handleTilesRevealedBatch(tiles as RevealedTileResponse[]));
     this.addEventListener('tile:hidden', (tile) => super.handleTileHidden(tile as Pick<RevealedTileResponse, 'x' | 'y'>));
+    this.addEventListener('tiles-always-revealed-updated', (data) =>
+      super.handleAlwaysRevealedUpdated(
+        data as { updated: { x: number; y: number; alwaysRevealed: boolean }[]; created: { x: number; y: number }[] }
+      )
+    );
     this.addEventListener('marker:created', (marker) => super.handleMarkerCreated(marker as MapMarkerResponse));
     this.addEventListener('marker:updated', (marker) => super.handleMarkerUpdated(marker as MapMarkerResponse));
     this.addEventListener('marker:deleted', (data) => super.handleMarkerDeleted((data as { id: number }).id));
@@ -42,6 +48,12 @@ export class LocalStateDM extends LocalState {
     this.addEventListener('session:started', (session) => super.handleSessionStarted(session as GameSessionResponse));
     this.addEventListener('session:ended', (session) => super.handleSessionEnded(session as GameSessionResponse));
     this.addEventListener('session:deleted', (data) => super.handleSessionDeleted(data as { id: number }));
+  }
+
+  // Override so a resync also rebuilds the audit log (DM only)
+  protected applySnapshot(data: CampaignDataResponse | PlayerCampaignDataResponse) {
+    super.applySnapshot(data);
+    this.timeAuditLog = (data as CampaignDataResponse).timeAuditLog || [];
   }
 
   // Override handleTimeUpdated to also handle audit log entries (DM only)
@@ -61,7 +73,7 @@ export class LocalStateDM extends LocalState {
   // Local state update methods (no API calls - used by remoteState and SSE)
   updateRevealedTiles(tiles: { x: number; y: number }[], alwaysRevealed: boolean = false) {
     // Batch all Set mutations without triggering reactivity
-    let addedCount = 0;
+    const addedTiles: { x: number; y: number }[] = [];
     untrack(() => {
       tiles.forEach((tile) => {
         const key = `${tile.x}-${tile.y}`;
@@ -71,21 +83,22 @@ export class LocalStateDM extends LocalState {
           } else {
             this.revealedTilesSet.add(key);
           }
-          addedCount++;
+          addedTiles.push(tile);
         }
       });
     });
 
     // Only trigger reactivity if tiles were actually added
-    if (addedCount > 0) {
+    if (addedTiles.length > 0) {
       // Trigger reactivity ONCE after all mutations by creating new Set instances
       this.revealedTilesSet = new SvelteSet(this.revealedTilesSet);
       this.alwaysRevealedTilesSet = new SvelteSet(this.alwaysRevealedTilesSet);
       this.tilesVersion++; // Force reactive recalculation
 
-      // Keep array in sync for serialization
+      // Keep array in sync for serialization. Only newly revealed tiles are appended.
+      // Pushing every input tile duplicated rows for tiles that were already revealed.
       (this.campaign as CampaignDataResponse).revealedTiles.push(
-        ...tiles.map((t) => ({ ...t, alwaysRevealed, revealedAt: new SvelteDate() }))
+        ...addedTiles.map((t) => ({ ...t, alwaysRevealed, revealedAt: new SvelteDate() }))
       );
     }
   }

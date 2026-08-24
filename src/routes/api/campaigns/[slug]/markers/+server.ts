@@ -92,8 +92,9 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
     })
     .returning();
 
-  // Emit SSE event
-  emitEvent(params.slug, 'marker:created', newMarker);
+  // Emit SSE event. DM-only markers are filtered out of the player page load, so they
+  // must be withheld from the player event stream too.
+  emitEvent(params.slug, 'marker:created', newMarker, newMarker.visibleToPlayers ? 'all' : 'dm');
 
   return json(newMarker, { status: 201 });
 };

@@ -17,6 +17,11 @@ export class LocalStatePlayer extends LocalState {
     // Event listeners for synchronization
     this.addEventListener('tiles:revealed:batch', (tiles) => this.handleTilesRevealedBatch(tiles as RevealedTile[]));
     this.addEventListener('tile:hidden', (tile) => super.handleTileHidden(tile as Pick<RevealedTile, 'x' | 'y'>));
+    this.addEventListener('tiles-always-revealed-updated', (data) =>
+      super.handleAlwaysRevealedUpdated(
+        data as { updated: { x: number; y: number; alwaysRevealed: boolean }[]; created: { x: number; y: number }[] }
+      )
+    );
     this.addEventListener('marker:created', (marker) => super.handleMarkerCreated(marker as MapMarkerResponse));
     this.addEventListener('marker:updated', (marker) => super.handleMarkerUpdated(marker as MapMarkerResponse));
     this.addEventListener('marker:deleted', (data) => super.handleMarkerDeleted((data as { id: number }).id));

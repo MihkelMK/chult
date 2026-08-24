@@ -15,7 +15,9 @@ export const GET: RequestHandler = async (event) => {
     return error(403, 'Access denied');
   }
 
-  const campaignData = (await getCampaignData(session.campaignId, session.role === 'player')) as CampaignDataResponse;
+  // Match the layout load: a DM previewing as a player must resync with player data.
+  const effectiveRole = session.viewAs || session.role;
+  const campaignData = (await getCampaignData(session.campaignId, effectiveRole === 'player')) as CampaignDataResponse;
 
   if (!campaignData) {
     return error(404, 'Campaign not found');

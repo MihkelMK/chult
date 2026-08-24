@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { revealedTiles } from '$lib/server/db/schema';
-import eventEmitter from '$lib/server/events';
+import { emitEvent } from '$lib/server/events';
+import type { CampaignEvent } from '$lib/types/events';
 import { requireAuth } from '$lib/server/session';
 import { error, json } from '@sveltejs/kit';
 import { and, eq, or } from 'drizzle-orm';
@@ -31,6 +32,10 @@ export const POST: RequestHandler = async (event) => {
       }
     }
 
+    // Events are collected during the transaction and only broadcast once it commits.
+    // This way a rolled back batch is never announced to clients.
+    const pending: { event: CampaignEvent; data: unknown }[] = [];
+
     // Use transaction for consistency
     const result = await db.transaction(async (tx) => {
       if (type === 'reveal') {
@@ -53,11 +58,7 @@ export const POST: RequestHandler = async (event) => {
               alwaysRevealed: alwaysRevealed,
             }))
           );
-          eventEmitter.emit(`campaign-${session.campaignSlug}`, {
-            event: 'tile:revealed',
-            data: newTiles.map((tile) => ({ ...tile, alwaysRevealed })),
-            role: 'all', // Send to both DM and players
-          });
+          pending.push({ event: 'tile:revealed', data: newTiles.map((tile) => ({ ...tile, alwaysRevealed })) });
         }
 
         return { revealed: newTiles.length, existing: tiles.length - newTiles.length };
@@ -76,11 +77,7 @@ export const POST: RequestHandler = async (event) => {
           .returning({ x: revealedTiles.x, y: revealedTiles.y });
 
         if (deletedTiles.length > 0) {
-          eventEmitter.emit(`campaign-${session.campaignSlug}`, {
-            event: 'tile:hidden',
-            data: deletedTiles,
-            role: 'all', // Send to both DM and players
-          });
+          pending.push({ event: 'tile:hidden', data: deletedTiles });
         }
 
         return { hidden: deletedTiles.length };
@@ -122,17 +119,26 @@ export const POST: RequestHandler = async (event) => {
           );
         }
 
-        eventEmitter.emit(`campaign-${session.campaignSlug}`, {
+        // Only rows we actually inserted count as created. Toggling *off* over a tile that
+        // was never revealed writes nothing, so reporting it here would have clients reveal
+        // terrain the database does not consider revealed.
+        const created = alwaysRevealed ? newAlwaysTiles : [];
+
+        pending.push({
           event: 'tiles-always-revealed-updated',
-          data: { updated: updatedTiles, created: newAlwaysTiles },
-          role: 'all', // Send to both DM and players
+          data: { updated: updatedTiles, created },
         });
 
-        return { updated: updatedTiles.length, created: newAlwaysTiles.length };
+        return { updated: updatedTiles.length, created: created.length };
       } else {
         throw new Error('Invalid operation type');
       }
     });
+
+    for (const { event: name, data } of pending) {
+      // Tile visibility is shared state, so both roles receive it.
+      emitEvent(session.campaignSlug, name, data, 'all');
+    }
 
     return json({
       success: true,
