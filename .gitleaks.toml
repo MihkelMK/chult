@@ -9,6 +9,12 @@ paths = [
   '''\.env\.test$''',
   '''\.env\.local\.example$''',
 ]
+regexes = [
+  # Throwaway rehearsal credentials in scripts/rescue.md. The host is the
+  # disposable container the runbook creates and deletes, and the password is
+  # the literal "test", so a real credential cannot match this pattern.
+  '''postgres(?:ql)?://(?:drizzle|app):test@chult-migrate-test:5432/\w+''',
+]
 
 # postgres:// DSN with credentials embedded (used via drizzle-orm)
 [[rules]]
