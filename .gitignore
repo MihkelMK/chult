@@ -47,6 +47,12 @@ vite.config.ts.timestamp-*
 *.db
 *.sql
 *.sql.gz
+# The *.sql rule above is for dumps and backups. Generated migrations and
+# one-off ops scripts are source and must be tracked; drizzle/ was previously
+# only in the repo via `git add -f`, which meant a newly generated migration
+# would be silently ignored.
+!drizzle/**/*.sql
+!scripts/*.sql
 
 # IDE
 .vscode/

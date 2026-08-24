@@ -25,6 +25,7 @@
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:prod": "node scripts/migrate.js",
     "db:studio": "drizzle-kit studio"
   },
   "devDependencies": {
@@ -39,6 +40,9 @@
     "@types/node": "24.12.2",
     "bits-ui": "2.18.0",
     "clsx": "2.1.1",
+    "dotenv": "17.4.2",
+    "dotenv-expand": "13.0.0",
+    "drizzle-kit": "0.31.10",
     "eslint": "10.8.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-sonarjs": "4.2.0",
@@ -65,9 +69,6 @@
     "@node-rs/argon2": "2.0.2",
     "@oslojs/crypto": "1.0.1",
     "@oslojs/encoding": "1.1.0",
-    "dotenv": "17.4.2",
-    "dotenv-expand": "13.0.0",
-    "drizzle-kit": "0.31.10",
     "drizzle-orm": "0.45.2",
     "eventemitter3": "5.0.4",
     "konva": "10.3.0",

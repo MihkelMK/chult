@@ -49,6 +49,10 @@
 - scroll zoom centered on cursor position
 - pan should be right click + drag
 - allow moving map tokens
+- allow searching map token name and contents
+- add dnd calendar system
+- DM can't teleport twice in a row without refreshing
+- Location ping
 
 ## Error logs
 

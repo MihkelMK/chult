@@ -71,13 +71,13 @@ jobs:
           rm -f /tmp/trivy.tar.gz
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Cache trivy vulnerability database
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      - name: Restore trivy vulnerability database
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ github.workspace }}/.cache/trivy
           # The run id never hits, so every run restores the newest cache through
-          # restore-keys and then saves the DB back under a fresh key. Trivy refreshes a
-          # stale DB itself, so a restored old cache costs a download, never a stale scan.
+          # restore-keys and saves the DB back under a fresh key. Trivy refreshes a stale
+          # DB itself, so a restored old cache costs a download, never a stale scan.
           key: trivy-db-${{ github.run_id }}
           restore-keys: trivy-db-
 
@@ -92,6 +92,17 @@ jobs:
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
             "$IMAGE_REF"
+
+      # Separate save step: the combined cache action only saves on job success, so a
+      # failing scan would never seed the cache and every run re-downloaded the DB.
+      # success() || failure() rather than always() so a cancelled job does not try to
+      # save a cache directory that may never have been populated.
+      - name: Save trivy vulnerability database
+        if: success() || failure()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ github.workspace }}/.cache/trivy
+          key: trivy-db-${{ github.run_id }}
 
       - name: Push image
         run: echo "${{ steps.meta.outputs.tags }}" | xargs -r -n1 docker push
