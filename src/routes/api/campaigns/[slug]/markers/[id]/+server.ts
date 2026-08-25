@@ -100,6 +100,11 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
     emitEvent(params.slug, 'marker:updated', updatedMarker, 'dm');
 
     if (existingMarker.visibleToPlayers) {
+      // Sending coordinates to players is safe only because PATCH cannot move a marker:
+      // `parsePatchMarkerBody` accepts no x or y, so these still equal the position the
+      // player already received with `marker:created`.
+      // Adding coords to `PatchMarkerInput` makes this line leak a position they never saw.
+      // This payload matches the one DELETE emits, so both keep one shape.
       emitEvent(params.slug, 'marker:deleted', { id: markerId, x: updatedMarker.x, y: updatedMarker.y }, 'player');
     }
   }
