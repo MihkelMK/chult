@@ -1,38 +1,37 @@
-# sv
+# chult
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Interactive hex crawler map with DM and Player views.\
+Players see the hexes they have uncovered. The DM sees the whole map and decides what to reveal, in real time.
 
-## Creating a project
+Runs on SvelteKit, Drizzle ORM and Postgres.
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Source of truth
 
-```sh
-# create a new project in the current directory
-npx sv create
+I develop this on a private Forgejo instance. **This GitHub repo is a read-only mirror**, kept current by a push mirror.
 
-# create a new project in my-app
-npx sv create my-app
-```
+I read issues and pull requests you open here. Merges happen by hand on Forgejo side, mirror carries them back. Your commits keep your authorship, though GitHub may mark pull request closed instead of merged. See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-## Developing
+## Development
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Requires Node and [pnpm](https://pnpm.io).
 
 ```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+pnpm install
+cp .env.example .env    # fill in the values
+pnpm db:migrate
+pnpm dev
 ```
 
-## Building
+Use `compose-dev.yml` for a full local stack in Docker, `compose.yml` for production.
 
-To create a production version of your app:
+## Checks
 
 ```sh
-npm run build
+pnpm lint      # prettier --check + eslint
+pnpm check     # svelte-check
+pnpm build     # production build
 ```
 
-You can preview the production build with `npm run preview`.
+## License
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+GPL-3.0-only. See [LICENSE](./LICENSE).
