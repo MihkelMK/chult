@@ -1,4 +1,5 @@
 import type { CampaignEvent, EventRole } from '$lib/types/events';
+import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
 
 // This is a singleton instance that will be shared across the entire server.
@@ -29,6 +30,16 @@ const MAX_BUFFERED_EVENTS = 500;
 // filtered out by role, is expected.
 let sequence = 0;
 
+// Identifies this process. The sequence restarts at zero every boot, so an id alone cannot
+// say which run issued it: a client reconnecting with id 5 from a previous run would be
+// handed this run's events 6 onward and told it is up to date. Echoed back in
+// Last-Event-ID, where a mismatch means the client's state predates this process.
+const BOOT_ID = randomUUID().slice(0, 8);
+
+// Buffer, sequence and emitter live in this process's memory, so every client of a campaign
+// must reach the same instance. compose.yml pins container_name, which Docker will not
+// accept alongside replicas, so that holds today. Scaling out needs a shared bus.
+
 export function channelFor(campaignSlug: string) {
   return `campaign-${campaignSlug}`;
 }
@@ -52,8 +63,8 @@ export function emitEvent(campaignSlug: string, eventType: CampaignEvent, data: 
  * the buffer alone and has to reload its state from the API instead.
  */
 export function replayAfter(campaignSlug: string, lastEventId: number): BusEvent[] | 'gap' {
-  // An id we have never issued means the process restarted and the sequence reset, so the
-  // client is holding state from a previous run.
+  // Unreachable: BOOT_ID rejects cross-process ids before this is called. Kept as a cheap
+  // backstop, since an id this run never issued cannot be replayed against its buffer.
   if (lastEventId > sequence) {
     return 'gap';
   }
@@ -86,4 +97,24 @@ export function releaseBuffer(campaignSlug: string) {
   if (eventEmitter.listenerCount(channelFor(campaignSlug)) === 0) {
     buffers.delete(campaignSlug);
   }
+}
+
+/** The `id:` field for an SSE frame: this process, then the sequence number. */
+export function frameId(entry: BusEvent) {
+  return `${BOOT_ID}:${entry.id}`;
+}
+
+/**
+ * Last-Event-ID as a sequence number, 'stale' when another process issued it, null when
+ * absent (a first connection rather than a reconnection).
+ */
+export function parseLastEventId(raw: string | null): number | 'stale' | null {
+  if (!raw) return null;
+
+  const separator = raw.lastIndexOf(':');
+  if (separator === -1) return 'stale';
+  if (raw.slice(0, separator) !== BOOT_ID) return 'stale';
+
+  const id = Number(raw.slice(separator + 1));
+  return Number.isFinite(id) && id > 0 ? id : null;
 }

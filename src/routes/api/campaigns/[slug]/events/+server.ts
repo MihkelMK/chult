@@ -1,4 +1,11 @@
-import eventEmitter, { channelFor, releaseBuffer, replayAfter, type BusEvent } from '$lib/server/events';
+import eventEmitter, {
+  channelFor,
+  frameId,
+  parseLastEventId,
+  releaseBuffer,
+  replayAfter,
+  type BusEvent,
+} from '$lib/server/events';
 import { requireAuth } from '$lib/server/session';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -11,7 +18,7 @@ const RECONNECT_DELAY = 5000;
 // Comment frames keep idle proxies from closing the connection.
 const KEEP_ALIVE_INTERVAL = 20000;
 
-const frame = (entry: BusEvent) => `id: ${entry.id}\nevent: ${entry.event}\ndata: ${JSON.stringify(entry.data)}\n\n`;
+const frame = (entry: BusEvent) => `id: ${frameId(entry)}\nevent: ${entry.event}\ndata: ${JSON.stringify(entry.data)}\n\n`;
 
 export const GET: RequestHandler = async (event) => {
   const { params } = event;
@@ -29,8 +36,9 @@ export const GET: RequestHandler = async (event) => {
   const channel = channelFor(slug);
   const visible = (entry: BusEvent) => entry.role === 'all' || entry.role === session.role;
 
-  // Set automatically by the browser when it reconnects a dropped stream.
-  const lastEventId = Number(event.request.headers.get('last-event-id') ?? 0);
+  // Set by the browser when it reconnects a dropped stream. 'stale' means a previous
+  // process issued it, so its sequence number means nothing here.
+  const lastEventId = parseLastEventId(event.request.headers.get('last-event-id'));
 
   let listener: ((entry: BusEvent) => void) | null = null;
   let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
@@ -54,8 +62,8 @@ export const GET: RequestHandler = async (event) => {
 
       // Bring a reconnecting client back up to date before it starts receiving live
       // events, so no delta is lost in the gap.
-      if (Number.isFinite(lastEventId) && lastEventId > 0) {
-        const missed = replayAfter(slug, lastEventId);
+      if (lastEventId !== null) {
+        const missed = lastEventId === 'stale' ? 'gap' : replayAfter(slug, lastEventId);
 
         if (missed === 'gap') {
           // Too far behind to patch up. The client refetches its state instead.
