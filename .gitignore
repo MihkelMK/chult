@@ -75,6 +75,5 @@ uploads/*
 !uploads/.gitkeep
 backups
 
-# Dev docs, not intended for public
-/docs
-CLAUDE.md
+# Image cache
+imgproxy-cache
