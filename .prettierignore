@@ -19,3 +19,9 @@ src/lib/components/ui
 
 # Drizzle ORM
 /drizzle/
+
+# Private working notes, not in the repository
+.dev_docs/
+
+# Agent tooling
+.claude/
