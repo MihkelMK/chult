@@ -44,6 +44,12 @@ It rests on two assumptions that nothing checks. It needs the process to average
 
 Rejected because both failure modes are silent when they occur, and because its correctness is an argument about clock direction and emission rate that is nowhere visible at the line where someone would reintroduce the bug. The boot id states the property instead of deriving it. That is the whole of the advantage; it does not depend on the two-instance case, which this ADR rules out by decision and which therefore cannot be used to justify it.
 
+**Adopt [`better-sse`](https://github.com/MatthewWid/better-sse) instead of hand-rolling the bus.** Actively maintained, dependency-free, and it supports the Fetch API form (`createResponse(request, callback)`) rather than requiring Express-style `req`/`res`, so it would work in a SvelteKit route. It provides channels, keep-alive, event ID generation and Last-Event-ID handling.
+
+Rejected because of what it does not provide. Its event buffers batch outgoing events for bandwidth; they are not a replay history, and "trust or ignore the client-given last event ID" governs ID assignment rather than resending what a client missed. So `replayAfter`, the retained buffer, gap detection, the resync frame and the boot id would all stay, threaded through someone else's session abstraction on a pre-1.0 API. The part it replaces is roughly fifty lines that already work; the part it does not replace is where every bug in this area has been. Worth revisiting if it ships history-based replay, which would reverse this.
+
+**Swap Node's `EventEmitter` for `eventemitter3`.** Faster, dependency-free, and it has no listener-limit concept, so the `MaxListenersExceededWarning` that eleven concurrent tabs on one campaign currently produces would vanish without configuration. Rejected for that same reason: the warning is the only signal that would catch a real listener leak, and removing the mechanism is worse than raising the ceiling to a realistic finite value. The performance difference is irrelevant at this event volume.
+
 **A shared bus now**, Redis pub/sub or Postgres `LISTEN`/`NOTIFY`, removing the constraint rather than documenting it. Rejected as infrastructure for a problem this deployment does not have. One container serves one gaming group. The constraint is written down so the day it stops being true is a decision rather than a discovery.
 
 **Persisting the sequence across restarts** so ids stay comparable. Rejected: it makes restarts require durable state to stay correct, and resynchronising after a restart is cheap.
