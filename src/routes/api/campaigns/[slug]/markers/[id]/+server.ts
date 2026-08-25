@@ -85,8 +85,29 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
   // Update marker
   const [updatedMarker] = await db.update(mapMarkers).set(updates).where(eq(mapMarkers.id, markerId)).returning();
 
-  // Emit SSE event
-  emitEvent(params.slug, 'marker:updated', updatedMarker);
+  // Emit SSE event. A hidden marker must never reach player clients, and crossing the
+  // visibility boundary in either direction is a create or a delete for players, never an
+  // update: they only hold markers they have already been sent, and their handler for
+  // `marker:updated` drops ids it does not know about.
+  if (updatedMarker.visibleToPlayers) {
+    if (existingMarker.visibleToPlayers) {
+      emitEvent(params.slug, 'marker:updated', updatedMarker, 'all');
+    } else {
+      emitEvent(params.slug, 'marker:updated', updatedMarker, 'dm');
+      emitEvent(params.slug, 'marker:created', updatedMarker, 'player');
+    }
+  } else {
+    emitEvent(params.slug, 'marker:updated', updatedMarker, 'dm');
+
+    if (existingMarker.visibleToPlayers) {
+      // Sending coordinates to players is safe only because PATCH cannot move a marker:
+      // `parsePatchMarkerBody` accepts no x or y, so these still equal the position the
+      // player already received with `marker:created`.
+      // Adding coords to `PatchMarkerInput` makes this line leak a position they never saw.
+      // This payload matches the one DELETE emits, so both keep one shape.
+      emitEvent(params.slug, 'marker:deleted', { id: markerId, x: updatedMarker.x, y: updatedMarker.y }, 'player');
+    }
+  }
 
   return json(updatedMarker);
 };
@@ -133,12 +154,17 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
   // Delete marker
   await db.delete(mapMarkers).where(eq(mapMarkers.id, markerId));
 
-  // Emit SSE event
-  emitEvent(params.slug, 'marker:deleted', {
-    id: markerId,
-    x: existingMarker.x,
-    y: existingMarker.y,
-  });
+  // Emit SSE event. Players only ever held this marker if it was visible to them.
+  emitEvent(
+    params.slug,
+    'marker:deleted',
+    {
+      id: markerId,
+      x: existingMarker.x,
+      y: existingMarker.y,
+    },
+    existingMarker.visibleToPlayers ? 'all' : 'dm'
+  );
 
   return json({ success: true });
 };

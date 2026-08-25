@@ -7,14 +7,41 @@ import type {
   PathStep,
   PlayerCampaignDataResponse,
   RevealedTile,
+  RevealedTileResponse,
   TileCoords,
   TimeAuditLogResponse,
 } from '$lib/types';
+import { CAMPAIGN_EVENTS, type CampaignEvent } from '$lib/types/events';
 import EventEmitter from 'eventemitter3';
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 // Define a type for the event listener to ensure type safety
 type EventListener<T> = (data: T) => void;
+
+/**
+ * `/api/campaigns/[slug]/data` serialises with JSON, so timestamps arrive as strings.
+ * The initial page load goes through SvelteKit's devalue serialisation and yields real
+ * Date objects, so revive them here to keep both paths interchangeable.
+ */
+function reviveDates<T extends CampaignDataResponse | PlayerCampaignDataResponse>(data: T): T {
+  const revive = <O, K extends keyof O>(record: O, keys: K[]) => {
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === 'string') {
+        record[key] = new SvelteDate(value) as O[K];
+      }
+    }
+    return record;
+  };
+
+  data.mapMarkers?.forEach((marker) => revive(marker, ['createdAt', 'updatedAt']));
+  data.gameSessions?.forEach((session) => revive(session, ['startedAt', 'endedAt', 'lastActivityAt', 'createdAt']));
+  // Player payloads omit revealedAt, so treat it as optional rather than required.
+  data.revealedTiles?.forEach((tile) => revive(tile as { revealedAt?: Date | string }, ['revealedAt']));
+  (data as CampaignDataResponse).timeAuditLog?.forEach((entry) => revive(entry, ['timestamp']));
+
+  return data;
+}
 
 export class LocalState extends EventEmitter {
   public campaign: CampaignDataResponse | PlayerCampaignDataResponse;
@@ -23,6 +50,9 @@ export class LocalState extends EventEmitter {
 
   // Hover state management
   public hoveredTile = $state<TileCoords | null>(null);
+
+  // Live-connection status for the event stream
+  public connected = $state(false);
 
   // Empty sets for typescript (overridden in subclasses)
   public revealedTilesSet = new SvelteSet<string>();
@@ -94,6 +124,11 @@ export class LocalState extends EventEmitter {
   public tilesVersion = $state(0);
   public markersVersion = $state(0);
 
+  // Live events that arrived while a resync snapshot was being fetched, held so the older
+  // snapshot cannot overwrite them. Not reactive: nothing renders from the backlog itself.
+  private resyncPending = false;
+  private queuedDuringResync: { name: CampaignEvent; payload: unknown }[] = [];
+
   constructor(initialData: CampaignDataResponse | PlayerCampaignDataResponse, campaignSlug: string) {
     super();
     this.campaign = $state(initialData);
@@ -135,117 +170,136 @@ export class LocalState extends EventEmitter {
       // This handles the keep-alive messages
     };
 
-    this.eventSource.onerror = (err) => {
-      console.error('[localState] EventSource failed:', err);
-      this.eventSource?.close();
-      // Optional: implement reconnection logic here
+    this.eventSource.onopen = () => {
+      this.connected = true;
     };
 
-    // Register listeners for specific event types
-    this.eventSource.addEventListener('tile:revealed', (event) => {
-      try {
-        const tiles = JSON.parse(event.data);
-        // Handle both single tiles and arrays for backwards compatibility
-        const tilesArray = Array.isArray(tiles) ? tiles : [tiles];
-        // Emit the entire array at once for batch processing
-        this.emit('tiles:revealed:batch', tilesArray);
-      } catch (error) {
-        console.error('Failed to parse tile:revealed event:', error);
-      }
-    });
+    this.eventSource.onerror = () => {
+      this.connected = false;
 
-    this.eventSource.addEventListener('marker:created', (event) => {
-      try {
-        const marker = JSON.parse(event.data);
-        this.emit('marker:created', marker);
-      } catch (error) {
-        console.error('Failed to parse marker:created event:', error);
+      // BROKEN ON FIREFOX, see #135. The intent below is that CLOSED means the server
+      // refused (non-2xx, or the wrong content type) while anything else is a transient
+      // drop the browser is already retrying. That holds on Chromium. Firefox also sets
+      // CLOSED when the network disappears under an established stream, so a WiFi blip
+      // takes this branch, nulls the handle, and `connect()` returns early forever after.
+      // `readyState` cannot separate the two cases. #135 replaces this client with the
+      // fetch-based `eventsource` package, which retries in JS and exposes the status.
+      // Nothing reads `connected` yet either, so an expiring session leaves a silently
+      // frozen map; #138 surfaces it.
+      if (this.eventSource?.readyState === EventSource.CLOSED) {
+        console.error('[localState] EventSource closed; not retrying (broken on Firefox, see #135)');
+        this.eventSource = null;
       }
-    });
+    };
 
-    this.eventSource.addEventListener('marker:updated', (event) => {
-      try {
-        const marker = JSON.parse(event.data);
-        this.emit('marker:updated', marker);
-      } catch (error) {
-        console.error('Failed to parse marker:updated event:', error);
-      }
-    });
+    // Forward every bus event onto the internal emitter. Driving this from the shared
+    // event-name list means a newly added server event cannot be left without a listener.
+    for (const name of CAMPAIGN_EVENTS) {
+      this.eventSource.addEventListener(name, (event) => {
+        let payload: unknown;
 
-    this.eventSource.addEventListener('marker:deleted', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.emit('marker:deleted', data);
-      } catch (error) {
-        console.error('Failed to parse marker:deleted event:', error);
-      }
-    });
+        try {
+          payload = JSON.parse(event.data);
+        } catch (error) {
+          console.error(`Failed to parse ${name} event:`, error);
+          return;
+        }
 
-    this.eventSource.addEventListener('tile:hidden', (event) => {
-      try {
-        const tiles = JSON.parse(event.data);
-        // Handle both single tiles and arrays for consistency
-        const tilesArray = Array.isArray(tiles) ? tiles : [tiles];
-        tilesArray.forEach((tile) => this.emit('tile:hidden', tile));
-      } catch (error) {
-        console.error('Failed to parse tile:hidden event:', error);
-      }
-    });
+        // A resync snapshot is read on the server before the fetch resolves, so an event
+        // applied while one is in flight would be overwritten by older data and never
+        // corrected. Hold it back and replay it once the snapshot has landed.
+        if (this.resyncPending) {
+          this.queuedDuringResync.push({ name, payload });
+          return;
+        }
 
-    // Exploration SSE listeners (NEW)
-    this.eventSource.addEventListener('session:started', (event) => {
-      try {
-        const session = JSON.parse(event.data);
-        this.emit('session:started', session);
-      } catch (error) {
-        console.error('Failed to parse session:started event:', error);
-      }
-    });
+        this.dispatch(name, payload);
+      });
+    }
 
-    this.eventSource.addEventListener('session:ended', (event) => {
-      try {
-        const session = JSON.parse(event.data);
-        this.emit('session:ended', session);
-      } catch (error) {
-        console.error('Failed to parse session:ended event:', error);
-      }
+    this.eventSource.addEventListener('resync', () => {
+      void this.resync();
     });
+  }
 
-    this.eventSource.addEventListener('movement:step-added', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.emit('movement:step-added', data);
-      } catch (error) {
-        console.error('Failed to parse movement:step-added event:', error);
+  // Translate a bus event into the internal event(s) the stores listen for.
+  private dispatch(name: CampaignEvent, payload: unknown) {
+    switch (name) {
+      case 'tile:revealed': {
+        // Handle both single tiles and arrays for backwards compatibility.
+        // Emit the whole array at once for batch processing.
+        this.emit('tiles:revealed:batch', Array.isArray(payload) ? payload : [payload]);
+        return;
       }
-    });
 
-    this.eventSource.addEventListener('movement:step-reverted', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.emit('movement:step-reverted', data);
-      } catch (error) {
-        console.error('Failed to parse movement:step-reverted event:', error);
+      case 'tile:hidden': {
+        const tiles = Array.isArray(payload) ? payload : [payload];
+        tiles.forEach((tile) => this.emit('tile:hidden', tile));
+        return;
       }
-    });
 
-    this.eventSource.addEventListener('time:updated', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.emit('time:updated', data);
-      } catch (error) {
-        console.error('Failed to parse time:updated event:', error);
-      }
-    });
+      default:
+        this.emit(name, payload);
+    }
+  }
 
-    this.eventSource.addEventListener('session:deleted', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.emit('session:deleted', data);
-      } catch (error) {
-        console.error('Failed to parse session:deleted event:', error);
+  // Rebuild all state from a fresh server snapshot.
+  private async resync() {
+    if (this.resyncPending) {
+      return;
+    }
+
+    this.resyncPending = true;
+
+    try {
+      const response = await fetch(`/api/campaigns/${this.campaignSlug}/data`);
+
+      if (!response.ok) {
+        throw new Error(`Resync request failed: ${response.status}`);
       }
-    });
+
+      this.applySnapshot(reviveDates(await response.json()));
+      this.emit('state:resynced');
+    } catch (error) {
+      // Nothing was replaced, so the queued events still apply to the state we already
+      // hold. Draining them below keeps the client no worse off than before the attempt.
+      console.error('[localState] Resync failed:', error);
+    } finally {
+      // Drain before clearing the flag so an event arriving mid-drain queues behind the
+      // backlog rather than overtaking it.
+      while (this.queuedDuringResync.length > 0) {
+        const queued = this.queuedDuringResync.shift()!;
+        this.dispatch(queued.name, queued.payload);
+      }
+
+      this.resyncPending = false;
+    }
+  }
+
+  /**
+   * Replace every piece of derived state with a fresh snapshot. Sets are cleared in place
+   * rather than reassigned because subclasses do not all declare them as `$state`, so a
+   * reassignment would leave components holding the previous instance.
+   */
+  protected applySnapshot(data: CampaignDataResponse | PlayerCampaignDataResponse) {
+    this.campaign = data;
+
+    this.globalGameTime = data.campaign.globalGameTime;
+    this.partyTokenPosition =
+      data.campaign.partyTokenX !== null && data.campaign.partyTokenY !== null
+        ? { x: data.campaign.partyTokenX, y: data.campaign.partyTokenY }
+        : null;
+
+    this.gameSessions = data.gameSessions || [];
+    this.initializePathsMap(data.paths || []);
+    this.initializeMarkersMap(data.mapMarkers);
+
+    this.revealedTilesSet.clear();
+    this.alwaysRevealedTilesSet.clear();
+    this.initializeRevealedTileSets(data.revealedTiles);
+
+    this.tilesVersion++;
+    this.markersVersion++;
   }
 
   public disconnect() {
@@ -359,6 +413,46 @@ export class LocalState extends EventEmitter {
         this.markersVersion++;
       }
     }
+  }
+
+  protected handleAlwaysRevealedUpdated(data: {
+    updated: { x: number; y: number; alwaysRevealed: boolean }[];
+    created: { x: number; y: number }[];
+  }) {
+    const apply = (tile: { x: number; y: number }, alwaysRevealed: boolean) => {
+      const key = `${tile.x}-${tile.y}`;
+
+      if (alwaysRevealed) {
+        this.revealedTilesSet.delete(key);
+        this.alwaysRevealedTilesSet.add(key);
+      } else {
+        this.alwaysRevealedTilesSet.delete(key);
+        this.revealedTilesSet.add(key);
+      }
+
+      if (this.campaign && 'revealedTiles' in this.campaign) {
+        const entry = this.campaign.revealedTiles.find((t: TileCoords) => t.x === tile.x && t.y === tile.y);
+        if (entry) {
+          (entry as { alwaysRevealed: boolean }).alwaysRevealed = alwaysRevealed;
+        } else {
+          // A tile the server has only just inserted has no entry yet. Without this the
+          // array drifts out of sync with the Sets and a later hide cannot remove it.
+          // Player payloads omit `revealedAt`, carrying it here is harmless for them.
+          (this.campaign.revealedTiles as RevealedTileResponse[]).push({
+            x: tile.x,
+            y: tile.y,
+            alwaysRevealed,
+            revealedAt: new SvelteDate(),
+          });
+        }
+      }
+    };
+
+    data.updated?.forEach((tile) => apply(tile, tile.alwaysRevealed));
+    // Tiles that did not exist yet are only created when toggling *on*.
+    data.created?.forEach((tile) => apply(tile, true));
+
+    this.tilesVersion++;
   }
 
   protected handleTileHidden(tile: Pick<TileCoords, 'x' | 'y'>) {

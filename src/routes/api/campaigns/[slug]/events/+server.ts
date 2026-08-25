@@ -1,8 +1,24 @@
-import eventEmitter from '$lib/server/events';
+import eventEmitter, {
+  channelFor,
+  frameId,
+  parseLastEventId,
+  releaseBuffer,
+  replayAfter,
+  type BusEvent,
+} from '$lib/server/events';
 import { requireAuth } from '$lib/server/session';
-import type { EventRole } from '$lib/types/events';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+
+// How long the browser should wait before reconnecting. Without an explicit retry field
+// the spec default (~3s) applies with no backoff, so an outage has every client retrying
+// in lockstep indefinitely.
+const RECONNECT_DELAY = 5000;
+
+// Comment frames keep idle proxies from closing the connection.
+const KEEP_ALIVE_INTERVAL = 20000;
+
+const frame = (entry: BusEvent) => `id: ${frameId(entry)}\nevent: ${entry.event}\ndata: ${JSON.stringify(entry.data)}\n\n`;
 
 export const GET: RequestHandler = async (event) => {
   const { params } = event;
@@ -16,51 +32,79 @@ export const GET: RequestHandler = async (event) => {
     error(403, 'Forbidden');
   }
 
+  const slug = params.slug;
+  const channel = channelFor(slug);
+  const visible = (entry: BusEvent) => entry.role === 'all' || entry.role === session.role;
+
+  // Set by the browser when it reconnects a dropped stream. 'stale' means a previous
+  // process issued it, so its sequence number means nothing here.
+  const lastEventId = parseLastEventId(event.request.headers.get('last-event-id'));
+
+  let listener: ((entry: BusEvent) => void) | null = null;
+  let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+
+  // Safe to call more than once.
+  const cleanup = () => {
+    if (listener) {
+      eventEmitter.off(channel, listener);
+      listener = null;
+      releaseBuffer(slug);
+    }
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+      keepAliveInterval = null;
+    }
+  };
+
   const stream = new ReadableStream({
     start(controller) {
-      const listener = (event: { event: string; data: unknown; role: EventRole }) => {
-        // Role-based filtering
-        if (event.role === 'all' || event.role === session.role) {
-          try {
-            const sseMessage = `event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`;
-            controller.enqueue(sseMessage);
-          } catch {
-            // Stream closed, trigger cleanup
-            cleanup();
+      controller.enqueue(`retry: ${RECONNECT_DELAY}\n\n`);
+
+      // Bring a reconnecting client back up to date before it starts receiving live
+      // events, so no delta is lost in the gap.
+      if (lastEventId !== null) {
+        const missed = lastEventId === 'stale' ? 'gap' : replayAfter(slug, lastEventId);
+
+        if (missed === 'gap') {
+          // Too far behind to patch up. The client refetches its state instead.
+          controller.enqueue(`event: resync\ndata: {}\n\n`);
+        } else {
+          for (const entry of missed) {
+            if (visible(entry)) {
+              controller.enqueue(frame(entry));
+            }
           }
+        }
+      }
+
+      listener = (entry: BusEvent) => {
+        // Role-based filtering
+        if (!visible(entry)) {
+          return;
+        }
+
+        try {
+          controller.enqueue(frame(entry));
+        } catch {
+          // Stream closed, trigger cleanup
+          cleanup();
         }
       };
 
-      eventEmitter.on(`campaign-${params.slug}`, listener);
+      eventEmitter.on(channel, listener);
 
-      // Keep the connection alive by sending a comment every 20 seconds
-      const keepAliveInterval = setInterval(() => {
+      keepAliveInterval = setInterval(() => {
         try {
           controller.enqueue(': keep-alive\n\n');
         } catch {
           cleanup();
         }
-      }, 20000);
+      }, KEEP_ALIVE_INTERVAL);
+    },
 
-      // Ping every second to detect client disconnects
-      const pingInterval = setInterval(() => {
-        try {
-          controller.enqueue(': ping\n\n');
-        } catch {
-          cleanup();
-        }
-      }, 1000);
-
-      // Centralized cleanup - can be called multiple times safely
-      let cleanedUp = false;
-      function cleanup() {
-        if (cleanedUp) return;
-        cleanedUp = true;
-
-        eventEmitter.off(`campaign-${params.slug}`, listener);
-        clearInterval(keepAliveInterval);
-        clearInterval(pingInterval);
-      }
+    // Called when the client disconnects.
+    cancel() {
+      cleanup();
     },
   });
 

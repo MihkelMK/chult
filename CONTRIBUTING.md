@@ -30,6 +30,12 @@ pnpm build
 
 All three must pass. `pnpm format` fixes most lint complaints.
 
+## Testing realtime behaviour
+
+Test anything touching live updates against `pnpm build && pnpm preview`, not `pnpm dev`. Vite reloads the page when its own connection returns, which hides whether the app recovered on its own.
+
+Check both Firefox and Chromium. They differ in how `EventSource` reports a dropped connection, so a reconnect that works in one can fail silently in the other.
+
 ## Guidelines
 
 - One concern per pull request. Split a wide change into several.

@@ -49,132 +49,132 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
   try {
     const { tileKey, col, row } = parseTileKey((await request.json()).tileKey);
 
-    // Get campaign
-    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.slug, params.slug)).limit(1);
+    // Everything that reads-then-writes runs in one transaction.
+    // The campaign row is claimed first with an optimistic lock, so a second
+    // mover blocks on that row and fails before it can append to paths.steps.
+    const result = await db.transaction(async (tx) => {
+      const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.slug, params.slug)).limit(1);
 
-    if (!campaign) {
-      throw error(404, 'Campaign not found');
-    }
+      if (!campaign) {
+        throw error(404, 'Campaign not found');
+      }
 
-    // Get active session
-    const [activeSession] = await db
-      .select()
-      .from(gameSessions)
-      .where(and(eq(gameSessions.campaignId, campaign.id), eq(gameSessions.isActive, true)))
-      .limit(1);
+      const [activeSession] = await tx
+        .select()
+        .from(gameSessions)
+        .where(and(eq(gameSessions.campaignId, campaign.id), eq(gameSessions.isActive, true)))
+        .limit(1);
 
-    if (!activeSession) {
-      throw error(400, 'No active session');
-    }
+      if (!activeSession) {
+        throw error(400, 'No active session');
+      }
 
-    const currentX = campaign.partyTokenX;
-    const currentY = campaign.partyTokenY;
+      const currentX = campaign.partyTokenX;
+      const currentY = campaign.partyTokenY;
 
-    if (currentX === null || currentY === null) {
-      throw error(400, 'Party token position not set');
-    }
+      if (currentX === null || currentY === null) {
+        throw error(400, 'Party token position not set');
+      }
 
-    if (!isAdjacentHex(currentX, currentY, col, row)) {
-      throw error(400, 'Tile is not adjacent to party position');
-    }
+      if (!isAdjacentHex(currentX, currentY, col, row)) {
+        throw error(400, 'Tile is not adjacent to party position');
+      }
 
-    // Get current path
-    const [currentPath] = await db.select().from(paths).where(eq(paths.gameSessionId, activeSession.id)).limit(1);
+      // Calculate time increment (0.5 days per tile)
+      const timeCost = 0.5;
+      const newGameTime = campaign.globalGameTime + timeCost;
 
-    if (!currentPath) {
-      throw error(500, 'Path not found for session');
-    }
+      // Claim the move before writing anything else.
+      const updateResult = await tx
+        .update(campaigns)
+        .set({
+          globalGameTime: newGameTime,
+          partyTokenX: col,
+          partyTokenY: row,
+        })
+        .where(and(eq(campaigns.id, campaign.id), eq(campaigns.partyTokenX, currentX), eq(campaigns.partyTokenY, currentY)))
+        .returning({ id: campaigns.id });
 
-    // Calculate time increment (0.5 days per tile)
-    const timeCost = 0.5;
-    const newGameTime = campaign.globalGameTime + timeCost;
+      if (updateResult.length === 0) {
+        throw error(409, 'Party position changed. Another player already moved the token.');
+      }
 
-    // Create step
-    const step: PathStep = {
-      type: 'player_move',
-      tileKey,
-      timestamp: new Date(),
-      gameTime: newGameTime,
-    };
+      const [currentPath] = await tx.select().from(paths).where(eq(paths.gameSessionId, activeSession.id)).limit(1);
 
-    // Add step to path
-    const updatedSteps = [...(currentPath.steps as PathStep[]), step];
+      if (!currentPath) {
+        throw error(500, 'Path not found for session');
+      }
 
-    // Check if tile needs to be revealed
-    const [existingTile] = await db
-      .select()
-      .from(revealedTiles)
-      .where(and(eq(revealedTiles.campaignId, campaign.id), eq(revealedTiles.x, col), eq(revealedTiles.y, row)))
-      .limit(1);
+      const step: PathStep = {
+        type: 'player_move',
+        tileKey,
+        timestamp: new Date(),
+        gameTime: newGameTime,
+      };
 
-    const tilesToReveal: string[] = [];
-    if (!existingTile) {
-      // Reveal the tile
-      await db.insert(revealedTiles).values({
+      // Check if tile needs to be revealed
+      const [existingTile] = await tx
+        .select()
+        .from(revealedTiles)
+        .where(and(eq(revealedTiles.campaignId, campaign.id), eq(revealedTiles.x, col), eq(revealedTiles.y, row)))
+        .limit(1);
+
+      const tilesToReveal: string[] = [];
+      if (!existingTile) {
+        await tx.insert(revealedTiles).values({
+          campaignId: campaign.id,
+          x: col,
+          y: row,
+          alwaysRevealed: false,
+        });
+        tilesToReveal.push(tileKey);
+      }
+
+      // Update path with new step and revealed tiles
+      const updatedRevealedTiles = currentPath.revealedTiles.includes(tileKey)
+        ? currentPath.revealedTiles
+        : [...currentPath.revealedTiles, tileKey];
+
+      await tx
+        .update(paths)
+        .set({
+          steps: [...(currentPath.steps as PathStep[]), step],
+          revealedTiles: updatedRevealedTiles,
+        })
+        .where(eq(paths.id, currentPath.id));
+
+      // Create audit log entry
+      await tx.insert(timeAuditLog).values({
         campaignId: campaign.id,
-        x: col,
-        y: row,
-        alwaysRevealed: false,
+        type: 'movement',
+        amount: timeCost,
+        actorRole: locals.session!.role,
+        notes: `Player move to ${tileKey}`,
       });
-      tilesToReveal.push(tileKey);
 
-      // Emit tile:revealed event
+      // Update session last activity
+      await tx.update(gameSessions).set({ lastActivityAt: new Date() }).where(eq(gameSessions.id, activeSession.id));
+
+      return { sessionId: activeSession.id, step, tilesToReveal, newGameTime };
+    });
+
+    // Only broadcast once the transaction has committed.
+    // This way a rolled back move is never announced to other clients.
+    if (result.tilesToReveal.length > 0) {
       emitEvent(params.slug, 'tile:revealed', [{ x: col, y: row, alwaysRevealed: false }]);
     }
 
-    // Update path with new step and revealed tiles
-    const updatedRevealedTiles = currentPath.revealedTiles.includes(tileKey)
-      ? currentPath.revealedTiles
-      : [...currentPath.revealedTiles, tileKey];
-
-    await db
-      .update(paths)
-      .set({
-        steps: updatedSteps,
-        revealedTiles: updatedRevealedTiles,
-      })
-      .where(eq(paths.id, currentPath.id));
-
-    // Update campaign global game time and party position with optimistic locking
-    const updateResult = await db
-      .update(campaigns)
-      .set({
-        globalGameTime: newGameTime,
-        partyTokenX: col,
-        partyTokenY: row,
-      })
-      .where(and(eq(campaigns.id, campaign.id), eq(campaigns.partyTokenX, currentX), eq(campaigns.partyTokenY, currentY)))
-      .returning({ id: campaigns.id });
-
-    // Check if update succeeded (position unchanged during transaction)
-    if (updateResult.length === 0) {
-      throw error(409, 'Party position changed - another player moved');
-    }
-
-    // Create audit log entry
-    await db.insert(timeAuditLog).values({
-      campaignId: campaign.id,
-      type: 'movement',
-      amount: timeCost,
-      actorRole: locals.session.role,
-      notes: `Player move to ${tileKey}`,
-    });
-
-    // Update session last activity
-    await db.update(gameSessions).set({ lastActivityAt: new Date() }).where(eq(gameSessions.id, activeSession.id));
-
-    // Emit SSE events
     emitEvent(params.slug, 'movement:step-added', {
-      sessionId: activeSession.id,
-      step,
-      tiles: tilesToReveal,
+      sessionId: result.sessionId,
+      step: result.step,
+      tiles: result.tilesToReveal,
     });
 
     emitEvent(params.slug, 'time:updated', {
-      globalGameTime: newGameTime,
+      globalGameTime: result.newGameTime,
     });
 
-    return json({ success: true, step, gameTime: newGameTime });
+    return json({ success: true, step: result.step, gameTime: result.newGameTime });
   } catch (err) {
     // HttpError is not an Error subclass, so it must be re-thrown explicitly to keep its status
     if (isHttpError(err)) throw err;
