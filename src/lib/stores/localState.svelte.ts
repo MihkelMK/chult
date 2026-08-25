@@ -177,14 +177,17 @@ export class LocalState extends EventEmitter {
     this.eventSource.onerror = () => {
       this.connected = false;
 
-      // A CLOSED readyState means the browser will not retry: the server replied with a
-      // non-2xx status (an expired session gives 401/403) or the wrong content type.
-      // Every other error is a transient drop that EventSource is already retrying on its
-      // own, so closing the connection here would turn a blip into a permanent outage.
-      // Nothing reads `connected` yet, so a session expiring while the tab is open still
-      // leaves a silently frozen map. Surfacing it in the UI is tracked separately.
+      // BROKEN ON FIREFOX, see #135. The intent below is that CLOSED means the server
+      // refused (non-2xx, or the wrong content type) while anything else is a transient
+      // drop the browser is already retrying. That holds on Chromium. Firefox also sets
+      // CLOSED when the network disappears under an established stream, so a WiFi blip
+      // takes this branch, nulls the handle, and `connect()` returns early forever after.
+      // `readyState` cannot separate the two cases. #135 replaces this client with the
+      // fetch-based `eventsource` package, which retries in JS and exposes the status.
+      // Nothing reads `connected` yet either, so an expiring session leaves a silently
+      // frozen map; #138 surfaces it.
       if (this.eventSource?.readyState === EventSource.CLOSED) {
-        console.error('[localState] EventSource closed by the server; not retrying');
+        console.error('[localState] EventSource closed; not retrying (broken on Firefox, see #135)');
         this.eventSource = null;
       }
     };
