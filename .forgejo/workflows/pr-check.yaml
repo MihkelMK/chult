@@ -42,7 +42,7 @@ jobs:
           # Renovate bumps OPENGREP_VERSION only. When it does, this step fails at
           # `sha256sum -c` until the hash is updated too. That is deliberate: fail closed.
           # renovate: datasource=github-releases depName=opengrep/opengrep
-          OPENGREP_VERSION=v1.26.0
+          OPENGREP_VERSION=v1.29.0
           OPENGREP_SHA256=40c21299eeddabf743b856daa843d24f9d4a027130671cd45b3b21776fd9ab26
           # Installed under $HOME: the runner is not root, so /usr/local/bin is not writable
           mkdir -p "$HOME/.local/bin"
