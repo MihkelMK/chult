@@ -70,8 +70,8 @@ importers:
         specifier: 17.6.0
         version: 17.6.0
       konva:
-        specifier: 10.3.0
-        version: 10.3.0
+        specifier: 10.9.0
+        version: 10.9.0
       lint-staged:
         specifier: 17.0.4
         version: 17.0.4
@@ -101,7 +101,7 @@ importers:
         version: 4.7.6(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.67.0))(typescript@6.0.3)
       svelte-konva:
         specifier: 1.0.1
-        version: 1.0.1(konva@10.3.0)(svelte@5.57.0(@typescript-eslint/types@8.67.0))
+        version: 1.0.1(konva@10.9.0)(svelte@5.57.0(@typescript-eslint/types@8.67.0))
       svelte-sonner:
         specifier: 1.1.1
         version: 1.1.1(svelte@5.57.0(@typescript-eslint/types@8.67.0))
@@ -1691,8 +1691,16 @@ packages:
   known-css-properties@0.37.0:
     resolution: {integrity: sha512-JCDrsP4Z1Sb9JwG0aJ8Eo2r7k4Ou5MwmThS/6lcIe1ICyb7UBJKGRIUUdqc2ASdE/42lgz6zFUnzAIhtXnBVrQ==}
 
-  konva@10.3.0:
-    resolution: {integrity: sha512-gt19K2gzY4lHbnkvsku7eSmB+A9PTS2jG4F9coBMsdjM1UKfJNxJbDbXVpeCW1wjEGRwBD3nBamcHnqJhAeKlg==}
+  konva@10.9.0:
+    resolution: {integrity: sha512-3NOOlcbimFDp4+/DfXGTBkfn3cn3VP1BESPySQ6ayCzgMA9JSMGJNNxeIKw5jpHL6SAl6gHsrv10DUEjNRL0Qg==}
+    peerDependencies:
+      canvas: ^3.0.0
+      skia-canvas: ^3.0.0
+    peerDependenciesMeta:
+      canvas:
+        optional: true
+      skia-canvas:
+        optional: true
 
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -3562,7 +3570,7 @@ snapshots:
 
   known-css-properties@0.37.0: {}
 
-  konva@10.3.0: {}
+  konva@10.9.0: {}
 
   levn@0.4.1:
     dependencies:
@@ -3984,9 +3992,9 @@ snapshots:
     optionalDependencies:
       svelte: 5.57.0(@typescript-eslint/types@8.67.0)
 
-  svelte-konva@1.0.1(konva@10.3.0)(svelte@5.57.0(@typescript-eslint/types@8.67.0)):
+  svelte-konva@1.0.1(konva@10.9.0)(svelte@5.57.0(@typescript-eslint/types@8.67.0)):
     dependencies:
-      konva: 10.3.0
+      konva: 10.9.0
       svelte: 5.57.0(@typescript-eslint/types@8.67.0)
 
   svelte-sonner@1.1.1(svelte@5.57.0(@typescript-eslint/types@8.67.0)):
