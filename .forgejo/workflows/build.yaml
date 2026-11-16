@@ -49,6 +49,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             PUBLIC_MAX_IMAGE_SIZE=52428800
+            APK_CACHE_BUST=${{ github.run_id }}
 
       - name: Install trivy
         run: |
