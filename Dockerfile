@@ -71,12 +71,16 @@ RUN --mount=type=cache,id=chult-pnpm-cache,target=/root/.cache/pnpm \
 #
 FROM base
 
+# Changes every CI run so the cached `apk upgrade` layer below is rebuilt, not reused stale.
+ARG APK_CACHE_BUST
+
 # Install netcat for healthcheck and add nodejs user.
 # apk upgrade because the base image is digest-pinned: without it the image keeps
 # whatever package versions were current when that digest was built.
 # npm is removed because the runtime only runs `node`, and npm's bundled dependencies
 # (tar, sigstore, ip-address, ...) are a standing source of CVEs in the scan.
-RUN apk upgrade --no-cache && \
+RUN echo "apk cache bust: ${APK_CACHE_BUST}" && \
+  apk upgrade --no-cache && \
   apk add --no-cache netcat-openbsd && \
   rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx && \
   addgroup -g 1001 -S nodejs && \
