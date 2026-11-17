@@ -73,7 +73,7 @@
   "engines": {
     "node": "^24.0.0"
   },
-  "packageManager": "pnpm@10.34.5",
+  "packageManager": "pnpm@12.21.0",
   "lint-staged": {
     "*.{svelte,ts,js}": [
       "eslint --fix",
