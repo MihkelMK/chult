@@ -55,6 +55,9 @@ export default defineConfig([
       // sonarjs cannot see that Svelte snippets ({@render foo()}) return template output;
       // it flags every snippet call as "empty return value". Disable for Svelte files.
       'sonarjs/no-use-of-empty-return-value': 'off',
+      // sonarjs/deprecation crashes on Svelte files ("Index out of range": it reports a position
+      // in the TS virtual code, which is longer than the .svelte source). Re-enable once fixed upstream.
+      'sonarjs/deprecation': 'off',
     },
   },
 ]);
