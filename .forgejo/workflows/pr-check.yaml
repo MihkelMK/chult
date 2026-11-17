@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Checks
-        uses: https://git.kodu.lenn.uk/websites/ci-actions/pnpm-checks@f1fb0b52cae3792f8d4e71ab1506db734369543d # v1.2.0
+        uses: https://git.kodu.lenn.uk/websites/ci-actions/pnpm-checks@510ce98f814d61cb58cc411c171c216db04c9f07 # 1.2.6
 
       - name: Scan code
-        uses: https://git.kodu.lenn.uk/websites/ci-actions/opengrep-scan@f1fb0b52cae3792f8d4e71ab1506db734369543d # v1.2.0
+        uses: https://git.kodu.lenn.uk/websites/ci-actions/opengrep-scan@510ce98f814d61cb58cc411c171c216db04c9f07 # 1.2.6
