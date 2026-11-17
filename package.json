@@ -37,7 +37,7 @@
     "@tailwindcss/vite": "4.2.4",
     "@types/node": "24.19.2",
     "bits-ui": "2.19.0",
-    "cn": "^0.5.2",
+    "cn": "0.5.2",
     "dotenv": "17.4.2",
     "dotenv-expand": "13.0.0",
     "drizzle-kit": "0.31.10",
