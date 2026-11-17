@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Build, scan and push
-        uses: https://git.kodu.lenn.uk/websites/ci-actions/docker-build-scan-push@48d0d11aad9b996216b81ce97471dd19a569b9a6 # v1.1.0
+        uses: https://git.kodu.lenn.uk/websites/ci-actions/docker-build-scan-push@f202f4c9f83721591605cc12edff14ffd635b961 # v1.2.4
         with:
           image: git.kodu.lenn.uk/websites/chult_web
           username: ${{ vars.REGISTRY_USERNAME }}
@@ -33,14 +33,14 @@ jobs:
 
       - name: Trigger prod deploy
         if: github.ref == 'refs/heads/main'
-        uses: https://git.kodu.lenn.uk/websites/ci-actions/komodo-deploy@48d0d11aad9b996216b81ce97471dd19a569b9a6 # v1.1.0
+        uses: https://git.kodu.lenn.uk/websites/ci-actions/komodo-deploy@f202f4c9f83721591605cc12edff14ffd635b961 # v1.2.4
         with:
           webhook: ${{ vars.KOMODO_DEPLOY_WEBHOOK }}
           secret: ${{ secrets.KOMODO_WEBHOOK_SECRET }}
 
       - name: Trigger dev deploy
         if: github.ref == 'refs/heads/dev'
-        uses: https://git.kodu.lenn.uk/websites/ci-actions/komodo-deploy@48d0d11aad9b996216b81ce97471dd19a569b9a6 # v1.1.0
+        uses: https://git.kodu.lenn.uk/websites/ci-actions/komodo-deploy@f202f4c9f83721591605cc12edff14ffd635b961 # v1.2.4
         with:
           webhook: ${{ vars.KOMODO_DEV_DEPLOY_WEBHOOK }}
           secret: ${{ secrets.KOMODO_WEBHOOK_SECRET }}
