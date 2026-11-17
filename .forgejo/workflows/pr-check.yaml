@@ -4,6 +4,10 @@ on:
   pull_request:
     branches:
       - main
+  # Also on main, so main saves the ESLint and tool caches that PRs fall back to.
+  push:
+    branches:
+      - main
 
 jobs:
   check:
