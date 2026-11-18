@@ -48,7 +48,6 @@
     "eventemitter3": "5.0.4",
     "globals": "17.6.0",
     "konva": "10.3.0",
-    "lint-staged": "17.0.4",
     "mode-watcher": "1.1.0",
     "prettier": "3.8.3",
     "prettier-plugin-svelte": "4.1.1",
@@ -73,14 +72,5 @@
   "engines": {
     "node": "^24.0.0"
   },
-  "packageManager": "pnpm@12.21.0",
-  "lint-staged": {
-    "*.{svelte,ts,js}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "!(*.{svelte,ts,js,toml})": [
-      "prettier --write --ignore-unknown"
-    ]
-  }
+  "packageManager": "pnpm@12.21.0"
 }
