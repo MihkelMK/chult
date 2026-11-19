@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Checks
-        uses: https://git.kodu.lenn.uk/websites/ci-actions/pnpm-checks@74f2adf19924418bef386bf538d30e7a79ed5260 # v1.2.7
+        uses: https://git.kodu.lenn.uk/websites/ci-actions/pnpm-checks@81003ac5e4137628f8f80b7d7302566c3a052cb0 # v1.3.0
 
   # Its own job, so it runs alongside the checks instead of after them. It needs neither
   # the pnpm install nor the type check.
@@ -28,4 +28,4 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Scan code
-        uses: https://git.kodu.lenn.uk/websites/ci-actions/opengrep-scan@74f2adf19924418bef386bf538d30e7a79ed5260 # v1.2.7
+        uses: https://git.kodu.lenn.uk/websites/ci-actions/opengrep-scan@81003ac5e4137628f8f80b7d7302566c3a052cb0 # v1.3.0
