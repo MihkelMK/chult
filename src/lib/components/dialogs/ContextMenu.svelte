@@ -1,6 +1,6 @@
 <script lang="ts">
-  import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-  import type { ContextMenuType, MapMarkerResponse, TileCoords, UserRole } from '$lib/types';
+  import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+  import type { ContextMenuType, MapMarkerResponse, TileCoords, UserRole } from '#lib/types/index.ts';
 
   interface Props {
     position: { x: number; y: number };

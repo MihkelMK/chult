@@ -1,8 +1,8 @@
 <script lang="ts">
-  import MapMarker from '$lib/components/canvas/MapMarker.svelte';
-  import MovementPaths from '$lib/components/canvas/MovementPaths.svelte';
-  import type { Hex, MapCanvasProps, MapMarkerResponse } from '$lib/types';
-  import { pixelToHex } from '$lib/utils/hexCoordinates';
+  import MapMarker from '#lib/components/canvas/MapMarker.svelte';
+  import MovementPaths from '#lib/components/canvas/MovementPaths.svelte';
+  import type { Hex, MapCanvasProps, MapMarkerResponse } from '#lib/types/index.ts';
+  import { pixelToHex } from '#lib/utils/hexCoordinates.ts';
   import type { KonvaPointerEvent } from 'konva/lib/PointerEvents';
   import { onMount } from 'svelte';
   import { Group, Image, Layer, Rect, RegularPolygon, Stage, Text } from 'svelte-konva';

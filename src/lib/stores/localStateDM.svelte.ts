@@ -6,7 +6,7 @@ import type {
   PathStep,
   RevealedTileResponse,
   TimeAuditLogResponse,
-} from '$lib/types';
+} from '#lib/types/index.ts';
 import { untrack } from 'svelte';
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { LocalState } from './localState.svelte';

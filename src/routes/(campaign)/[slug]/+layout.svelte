@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { setLocalState } from '$lib/contexts/campaignContext';
-  import { getDIContainer } from '$lib/contexts/diContext';
-  import type { LocalState } from '$lib/stores/localState.svelte';
-  import { LocalStateDM } from '$lib/stores/localStateDM.svelte';
-  import { LocalStatePlayer } from '$lib/stores/localStatePlayer.svelte';
+  import { setLocalState } from '#lib/contexts/campaignContext.ts';
+  import { getDIContainer } from '#lib/contexts/diContext.ts';
+  import type { LocalState } from '#lib/stores/localState.svelte.ts';
+  import { LocalStateDM } from '#lib/stores/localStateDM.svelte.ts';
+  import { LocalStatePlayer } from '#lib/stores/localStatePlayer.svelte.ts';
   import { onMount } from 'svelte';
   import type { LayoutProps } from './$types';
 

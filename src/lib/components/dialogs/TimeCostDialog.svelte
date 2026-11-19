@@ -1,8 +1,15 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
-  import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '$lib/components/ui/dialog';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+  } from '#lib/components/ui/dialog/index.ts';
+  import { Input } from '#lib/components/ui/input/index.ts';
+  import { Label } from '#lib/components/ui/label/index.ts';
   import { onMount } from 'svelte';
 
   interface Props {

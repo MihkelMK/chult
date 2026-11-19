@@ -1,4 +1,4 @@
-import type { MarkerType } from '$lib/types';
+import type { MarkerType } from '#lib/types/index.ts';
 
 // Marker type constants (application-side validation)
 export const MARKER_TYPES = [

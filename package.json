@@ -31,8 +31,9 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@lucide/svelte": "1.72.0",
-    "@sveltejs/adapter-node": "5.5.8",
+    "@sveltejs/adapter-node": "6.0.4",
     "@sveltejs/kit": "3.1.1",
+    "@sveltejs/load-config": "0.2.2",
     "@sveltejs/vite-plugin-svelte": "7.3.0",
     "@tailwindcss/vite": "4.2.4",
     "@types/node": "24.19.2",
@@ -52,9 +53,9 @@
     "prettier": "3.8.3",
     "prettier-plugin-svelte": "4.1.1",
     "prettier-plugin-tailwindcss": "0.8.0",
-    "runed": "0.37.1",
+    "runed": "0.38.0",
     "shadcn-svelte": "1.8.1",
-    "svelte": "5.57.0",
+    "svelte": "5.57.1",
     "svelte-check": "4.7.6",
     "svelte-konva": "1.0.1",
     "svelte-sonner": "1.1.1",
@@ -72,5 +73,9 @@
   "engines": {
     "node": "^24.0.0"
   },
-  "packageManager": "pnpm@12.21.0"
+  "packageManager": "pnpm@12.21.0",
+  "imports": {
+    "#lib": "./src/lib/index.js",
+    "#lib/*": "./src/lib/*"
+  }
 }

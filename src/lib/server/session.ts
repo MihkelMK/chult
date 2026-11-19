@@ -1,6 +1,6 @@
-import { dev } from '$app/environment';
-import { campaigns } from '$lib/server/db/schema';
-import type { UserRole } from '$lib/types';
+import { dev } from '$app/env';
+import { campaigns } from '#lib/server/db/schema.ts';
+import type { UserRole } from '#lib/types/index.ts';
 import type { RequestEvent } from '@sveltejs/kit';
 import { timingSafeEqual } from 'node:crypto';
 import { eq } from 'drizzle-orm';

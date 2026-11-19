@@ -1,6 +1,6 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 
-import type { SessionData } from '$lib/server/session';
+import type { SessionData } from '#lib/server/session.ts';
 
 // for information about these interfaces
 declare global {

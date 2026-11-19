@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { cn, type WithElementRef } from '$lib/utils.js';
+	import { cn, type WithElementRef } from '#lib/utils.js';
 	import { ScrollArea as ScrollAreaPrimitive } from 'bits-ui';
 	import type { HTMLTableAttributes } from 'svelte/elements';
 

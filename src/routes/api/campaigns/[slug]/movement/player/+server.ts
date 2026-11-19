@@ -1,8 +1,8 @@
-import { db } from '$lib/server/db';
-import { campaigns, gameSessions, paths, revealedTiles, timeAuditLog } from '$lib/server/db/schema';
-import { emitEvent } from '$lib/server/events';
-import type { PathStep } from '$lib/types';
-import { error, isHttpError, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { campaigns, gameSessions, paths, revealedTiles, timeAuditLog } from '#lib/server/db/schema.ts';
+import { emitEvent } from '#lib/server/events.ts';
+import type { PathStep } from '#lib/types/index.ts';
+import { error, isHttpError } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -174,7 +174,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
       globalGameTime: result.newGameTime,
     });
 
-    return json({ success: true, step: result.step, gameTime: result.newGameTime });
+    return Response.json({ success: true, step: result.step, gameTime: result.newGameTime });
   } catch (err) {
     // HttpError is not an Error subclass, so it must be re-thrown explicitly to keep its status
     if (isHttpError(err)) throw err;

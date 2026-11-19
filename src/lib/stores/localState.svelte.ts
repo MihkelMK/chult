@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import type {
   CampaignDataResponse,
   GameSessionResponse,
@@ -10,8 +10,8 @@ import type {
   RevealedTileResponse,
   TileCoords,
   TimeAuditLogResponse,
-} from '$lib/types';
-import { CAMPAIGN_EVENTS, type CampaignEvent } from '$lib/types/events';
+} from '#lib/types/index.ts';
+import { CAMPAIGN_EVENTS, type CampaignEvent } from '#lib/types/events.ts';
 import EventEmitter from 'eventemitter3';
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 
@@ -566,6 +566,7 @@ export class LocalState extends EventEmitter {
           a.toTile === b.toTile &&
           Math.abs(a.gameTime - b.gameTime) < 0.001
         );
+
       case 'dm_path':
         return (
           b.type === 'dm_path' &&
@@ -573,6 +574,7 @@ export class LocalState extends EventEmitter {
           a.tiles.every((t, i) => t === b.tiles[i]) &&
           Math.abs(a.gameTime - b.gameTime) < 0.001
         );
+
       default:
         return false;
     }

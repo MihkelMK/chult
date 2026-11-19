@@ -1,4 +1,4 @@
-import { createSession, destroySession } from '$lib/server/session';
+import { createSession, destroySession } from '#lib/server/session.ts';
 import { type Actions, redirect } from '@sveltejs/kit';
 
 export const actions: Actions = {

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { GameSessionResponse, Hex, HexPosition, Path, PathState } from '$lib/types';
-  import { flushSegment, handleStep } from '$lib/utils/movementPaths';
+  import type { GameSessionResponse, Hex, HexPosition, Path, PathState } from '#lib/types/index.ts';
+  import { flushSegment, handleStep } from '#lib/utils/movementPaths.ts';
   import { Circle, Group, Line } from 'svelte-konva';
   import { SvelteMap } from 'svelte/reactivity';
 

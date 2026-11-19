@@ -7,12 +7,12 @@ import {
   revealedTiles,
   timeAuditLog,
   uploadedImages,
-} from '$lib/server/db/schema';
+} from '#lib/server/db/schema.ts';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type { MapUrlsResponse } from './imgproxy';
 
 // Export PathStep types from schema
-export type { DMPath, DMTeleport, PathStep, PlayerMove } from '$lib/server/db/schema';
+export type { DMPath, DMTeleport, PathStep, PlayerMove } from '#lib/server/db/schema.ts';
 
 // Full model types
 export type Campaign = InferSelectModel<typeof campaigns>;

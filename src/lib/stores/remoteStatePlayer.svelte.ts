@@ -1,5 +1,5 @@
-import type { TileCoords, UserRole } from '$lib/types';
-import type { MapMarkerResponse } from '$lib/types/database';
+import type { TileCoords, UserRole } from '#lib/types/index.ts';
+import type { MapMarkerResponse } from '#lib/types/database.ts';
 import { SvelteDate } from 'svelte/reactivity';
 import type { LocalStatePlayer } from './localStatePlayer.svelte';
 

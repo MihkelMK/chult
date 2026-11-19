@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
-  import type { GameSessionResponse, Path } from '$lib/types';
+  import { SheetContent, SheetHeader, SheetTitle } from '#lib/components/ui/sheet/index.ts';
+  import type { GameSessionResponse, Path } from '#lib/types/index.ts';
   import { SvelteMap } from 'svelte/reactivity';
   import SessionListItem from './overlays/SessionListItem.svelte';
 

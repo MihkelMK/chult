@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Badge } from '$lib/components/ui/badge';
-  import { Button } from '$lib/components/ui/button';
-  import * as Collapsible from '$lib/components/ui/collapsible';
-  import type { GameSessionResponse, Path, PathStep } from '$lib/types';
+  import { Badge } from '#lib/components/ui/badge/index.ts';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import * as Collapsible from '#lib/components/ui/collapsible/index.ts';
+  import type { GameSessionResponse, Path, PathStep } from '#lib/types/index.ts';
   import { ChevronDown, Eye, EyeOff } from '@lucide/svelte';
   import { onMount } from 'svelte';
 

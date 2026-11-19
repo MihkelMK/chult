@@ -1,7 +1,7 @@
-import { db } from '$lib/server/db';
-import { revealedTiles } from '$lib/server/db/schema';
-import { requireAuth } from '$lib/server/session';
-import { error, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { revealedTiles } from '#lib/server/db/schema.ts';
+import { requireAuth } from '#lib/server/session.ts';
+import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -28,7 +28,7 @@ export const POST: RequestHandler = async (event) => {
       .delete(revealedTiles)
       .where(and(eq(revealedTiles.campaignId, session.campaignId), eq(revealedTiles.x, x), eq(revealedTiles.y, y)));
 
-    return json({ success: true });
+    return Response.json({ success: true });
   } catch (err) {
     console.error('Hide tile error:', err);
     return error(500, 'Failed to hide tile');

@@ -1,21 +1,28 @@
 <script lang="ts">
-  import DangerIcon from '$lib/components/canvas/icons/DangerIcon.svelte';
-  import DungeonIcon from '$lib/components/canvas/icons/DungeonIcon.svelte';
-  import GenericIcon from '$lib/components/canvas/icons/GenericIcon.svelte';
-  import LandmarkIcon from '$lib/components/canvas/icons/LandmarkIcon.svelte';
-  import RestIcon from '$lib/components/canvas/icons/RestIcon.svelte';
-  import RuinsIcon from '$lib/components/canvas/icons/RuinsIcon.svelte';
-  import SettlementIcon from '$lib/components/canvas/icons/SettlementIcon.svelte';
-  import WarningIcon from '$lib/components/canvas/icons/WarningIcon.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '$lib/components/ui/dialog';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
-  import { Switch } from '$lib/components/ui/switch';
-  import { Textarea } from '$lib/components/ui/textarea';
-  import { type MarkerType, type TileCoords } from '$lib/types';
-  import type { MapMarkerResponse } from '$lib/types/database';
-  import { MARKER_TYPES } from '$lib/utils/mapMarkers';
+  import DangerIcon from '#lib/components/canvas/icons/DangerIcon.svelte';
+  import DungeonIcon from '#lib/components/canvas/icons/DungeonIcon.svelte';
+  import GenericIcon from '#lib/components/canvas/icons/GenericIcon.svelte';
+  import LandmarkIcon from '#lib/components/canvas/icons/LandmarkIcon.svelte';
+  import RestIcon from '#lib/components/canvas/icons/RestIcon.svelte';
+  import RuinsIcon from '#lib/components/canvas/icons/RuinsIcon.svelte';
+  import SettlementIcon from '#lib/components/canvas/icons/SettlementIcon.svelte';
+  import WarningIcon from '#lib/components/canvas/icons/WarningIcon.svelte';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+  } from '#lib/components/ui/dialog/index.ts';
+  import { Input } from '#lib/components/ui/input/index.ts';
+  import { Label } from '#lib/components/ui/label/index.ts';
+  import { Switch } from '#lib/components/ui/switch/index.ts';
+  import { Textarea } from '#lib/components/ui/textarea/index.ts';
+  import { type MarkerType, type TileCoords } from '#lib/types/index.ts';
+  import type { MapMarkerResponse } from '#lib/types/database.ts';
+  import { MARKER_TYPES } from '#lib/utils/mapMarkers.ts';
   import { Layer, Stage } from 'svelte-konva';
 
   interface Props {

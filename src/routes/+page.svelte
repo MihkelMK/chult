@@ -1,10 +1,10 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
-  import { Button } from '$lib/components/ui/button';
-  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#lib/components/ui/card/index.ts';
+  import { Input } from '#lib/components/ui/input/index.ts';
+  import { Label } from '#lib/components/ui/label/index.ts';
   import { Eye, EyeOff, Map } from '@lucide/svelte';
   import { toast } from 'svelte-sonner';
 
@@ -45,7 +45,6 @@
             return async ({ result }) => {
               loading = false;
               if (result.type === 'redirect') {
-                // eslint-disable-next-line svelte/no-navigation-without-resolve
                 goto(result.location);
               } else if (result.type === 'failure') {
                 loginFailed = true;

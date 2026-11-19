@@ -42,7 +42,7 @@ The grid dimensions are named `hexesPerRow` and `hexesPerCol`, where `hexesPerRo
 
 ## Consequences
 
-The odd-q offset table and the axial conversion exist once, in `$lib/utils/hex.ts`, importable by both server and client, and under test. Today the server's adjacency and the frontend's distance implement the same convention independently, and a change to rotation or offset on one side diverges silently from the other.
+The odd-q offset table and the axial conversion exist once, in `#lib/utils/hex.ts`, importable by both server and client, and under test. Today the server's adjacency and the frontend's distance implement the same convention independently, and a change to rotation or offset on one side diverges silently from the other.
 
 Both rotation comments delete themselves. `hex.col === columnCount - 1` needs no explanation, so the trap for a future refactor closes.
 

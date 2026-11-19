@@ -1,8 +1,8 @@
-import type { LocalState } from '$lib/stores/localState.svelte';
-import type { Hex, HexTriggerEvent, RightClickEvent, TileCoords } from '$lib/types/canvas';
-import type { GameSessionResponse, MapMarkerResponse, Path, RevealedTileResponse } from '$lib/types/database';
-import type { ImageVariant, MapUrlsResponse } from '$lib/types/imgproxy';
-import type { SelectMode, UITool } from '$lib/types/ui';
+import type { LocalState } from '#lib/stores/localState.svelte.ts';
+import type { Hex, HexTriggerEvent, RightClickEvent, TileCoords } from '#lib/types/canvas.ts';
+import type { GameSessionResponse, MapMarkerResponse, Path, RevealedTileResponse } from '#lib/types/database.ts';
+import type { ImageVariant, MapUrlsResponse } from '#lib/types/imgproxy.ts';
+import type { SelectMode, UITool } from '#lib/types/ui.ts';
 import type { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 interface MapCanvasSharedProps {

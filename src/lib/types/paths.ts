@@ -1,4 +1,4 @@
-import type { PixelPoint } from '$lib/types/canvas';
+import type { PixelPoint } from '#lib/types/canvas.ts';
 
 export interface PathSegment {
   points: number[];

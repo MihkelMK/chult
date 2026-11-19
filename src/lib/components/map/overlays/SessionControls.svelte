@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Badge } from '$lib/components/ui/badge';
-  import { Button } from '$lib/components/ui/button';
-  import * as Tooltip from '$lib/components/ui/tooltip';
+  import { Badge } from '#lib/components/ui/badge/index.ts';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
   import { Play, Square } from '@lucide/svelte';
 
   interface Props {

@@ -1,9 +1,9 @@
-import { db } from '$lib/server/db';
-import { campaigns } from '$lib/server/db/schema';
-import { requireAuth } from '$lib/server/session';
-import { saveMapImage, type UploadResult } from '$lib/server/uploads';
-import type { UserRole } from '$lib/types';
-import { error, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { campaigns } from '#lib/server/db/schema.ts';
+import { requireAuth } from '#lib/server/session.ts';
+import { saveMapImage, type UploadResult } from '#lib/server/uploads.ts';
+import type { UserRole } from '#lib/types/index.ts';
+import { error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -62,7 +62,7 @@ export const POST: RequestHandler = async (event) => {
       filename: result.filename,
       originalDimensions: result.originalDimensions,
     };
-    return json(response);
+    return Response.json(response);
   } catch (err) {
     console.error('Map upload error:', err);
     return error(500, 'Upload failed');
@@ -82,7 +82,7 @@ export const DELETE: RequestHandler = async (event) => {
 
   try {
     const mapType = (event.url.searchParams.get('mapType') as UserRole) || 'dm';
-    const { deleteMapImage } = await import('$lib/server/uploads');
+    const { deleteMapImage } = await import('#lib/server/uploads.ts');
     await deleteMapImage(session.campaignSlug, mapType);
 
     // If deleting player map, update hasPlayerMap flag
@@ -96,7 +96,7 @@ export const DELETE: RequestHandler = async (event) => {
         .where(eq(campaigns.slug, session.campaignSlug));
     }
 
-    return json({ success: true });
+    return Response.json({ success: true });
   } catch (err) {
     console.error('Map deletion error:', err);
     return error(500, 'Deletion failed');

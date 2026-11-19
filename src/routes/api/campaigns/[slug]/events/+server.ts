@@ -5,8 +5,8 @@ import eventEmitter, {
   releaseBuffer,
   replayAfter,
   type BusEvent,
-} from '$lib/server/events';
-import { requireAuth } from '$lib/server/session';
+} from '#lib/server/events.ts';
+import { requireAuth } from '#lib/server/session.ts';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

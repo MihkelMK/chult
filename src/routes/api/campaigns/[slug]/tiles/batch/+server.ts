@@ -1,9 +1,9 @@
-import { db } from '$lib/server/db';
-import { revealedTiles } from '$lib/server/db/schema';
-import { emitEvent } from '$lib/server/events';
-import type { CampaignEvent } from '$lib/types/events';
-import { requireAuth } from '$lib/server/session';
-import { error, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { revealedTiles } from '#lib/server/db/schema.ts';
+import { emitEvent } from '#lib/server/events.ts';
+import type { CampaignEvent } from '#lib/types/events.ts';
+import { requireAuth } from '#lib/server/session.ts';
+import { error } from '@sveltejs/kit';
 import { and, eq, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -140,7 +140,7 @@ export const POST: RequestHandler = async (event) => {
       emitEvent(session.campaignSlug, name, data, 'all');
     }
 
-    return json({
+    return Response.json({
       success: true,
       operation: type,
       processed: tiles.length,

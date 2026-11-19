@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { MapMarkerResponse, UserRole } from '$lib/types';
+  import type { MapMarkerResponse, UserRole } from '#lib/types/index.ts';
 
   interface Props {
     hoveredMarker: MapMarkerResponse | null;

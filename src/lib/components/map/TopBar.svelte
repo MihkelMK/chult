@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Badge } from '$lib/components/ui/badge';
-  import { Button } from '$lib/components/ui/button';
-  import * as Tooltip from '$lib/components/ui/tooltip';
-  import type { GameSessionResponse } from '$lib/types';
+  import { Badge } from '#lib/components/ui/badge/index.ts';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
+  import type { GameSessionResponse } from '#lib/types/index.ts';
   import { Clock, Menu } from '@lucide/svelte';
 
   interface Props {
