@@ -46,7 +46,7 @@ RUN --mount=type=cache,id=chult-pnpm-store,target=/root/.local/share/pnpm/store 
 
 # Copy only files needed for build (layer caching optimization)
 # Config files change less frequently - copy first for better caching
-COPY svelte.config.js vite.config.ts tsconfig.json ./
+COPY vite.config.ts tsconfig.json ./
 COPY drizzle.config.ts components.json ./
 
 # Source code changes frequently - copy last
