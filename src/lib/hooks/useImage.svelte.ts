@@ -1,4 +1,4 @@
-import type { CanvasImage } from '$lib/types';
+import type { CanvasImage } from '#lib/types/index.ts';
 
 export default function useImage(url: string, crossOrigin = null, referrerPolicy = null): () => CanvasImage {
   // Usage:

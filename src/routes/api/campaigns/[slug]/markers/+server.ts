@@ -1,9 +1,9 @@
-import { db } from '$lib/server/db';
-import { campaigns, mapMarkers } from '$lib/server/db/schema';
-import { emitEvent } from '$lib/server/events';
-import { type MarkerType } from '$lib/types';
-import { MARKER_TYPES } from '$lib/utils/mapMarkers';
-import { error, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { campaigns, mapMarkers } from '#lib/server/db/schema.ts';
+import { emitEvent } from '#lib/server/events.ts';
+import { type MarkerType } from '#lib/types/index.ts';
+import { MARKER_TYPES } from '#lib/utils/mapMarkers.ts';
+import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -96,5 +96,5 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
   // must be withheld from the player event stream too.
   emitEvent(params.slug, 'marker:created', newMarker, newMarker.visibleToPlayers ? 'all' : 'dm');
 
-  return json(newMarker, { status: 201 });
+  return Response.json(newMarker, { status: 201 });
 };

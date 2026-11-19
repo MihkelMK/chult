@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { Badge } from '$lib/components/ui/badge';
-  import Button from '$lib/components/ui/button/button.svelte';
-  import * as Dialog from '$lib/components/ui/dialog';
-  import * as Empty from '$lib/components/ui/empty';
-  import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
-  import * as Table from '$lib/components/ui/table-scrollable';
-  import * as ToggleGroup from '$lib/components/ui/toggle-group';
-  import type { TimeAuditLogResponse } from '$lib/types/database';
+  import { Badge } from '#lib/components/ui/badge/index.ts';
+  import Button from '#lib/components/ui/button/button.svelte';
+  import * as Dialog from '#lib/components/ui/dialog/index.ts';
+  import * as Empty from '#lib/components/ui/empty/index.ts';
+  import ScrollArea from '#lib/components/ui/scroll-area/scroll-area.svelte';
+  import * as Table from '#lib/components/ui/table-scrollable/index.ts';
+  import * as ToggleGroup from '#lib/components/ui/toggle-group/index.ts';
+  import type { TimeAuditLogResponse } from '#lib/types/database.ts';
   import { Clock } from '@lucide/svelte';
 
   interface Props {

@@ -1,5 +1,5 @@
-import { getCampaignTokens } from '$lib/server/campaign';
-import { getMapUrls } from '$lib/server/imgproxy';
+import { getCampaignTokens } from '#lib/server/campaign.ts';
+import { getMapUrls } from '#lib/server/imgproxy.ts';
 import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 

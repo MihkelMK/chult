@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Button, buttonVariants } from '$lib/components/ui/button';
-  import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-  import Separator from '$lib/components/ui/separator/separator.svelte';
-  import * as ToggleGroup from '$lib/components/ui/toggle-group/index.js';
-  import * as Tooltip from '$lib/components/ui/tooltip';
+  import { Button, buttonVariants } from '#lib/components/ui/button/index.ts';
+  import * as Collapsible from '#lib/components/ui/collapsible/index.js';
+  import Separator from '#lib/components/ui/separator/separator.svelte';
+  import * as ToggleGroup from '#lib/components/ui/toggle-group/index.js';
+  import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
   import { ChevronDownIcon, ChevronUpIcon, Eye, EyeOff } from '@lucide/svelte';
 
   interface Props {

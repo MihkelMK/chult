@@ -1,4 +1,10 @@
-import type { GameSessionResponse, MapMarkerResponse, PathStep, PlayerCampaignDataResponse, RevealedTile } from '$lib/types';
+import type {
+  GameSessionResponse,
+  MapMarkerResponse,
+  PathStep,
+  PlayerCampaignDataResponse,
+  RevealedTile,
+} from '#lib/types/index.ts';
 import { SvelteSet } from 'svelte/reactivity';
 import { LocalState } from './localState.svelte';
 

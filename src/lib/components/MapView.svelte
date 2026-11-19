@@ -1,25 +1,25 @@
 <script lang="ts">
-  import MapCanvasWrapper from '$lib/components/canvas/MapCanvasWrapper.svelte';
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte';
-  import ContextMenu from '$lib/components/dialogs/ContextMenu.svelte';
-  import KeyboardShortcutsDialog from '$lib/components/dialogs/KeyboardShortcutsDialog.svelte';
-  import MarkerCreateDialog from '$lib/components/dialogs/MarkerCreateDialog.svelte';
-  import MarkerDetailsDialog from '$lib/components/dialogs/MarkerDetailsDialog.svelte';
-  import MarkerPreviewPopover from '$lib/components/dialogs/MarkerPreviewPopover.svelte';
-  import TimeCostDialog from '$lib/components/dialogs/TimeCostDialog.svelte';
-  import CampaignSidebar from '$lib/components/map/CampaignSidebar.svelte';
-  import LayerControls from '$lib/components/map/overlays/LayerControls.svelte';
-  import SelectionToolbar from '$lib/components/map/overlays/SelectionToolbar.svelte';
-  import ToolModeButtons from '$lib/components/map/overlays/ToolModeButtons.svelte';
-  import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
-  import SessionSidebar from '$lib/components/map/SessionSidebar.svelte';
-  import MapEmpty from '$lib/components/placeholders/MapEmpty.svelte';
-  import { Sheet } from '$lib/components/ui/sheet';
-  import * as Tooltip from '$lib/components/ui/tooltip';
-  import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
-  import type { LocalState } from '$lib/stores/localState.svelte';
-  import type { RemoteStateDM } from '$lib/stores/remoteStateDM.svelte';
-  import type { RemoteStatePlayer } from '$lib/stores/remoteStatePlayer.svelte';
+  import MapCanvasWrapper from '#lib/components/canvas/MapCanvasWrapper.svelte';
+  import ConfirmDialog from '#lib/components/dialogs/ConfirmDialog.svelte';
+  import ContextMenu from '#lib/components/dialogs/ContextMenu.svelte';
+  import KeyboardShortcutsDialog from '#lib/components/dialogs/KeyboardShortcutsDialog.svelte';
+  import MarkerCreateDialog from '#lib/components/dialogs/MarkerCreateDialog.svelte';
+  import MarkerDetailsDialog from '#lib/components/dialogs/MarkerDetailsDialog.svelte';
+  import MarkerPreviewPopover from '#lib/components/dialogs/MarkerPreviewPopover.svelte';
+  import TimeCostDialog from '#lib/components/dialogs/TimeCostDialog.svelte';
+  import CampaignSidebar from '#lib/components/map/CampaignSidebar.svelte';
+  import LayerControls from '#lib/components/map/overlays/LayerControls.svelte';
+  import SelectionToolbar from '#lib/components/map/overlays/SelectionToolbar.svelte';
+  import ToolModeButtons from '#lib/components/map/overlays/ToolModeButtons.svelte';
+  import ZoomControls from '#lib/components/map/overlays/ZoomControls.svelte';
+  import SessionSidebar from '#lib/components/map/SessionSidebar.svelte';
+  import MapEmpty from '#lib/components/placeholders/MapEmpty.svelte';
+  import { Sheet } from '#lib/components/ui/sheet/index.ts';
+  import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
+  import { getLocalState, getRemoteState } from '#lib/contexts/campaignContext.ts';
+  import type { LocalState } from '#lib/stores/localState.svelte.ts';
+  import type { RemoteStateDM } from '#lib/stores/remoteStateDM.svelte.ts';
+  import type { RemoteStatePlayer } from '#lib/stores/remoteStatePlayer.svelte.ts';
   import type {
     ContextMenuType,
     DialogConfig,
@@ -32,8 +32,8 @@
     UIToolDM,
     UIToolPlayer,
     UserRole,
-  } from '$lib/types';
-  import type { MapMarkerResponse } from '$lib/types/database';
+  } from '#lib/types/index.ts';
+  import type { MapMarkerResponse } from '#lib/types/database.ts';
   import { PressedKeys, Previous } from 'runed';
   import { onMount } from 'svelte';
   import { toast } from 'svelte-sonner';

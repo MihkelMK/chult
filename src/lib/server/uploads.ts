@@ -1,5 +1,5 @@
-import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
-import type { UserRole } from '$lib/types';
+import { PUBLIC_MAX_IMAGE_SIZE } from '$app/env/public';
+import type { UserRole } from '#lib/types/index.ts';
 import crypto from 'crypto';
 import { existsSync } from 'fs';
 import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises';

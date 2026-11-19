@@ -71,33 +71,38 @@ RUN --mount=type=cache,id=chult-pnpm-cache,target=/root/.cache/pnpm \
 #
 FROM base
 
+# Changes every CI run so the cached `apk upgrade` layer below is rebuilt, not reused stale.
+ARG APK_CACHE_BUST
+
 # Install netcat for healthcheck and add nodejs user.
 # apk upgrade because the base image is digest-pinned: without it the image keeps
 # whatever package versions were current when that digest was built.
-# npm is removed because the runtime only runs `node`, and npm's bundled dependencies
+# npm, corepack and yarn are removed because the runtime only runs `node`, and their bundled dependencies
 # (tar, sigstore, ip-address, ...) are a standing source of CVEs in the scan.
-RUN apk upgrade --no-cache && \
+RUN echo "apk cache bust: ${APK_CACHE_BUST}" && \
+  apk upgrade --no-cache && \
   apk add --no-cache netcat-openbsd && \
-  rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx && \
+  rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+    /opt/yarn-v* /usr/local/bin/yarn /usr/local/bin/yarnpkg && \
   addgroup -g 1001 -S nodejs && \
-  adduser -S nodejs -u 1001
+  adduser -S nodejs -u 1001 && \
+  mkdir /app && chown nodejs:nodejs /app
 
 WORKDIR /app
 
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=build /app/build ./build
+# --chown (and --chmod) on the COPY instead of a later `chown -R`: that would copy every
+# file again into a new layer and add its size to the image a second time.
+COPY --from=prod-deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nodejs:nodejs /app/build ./build
 # Need package.json for "type": "module" — build/index.js and scripts/migrate.js are ESM
-COPY --from=build /app/package.json ./package.json
+COPY --from=build --chown=nodejs:nodejs /app/package.json ./package.json
 # Generated migration SQL, applied by scripts/migrate.js at startup.
 # drizzle.config.ts and schema.ts are not copied: those are drizzle-kit inputs, and
 # drizzle-kit is a dev dependency (it bundles esbuild, which fails the image scan).
-COPY --from=build /app/drizzle ./drizzle
-COPY --from=build /app/scripts/migrate.js ./scripts/migrate.js
-COPY entrypoint.sh /app/entrypoint.sh
-
-# Set ownership and permissions
-RUN chmod +x entrypoint.sh && \
-  chown -R nodejs:nodejs /app
+COPY --from=build --chown=nodejs:nodejs /app/drizzle ./drizzle
+COPY --from=build --chown=nodejs:nodejs /app/scripts/migrate.js ./scripts/migrate.js
+COPY --chown=nodejs:nodejs --chmod=755 entrypoint.sh /app/entrypoint.sh
 
 # Switch to non-root user
 USER nodejs

@@ -1,6 +1,6 @@
-import { db } from '$lib/server/db/index';
-import { campaigns } from '$lib/server/db/schema';
-import { error, isHttpError, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { campaigns } from '#lib/server/db/schema.ts';
+import { error, isHttpError } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -78,7 +78,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
       throw error(404, 'Campaign not found');
     }
 
-    return json({
+    return Response.json({
       success: true,
       message: 'Campaign settings updated successfully',
       config: result[0],

@@ -1,7 +1,7 @@
-import { env } from '$env/dynamic/private';
-import { createCampaign } from '$lib/server/campaign';
-import { createSession } from '$lib/server/session';
-import type { Campaign } from '$lib/types';
+import { PRIVATE_DM_TOKEN } from '$app/env/private';
+import { createCampaign } from '#lib/server/campaign.ts';
+import { createSession } from '#lib/server/session.ts';
+import type { Campaign } from '#lib/types/index.ts';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 
@@ -18,7 +18,7 @@ export const actions: Actions = {
       });
     }
 
-    if (accessToken !== env.PRIVATE_DM_TOKEN) {
+    if (accessToken !== PRIVATE_DM_TOKEN) {
       return fail(401, { error: 'Invalid DM token', campaignName });
     }
 

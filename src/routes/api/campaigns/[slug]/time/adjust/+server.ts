@@ -1,7 +1,7 @@
-import { db } from '$lib/server/db';
-import { campaigns, timeAuditLog } from '$lib/server/db/schema';
-import { emitEvent } from '$lib/server/events';
-import { error, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { campaigns, timeAuditLog } from '#lib/server/db/schema.ts';
+import { emitEvent } from '#lib/server/events.ts';
+import { error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -70,7 +70,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       },
     });
 
-    return json({
+    return Response.json({
       success: true,
       globalGameTime: newGlobalGameTime,
       auditEntry: {

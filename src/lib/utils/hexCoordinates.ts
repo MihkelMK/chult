@@ -7,7 +7,7 @@
  * - Coordinate format: "col-row" where col=x, row=y
  */
 
-import type { HexCoordinates } from '$lib/types/canvas';
+import type { HexCoordinates } from '#lib/types/canvas.ts';
 
 /**
  * Converts pixel coordinates to hex grid coordinates (odd-q offset).

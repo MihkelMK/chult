@@ -1,6 +1,6 @@
-import type { LocalState } from '$lib/stores/localState.svelte';
-import type { RemoteStateDM } from '$lib/stores/remoteStateDM.svelte';
-import type { RemoteStatePlayer } from '$lib/stores/remoteStatePlayer.svelte';
+import type { LocalState } from '#lib/stores/localState.svelte.ts';
+import type { RemoteStateDM } from '#lib/stores/remoteStateDM.svelte.ts';
+import type { RemoteStatePlayer } from '#lib/stores/remoteStatePlayer.svelte.ts';
 import { getContext, setContext } from 'svelte';
 
 // Context keys

@@ -1,5 +1,5 @@
-import { getCampaignData } from '$lib/server/campaign';
-import type { PlayerCampaignDataResponse } from '$lib/types/database';
+import { getCampaignData } from '#lib/server/campaign.ts';
+import type { PlayerCampaignDataResponse } from '#lib/types/database.ts';
 import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 

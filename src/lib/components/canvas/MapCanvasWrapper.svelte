@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
-  import LoadingScreen from '$lib/components/placeholders/LoadingScreen.svelte';
-  import useImage from '$lib/hooks/useImage.svelte';
-  import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '$lib/types';
-  import type { MapMarkerResponse } from '$lib/types/database';
+  import { browser } from '$app/env';
+  import LoadingScreen from '#lib/components/placeholders/LoadingScreen.svelte';
+  import useImage from '#lib/hooks/useImage.svelte.ts';
+  import type { Hex, MapCanvasProps, MapCanvasWrapperProps } from '#lib/types/index.ts';
+  import type { MapMarkerResponse } from '#lib/types/database.ts';
   import { type Component } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
 
@@ -149,6 +149,7 @@
   let partyTokenTile = $derived.by(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     localState.tilesVersion; // Track version changes
+
     return (
       hexGrid.find((hex) => hex.col === localState.partyTokenPosition?.x && hex.row === localState.partyTokenPosition.y) || null
     );
@@ -179,8 +180,9 @@
             [0, 1],
             [-1, 1],
             [-1, 0],
-          ] // Odd column
-        : [
+          ]
+        : // Odd column
+          [
             [0, -1],
             [1, -1],
             [1, 0],

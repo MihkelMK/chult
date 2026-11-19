@@ -1,7 +1,7 @@
-import { db } from '$lib/server/db';
-import { campaigns, gameSessions } from '$lib/server/db/schema';
-import { emitEvent } from '$lib/server/events';
-import { error, isHttpError, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { campaigns, gameSessions } from '#lib/server/db/schema.ts';
+import { emitEvent } from '#lib/server/events.ts';
+import { error, isHttpError } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -44,7 +44,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
     // Emit SSE event
     emitEvent(params.slug, 'session:deleted', { id: sessionId });
 
-    return json({ success: true });
+    return Response.json({ success: true });
   } catch (err) {
     // HttpError is not an Error subclass, so it must be re-thrown explicitly to keep its status
     if (isHttpError(err)) throw err;

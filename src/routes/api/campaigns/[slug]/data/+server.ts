@@ -1,7 +1,7 @@
-import { getCampaignData } from '$lib/server/campaign';
-import { requireAuth } from '$lib/server/session';
-import type { CampaignDataResponse } from '$lib/types';
-import { error, json } from '@sveltejs/kit';
+import { getCampaignData } from '#lib/server/campaign.ts';
+import { requireAuth } from '#lib/server/session.ts';
+import type { CampaignDataResponse } from '#lib/types/index.ts';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
@@ -23,5 +23,5 @@ export const GET: RequestHandler = async (event) => {
     return error(404, 'Campaign not found');
   }
 
-  return json(campaignData);
+  return Response.json(campaignData);
 };

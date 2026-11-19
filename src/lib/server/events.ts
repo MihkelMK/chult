@@ -1,4 +1,4 @@
-import type { CampaignEvent, EventRole } from '$lib/types/events';
+import type { CampaignEvent, EventRole } from '#lib/types/events.ts';
 import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
 

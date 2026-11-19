@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { PUBLIC_MAX_IMAGE_SIZE } from '$env/static/public';
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte';
-  import { Badge } from '$lib/components/ui/badge';
-  import { Button } from '$lib/components/ui/button';
-  import type { UserRole } from '$lib/types';
+  import { PUBLIC_MAX_IMAGE_SIZE } from '$app/env/public';
+  import ConfirmDialog from '#lib/components/dialogs/ConfirmDialog.svelte';
+  import { Badge } from '#lib/components/ui/badge/index.ts';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import type { UserRole } from '#lib/types/index.ts';
   import { Image, LoaderCircle, Trash2, Upload } from '@lucide/svelte';
   import { onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
@@ -183,9 +183,8 @@
       </div>
       <div class="flex gap-2">
         <Button variant="outline" size="sm" onclick={() => (showUploadInterface = true)}>Replace</Button>
-        <Button variant="outline" size="sm" onclick={openDeleteConfirmDialog}>
-          <Trash2 class="h-4 w-4" />
-        </Button>
+
+        <Button variant="outline" size="sm" onclick={openDeleteConfirmDialog}><Trash2 class="h-4 w-4" /></Button>
       </div>
     </div>
   {/if}
@@ -197,6 +196,7 @@
         {#if mapExists}
           <div class="mb-4 flex items-center justify-between">
             <h4 class="font-medium">{label ? `Replace ${label}` : 'Replace Map'}</h4>
+
             <Button variant="ghost" size="sm" onclick={() => (showUploadInterface = false)}>Cancel</Button>
           </div>
         {/if}
@@ -261,11 +261,7 @@
   title="Delete Map"
   description={`Are you sure you want to delete the current ${label || (mapType === 'player' ? 'player map' : 'map')}? This cannot be undone.`}
   actions={[
-    {
-      label: 'Cancel',
-      variant: 'outline',
-      action: () => {},
-    },
+    { label: 'Cancel', variant: 'outline', action: () => {} },
     {
       label: 'Delete',
       variant: 'destructive',

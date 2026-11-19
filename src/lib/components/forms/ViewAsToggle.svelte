@@ -1,7 +1,7 @@
 <script lang="ts">
-  import Label from '$lib/components/ui/label/label.svelte';
-  import Switch from '$lib/components/ui/switch/switch.svelte';
-  import type { UserRole } from '$lib/types';
+  import Label from '#lib/components/ui/label/label.svelte';
+  import Switch from '#lib/components/ui/switch/switch.svelte';
+  import type { UserRole } from '#lib/types/index.ts';
 
   interface Props {
     effectiveRole: UserRole;

@@ -1,21 +1,21 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import { page } from '$app/state';
-  import MapCanvasWrapper from '$lib/components/canvas/MapCanvasWrapper.svelte';
-  import MapUpload from '$lib/components/forms/MapUpload.svelte';
-  import ViewAsToggle from '$lib/components/forms/ViewAsToggle.svelte';
-  import ZoomControls from '$lib/components/map/overlays/ZoomControls.svelte';
-  import LoadingScreen from '$lib/components/placeholders/LoadingScreen.svelte';
-  import * as Alert from '$lib/components/ui/alert/index.js';
-  import { Badge } from '$lib/components/ui/badge';
-  import { Button } from '$lib/components/ui/button';
-  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
-  import { Separator } from '$lib/components/ui/separator';
-  import { Slider } from '$lib/components/ui/slider';
-  import * as Tooltip from '$lib/components/ui/tooltip';
-  import { getLocalState } from '$lib/contexts/campaignContext';
-  import type { LocalState } from '$lib/stores/localState.svelte';
-  import type { UserRole } from '$lib/types';
+  import MapCanvasWrapper from '#lib/components/canvas/MapCanvasWrapper.svelte';
+  import MapUpload from '#lib/components/forms/MapUpload.svelte';
+  import ViewAsToggle from '#lib/components/forms/ViewAsToggle.svelte';
+  import ZoomControls from '#lib/components/map/overlays/ZoomControls.svelte';
+  import LoadingScreen from '#lib/components/placeholders/LoadingScreen.svelte';
+  import * as Alert from '#lib/components/ui/alert/index.js';
+  import { Badge } from '#lib/components/ui/badge/index.ts';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#lib/components/ui/card/index.ts';
+  import { Separator } from '#lib/components/ui/separator/index.ts';
+  import { Slider } from '#lib/components/ui/slider/index.ts';
+  import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
+  import { getLocalState } from '#lib/contexts/campaignContext.ts';
+  import type { LocalState } from '#lib/stores/localState.svelte.ts';
+  import type { UserRole } from '#lib/types/index.ts';
   import { Check, Copy, Crown, Eye, EyeOff, Flag, Hand, Map, Users } from '@lucide/svelte';
   import { Debounced } from 'runed';
   import { onMount } from 'svelte';
@@ -121,7 +121,7 @@
   // Map upload callback
   async function handleMapUploaded() {
     // Invalidate all data to refetch from server
-    await invalidateAll();
+    await refreshAll();
   }
 
   // Handle player map deletion
@@ -145,7 +145,7 @@
 
       hasPlayerMap = enabled;
       // Invalidate data to refetch hasPlayerMapFile
-      await invalidateAll();
+      await refreshAll();
     } catch (err) {
       console.error('Failed to toggle player map:', err);
       // Revert the toggle on error

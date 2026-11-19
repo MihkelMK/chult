@@ -5,7 +5,7 @@ import {
   paths,
   revealedTiles,
   timeAuditLog,
-} from '$lib/server/db/schema';
+} from '#lib/server/db/schema.ts';
 import type {
   Campaign,
   CampaignDataResponse,
@@ -13,7 +13,7 @@ import type {
   CampaignTokenResponse,
   PlayerCampaignDataResponse,
   UserRole,
-} from '$lib/types';
+} from '#lib/types/index.ts';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from './db';
 import { getMapUrls } from './imgproxy';

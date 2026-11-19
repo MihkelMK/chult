@@ -1,16 +1,16 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import TimeAdjustmentDialog from '$lib/components/dialogs/TimeAdjustmentDialog.svelte';
-  import TimeAuditDialog from '$lib/components/dialogs/TimeAuditDialog.svelte';
-  import ViewAsToggle from '$lib/components/forms/ViewAsToggle.svelte';
-  import GlobalTimeDisplay from '$lib/components/map/overlays/GlobalTimeDisplay.svelte';
-  import { Badge } from '$lib/components/ui/badge';
-  import { Button, buttonVariants } from '$lib/components/ui/button';
-  import { ScrollArea } from '$lib/components/ui/scroll-area';
-  import { Separator } from '$lib/components/ui/separator';
-  import { SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
-  import { getLocalState, getRemoteState } from '$lib/contexts/campaignContext';
-  import type { DialogConfig, GameSessionResponse, MapMarker, TimeAuditLogResponse } from '$lib/types';
+  import TimeAdjustmentDialog from '#lib/components/dialogs/TimeAdjustmentDialog.svelte';
+  import TimeAuditDialog from '#lib/components/dialogs/TimeAuditDialog.svelte';
+  import ViewAsToggle from '#lib/components/forms/ViewAsToggle.svelte';
+  import GlobalTimeDisplay from '#lib/components/map/overlays/GlobalTimeDisplay.svelte';
+  import { Badge } from '#lib/components/ui/badge/index.ts';
+  import { Button, buttonVariants } from '#lib/components/ui/button/index.ts';
+  import { ScrollArea } from '#lib/components/ui/scroll-area/index.ts';
+  import { Separator } from '#lib/components/ui/separator/index.ts';
+  import { SheetContent, SheetHeader, SheetTitle } from '#lib/components/ui/sheet/index.ts';
+  import { getLocalState, getRemoteState } from '#lib/contexts/campaignContext.ts';
+  import type { DialogConfig, GameSessionResponse, MapMarker, TimeAuditLogResponse } from '#lib/types/index.ts';
   import { toast } from 'svelte-sonner';
 
   interface Props {

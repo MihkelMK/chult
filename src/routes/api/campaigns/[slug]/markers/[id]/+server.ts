@@ -1,9 +1,9 @@
-import { db } from '$lib/server/db';
-import { campaigns, mapMarkers } from '$lib/server/db/schema';
-import { emitEvent } from '$lib/server/events';
-import { type MarkerType } from '$lib/types';
-import { MARKER_TYPES } from '$lib/utils/mapMarkers';
-import { error, json } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.ts';
+import { campaigns, mapMarkers } from '#lib/server/db/schema.ts';
+import { emitEvent } from '#lib/server/events.ts';
+import { type MarkerType } from '#lib/types/index.ts';
+import { MARKER_TYPES } from '#lib/utils/mapMarkers.ts';
+import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -109,7 +109,7 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
     }
   }
 
-  return json(updatedMarker);
+  return Response.json(updatedMarker);
 };
 
 // DELETE /api/campaigns/[slug]/markers/[id] - Delete marker
@@ -166,5 +166,5 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
     existingMarker.visibleToPlayers ? 'all' : 'dm'
   );
 
-  return json({ success: true });
+  return Response.json({ success: true });
 };

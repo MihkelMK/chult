@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
-  import * as Dialog from '$lib/components/ui/dialog';
-  import type { DialogConfig } from '$lib/types';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import * as Dialog from '#lib/components/ui/dialog/index.ts';
+  import type { DialogConfig } from '#lib/types/index.ts';
 
   interface Props extends DialogConfig {
     open: boolean;

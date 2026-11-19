@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
-  import * as Dialog from '$lib/components/ui/dialog';
-  import * as Kbd from '$lib/components/ui/kbd';
-  import type { UserRole } from '$lib/types';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import * as Dialog from '#lib/components/ui/dialog/index.ts';
+  import * as Kbd from '#lib/components/ui/kbd/index.ts';
+  import type { UserRole } from '#lib/types/index.ts';
   import { Keyboard } from '@lucide/svelte';
 
   interface Props {

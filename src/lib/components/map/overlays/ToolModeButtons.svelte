@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
-  import * as Tooltip from '$lib/components/ui/tooltip';
-  import type { SelectMode, UITool } from '$lib/types';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
+  import type { SelectMode, UITool } from '#lib/types/index.ts';
   import { Hand, Minus, MousePointer, Navigation, Paintbrush, Plus, Square } from '@lucide/svelte';
 
   interface Props {

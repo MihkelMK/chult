@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
-  import { Separator } from '$lib/components/ui/separator';
-  import { Slider } from '$lib/components/ui/slider';
-  import * as Tooltip from '$lib/components/ui/tooltip';
-  import type { SelectMode } from '$lib/types';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import { Separator } from '#lib/components/ui/separator/index.ts';
+  import { Slider } from '#lib/components/ui/slider/index.ts';
+  import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
+  import type { SelectMode } from '#lib/types/index.ts';
   import { Eye, EyeOff, Lock, Minus, Plus, Trash2 } from '@lucide/svelte';
 
   interface Props {

@@ -1,12 +1,12 @@
-import { env } from '$env/dynamic/private';
-import type { ImageOptions, ImageVariants, MapUrlsResponse, UserRole } from '$lib/types';
+import { IMGPROXY_KEY, IMGPROXY_SALT, IMGPROXY_URL } from '$app/env/private';
+import type { ImageOptions, ImageVariants, MapUrlsResponse, UserRole } from '#lib/types/index.ts';
 import crypto from 'crypto';
 import path from 'path';
 import { computeFileHash, hasMapImage } from './uploads';
 
 function sign(target: string): string {
-  const hmac = crypto.createHmac('sha256', Buffer.from(env.IMGPROXY_KEY!, 'hex'));
-  hmac.update(Buffer.from(env.IMGPROXY_SALT!, 'hex'));
+  const hmac = crypto.createHmac('sha256', Buffer.from(IMGPROXY_KEY!, 'hex'));
+  hmac.update(Buffer.from(IMGPROXY_SALT!, 'hex'));
   hmac.update(target);
 
   return hmac.digest('base64url');
@@ -27,7 +27,7 @@ export function generateMapUrl(
     const target = `/preset:${options.preset}/${encodedUrl}`;
     const signature = sign(target);
 
-    return `${env.IMGPROXY_URL}/${signature}${target}`;
+    return `${IMGPROXY_URL}/${signature}${target}`;
   }
 
   // Build custom processing options
@@ -79,7 +79,7 @@ export function generateMapUrl(
   const target = `${processingPath}/${encodedUrl}`;
   const signature = sign(target);
 
-  return `${env.IMGPROXY_URL}/${signature}${target}`;
+  return `${IMGPROXY_URL}/${signature}${target}`;
 }
 
 export function generateMarkerImageUrl(campaignSlug: string, markerId: number, options: ImageOptions = {}): string {
@@ -90,7 +90,7 @@ export function generateMarkerImageUrl(campaignSlug: string, markerId: number, o
     const target = `/preset:${options.preset}/${encodedUrl}`;
     const signature = sign(target);
 
-    return `${env.IMGPROXY_URL}/${signature}${target}`;
+    return `${IMGPROXY_URL}/${signature}${target}`;
   }
 
   // Build custom processing options
@@ -142,7 +142,7 @@ export function generateMarkerImageUrl(campaignSlug: string, markerId: number, o
   const target = `${processingPath}/${encodedUrl}`;
   const signature = sign(target);
 
-  return `${env.IMGPROXY_URL}/${signature}${target}`;
+  return `${IMGPROXY_URL}/${signature}${target}`;
 }
 
 export function generateMapVariants(campaignSlug: string, hash?: string, mapType: UserRole = 'dm'): ImageVariants {

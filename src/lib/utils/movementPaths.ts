@@ -1,4 +1,4 @@
-import type { DMTeleport, HexPosition, PathState, PathStep, PixelPoint } from '$lib/types';
+import type { DMTeleport, HexPosition, PathState, PathStep, PixelPoint } from '#lib/types/index.ts';
 
 type HexMap = ReadonlyMap<string, HexPosition>;
 
